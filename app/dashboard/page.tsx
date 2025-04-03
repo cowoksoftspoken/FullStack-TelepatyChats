@@ -338,7 +338,7 @@ export default function DashboardPage() {
       <button
         className={`z-50 md:hidden ${
           isMobileMenuOpen
-            ? "absolute right-[4.2rem] border bg-background rounded-r-md text-primary-foreground dark:text-white w-[2.5rem] h-[2.5rem] p-2"
+            ? "absolute right-[2px] border bg-background rounded-r-sm text-primary-foreground dark:text-white w-[2.5rem] h-[2.5rem] p-2"
             : "fixed h-[1em] dark:text-white text-black dark:bg-none px-1 py-2 top-4 left-2"
         }`}
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

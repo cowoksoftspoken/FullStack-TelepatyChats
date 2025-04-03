@@ -424,7 +424,7 @@ export function ChatArea({
               src={msg.fileURL || ""}
               duration={msg.duration}
               fileName={msg.fileName}
-              isDark={msg.senderId === currentUser.uid}
+              isDark={theme === "dark" ? true : false}
               className="max-w-full"
             />
           </>
