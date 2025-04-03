@@ -9,9 +9,9 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "WebRTC Video Call App",
+  title: "ZeroChats - Real time messaging app",
   description:
-    "A real-time video calling application built with WebRTC and React",
+    "a real-time messaging app with a variety of features",
 };
 
 export default function RootLayout({
