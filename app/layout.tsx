@@ -4,14 +4,14 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseProvider } from "@/lib/firebase-provider";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Chat Apps",
+  title: "WebRTC Video Call App",
   description:
     "A real-time video calling application built with WebRTC and React",
-  generator: "v0.dev",
 };
 
 export default function RootLayout({
@@ -25,11 +25,10 @@ export default function RootLayout({
         <FirebaseProvider>
           <ThemeProvider defaultTheme="system" storageKey="webrtc-theme">
             {children}
+            <Toaster />
           </ThemeProvider>
         </FirebaseProvider>
       </body>
     </html>
   );
 }
-
-import "./globals.css";

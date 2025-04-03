@@ -21,22 +21,19 @@ export function IncomingCall({
   onAccept,
   onReject,
 }: IncomingCallProps) {
-  const [ringing, setRinging] = useState<boolean>(true);
+  // const [isRinging, setIsRinging] = useState(true)
 
+  // // Play ringtone
   // useEffect(() => {
-  //   if (ringing) {
-  //     const audio = new Audio("/ringtone.mp3");
-  //     audio.loop = true;
-  //     audio
-  //       .play()
-  //       .catch((err) => console.error("Could not play ringtone:", err));
+  //   const audio = new Audio("/ringtone.mp3")
+  //   audio.loop = true
+  //   audio.play().catch((err) => console.error("Could not play ringtone:", err))
 
-  //     return () => {
-  //       audio.pause();
-  //       audio.currentTime = 0;
-  //     };
+  //   return () => {
+  //     audio.pause()
+  //     audio.currentTime = 0
   //   }
-  // }, []);
+  // }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -72,10 +69,7 @@ export function IncomingCall({
             variant="destructive"
             size="icon"
             className="h-12 w-12 rounded-full"
-            onClick={() => {
-              setRinging(false);
-              onReject();
-            }}
+            onClick={onReject}
           >
             <PhoneOff className="h-6 w-6" />
           </Button>
@@ -83,10 +77,7 @@ export function IncomingCall({
             variant="default"
             size="icon"
             className="h-12 w-12 rounded-full bg-green-600 hover:bg-green-700"
-            onClick={() => {
-              setRinging(false);
-              onAccept();
-            }}
+            onClick={onAccept}
           >
             <Phone className="h-6 w-6" />
           </Button>

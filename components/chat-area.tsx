@@ -12,7 +12,7 @@ import {
   doc,
   deleteDoc,
 } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   Phone,
   Send,
@@ -24,6 +24,10 @@ import {
   Trash2,
   FileText,
   Mic,
+  Image,
+  Film,
+  File,
+  Loader2,
 } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
@@ -42,18 +46,28 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import type { User } from "@/types/user";
 import type { Message } from "@/types/message";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
+import { UserAvatar } from "./user-avatar";
+import { AudioMessage } from "./audio-message";
 
 interface ChatAreaProps {
   currentUser: any;
   contact: User;
   initiateCall: (isVideo: boolean) => void;
 }
-
-let recordingInterval: any = null;
 
 export function ChatArea({
   currentUser,
@@ -72,13 +86,28 @@ export function ChatArea({
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const timerIntervalRef = useRef<number | null>(null); // Store interval ID in a ref instead
   const { theme } = useTheme();
+
+  // Media preview state
+  const [previewFile, setPreviewFile] = useState<{
+    file: File;
+    type: "image" | "video" | "file";
+    preview: string;
+  } | null>(null);
+  const [caption, setCaption] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
 
+    // Create a unique chat ID (sorted UIDs to ensure consistency)
     const chatId = [currentUser.uid, contact.uid].sort().join("_");
 
+    // Instead of using orderBy which requires a composite index,
+    // we'll just filter by chatId and sort the messages in memory
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -87,6 +116,7 @@ export function ChatArea({
         messageList.push({ id: doc.id, ...doc.data() } as Message);
       });
 
+      // Sort messages by timestamp in memory
       messageList.sort((a, b) => {
         return (
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -114,7 +144,7 @@ export function ChatArea({
     try {
       await addDoc(collection(db, "messages"), {
         chatId,
-        text: message.trim() || (replyTo ? "" : "👍"),
+        text: message.trim() || (replyTo ? "" : "👍"), // Send thumbs up if empty and not replying
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -139,41 +169,72 @@ export function ChatArea({
     setMessage((prev) => prev + emoji.native);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: "image" | "video" | "file"
+  ) => {
     const file = e.target.files?.[0];
-    if (!file || !currentUser || !contact) return;
+    if (!file) return;
+
+    // Create preview
+    if (type === "image") {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewFile({
+          file,
+          type,
+          preview: reader.result as string,
+        });
+      };
+      reader.readAsDataURL(file);
+    } else if (type === "video") {
+      const url = URL.createObjectURL(file);
+      setPreviewFile({
+        file,
+        type,
+        preview: url,
+      });
+    } else {
+      setPreviewFile({
+        file,
+        type,
+        preview: "",
+      });
+    }
+
+    // Reset caption
+    setCaption("");
+  };
+
+  const handleSendMedia = async () => {
+    if (!previewFile || !currentUser || !contact) return;
+
+    setIsUploading(true);
 
     try {
-      const storage = getStorage();
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
       const fileRef = ref(
         storage,
-        `chats/${chatId}/${Date.now()}_${file.name}`
+        `chats/${chatId}/${Date.now()}_${previewFile.file.name}`
       );
 
-      await uploadBytes(fileRef, file);
+      // Upload file
+      await uploadBytes(fileRef, previewFile.file);
 
+      // Get download URL
       const downloadURL = await getDownloadURL(fileRef);
 
-      let type = "file";
-      if (file.type.startsWith("image/")) {
-        type = "image";
-      } else if (file.type.startsWith("video/")) {
-        type = "video";
-      } else if (file.type.startsWith("audio/")) {
-        type = "audio";
-      }
-
+      // Add message to Firestore
       await addDoc(collection(db, "messages"), {
         chatId,
-        text: file.name,
+        text: caption || previewFile.file.name,
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
         fileURL: downloadURL,
-        fileName: file.name,
-        fileType: file.type,
-        type,
+        fileName: previewFile.file.name,
+        fileType: previewFile.file.type,
+        type: previewFile.type,
         replyTo: replyTo
           ? {
               id: replyTo.id,
@@ -183,14 +244,20 @@ export function ChatArea({
           : null,
       });
 
+      // Clear preview and caption
+      setPreviewFile(null);
+      setCaption("");
       setReplyTo(null);
     } catch (error) {
       console.error("Error uploading file:", error);
       alert("Failed to upload file. Please try again.");
-    }
+    } finally {
+      setIsUploading(false);
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      // Clear the inputs
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (imageInputRef.current) imageInputRef.current.value = "";
+      if (videoInputRef.current) videoInputRef.current.value = "";
     }
   };
 
@@ -221,6 +288,7 @@ export function ChatArea({
         setIsRecording(false);
         setRecordingTime(0);
 
+        // Stop all tracks
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -229,21 +297,18 @@ export function ChatArea({
       recorder.start();
       setIsRecording(true);
 
-      recorder.onstart = () => {
-        const startTime = Date.now();
-        recordingInterval = setInterval(() => {
-          setRecordingTime(Math.floor((Date.now() - startTime) / 1000));
-        }, 1000);
-      };
-
-      recorder.onstop = () => {
-        clearInterval(recordingInterval);
-        recordingInterval = null;
-      };
+      // Start timer
+      const startTime = Date.now();
+      // Store interval ID in the ref instead of on the MediaRecorder object
+      timerIntervalRef.current = window.setInterval(() => {
+        setRecordingTime(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
 
       recorder.onerror = () => {
-        clearInterval(recordingInterval);
-        recordingInterval = null;
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
       };
     } catch (error) {
       console.error("Error starting recording:", error);
@@ -254,9 +319,10 @@ export function ChatArea({
   const stopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
-      if (recordingInterval) {
-        clearInterval(recordingInterval);
-        recordingInterval = null;
+      // Clear the timer interval
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
       }
     }
   };
@@ -264,9 +330,10 @@ export function ChatArea({
   const cancelRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
-      if (recordingInterval) {
-        clearInterval(recordingInterval);
-        recordingInterval = null;
+      // Clear the timer interval
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
       }
       setIsRecording(false);
       setRecordingTime(0);
@@ -278,14 +345,16 @@ export function ChatArea({
     if (!currentUser || !contact) return;
 
     try {
-      const storage = getStorage();
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
       const fileRef = ref(storage, `chats/${chatId}/audio_${Date.now()}.webm`);
 
+      // Upload audio
       await uploadBytes(fileRef, audioBlob);
 
+      // Get download URL
       const downloadURL = await getDownloadURL(fileRef);
 
+      // Add message to Firestore
       await addDoc(collection(db, "messages"), {
         chatId,
         text: "Audio message",
@@ -330,6 +399,9 @@ export function ChatArea({
               className="max-w-full rounded-md max-h-60 object-contain"
               onClick={() => window.open(msg.fileURL, "_blank")}
             />
+            {msg.text !== msg.fileName && (
+              <p className="mt-1 text-sm">{msg.text}</p>
+            )}
           </div>
         );
       case "video":
@@ -338,20 +410,24 @@ export function ChatArea({
             <video
               src={msg.fileURL}
               controls
-              className="max-w-full rounded-md max-h-60"
+              className="max-w-full rounded-md max-h-72 object-contain"
             />
+            {msg.text !== msg.fileName && (
+              <p className="mt-1 text-sm">{msg.text}</p>
+            )}
           </div>
         );
       case "audio":
         return (
-          <div className="mt-1">
-            <audio src={msg.fileURL} controls className="max-w-full" />
-            {msg.duration && (
-              <div className="text-xs opacity-70 mt-1">
-                {formatTime(msg.duration)}
-              </div>
-            )}
-          </div>
+          <>
+            <AudioMessage
+              src={msg.fileURL || ""}
+              duration={msg.duration}
+              fileName={msg.fileName}
+              isDark={msg.senderId === currentUser.uid}
+              className="max-w-full"
+            />
+          </>
         );
       case "file":
         return (
@@ -365,6 +441,9 @@ export function ChatArea({
             >
               {msg.fileName}
             </a>
+            {msg.text !== msg.fileName && (
+              <p className="mt-1 text-sm">{msg.text}</p>
+            )}
           </div>
         );
       default:
@@ -375,16 +454,18 @@ export function ChatArea({
   return (
     <div className="flex flex-1 flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
-          <Avatar>
+        <div className="flex items-center gap-3 ml-6 md:ml-0">
+          {/* <Avatar>
             <AvatarImage
               src={contact.photoURL || ""}
               alt={contact.displayName || "User"}
+              className="object-cover"
             />
             <AvatarFallback>
               {contact.displayName?.charAt(0) || "U"}
             </AvatarFallback>
-          </Avatar>
+          </Avatar> */}
+          <UserAvatar user={contact} />
           <div>
             <p className="font-medium">{contact.displayName}</p>
             <p className="text-xs text-muted-foreground">
@@ -421,15 +502,16 @@ export function ChatArea({
             <div
               className={`max-w-[70%] rounded-lg px-4 py-2 ${
                 msg.senderId === currentUser.uid
-                  ? "bg-primary-foreground text-primary"
-                  : "bg-muted"
+                  ? "dark:bg-muted/25 bg-slate-200"
+                  : "dark:bg-muted bg-slate-100"
               }`}
             >
+              {/* Reply preview */}
               {msg.replyTo && (
                 <div
                   className={`text-xs p-2 rounded mb-2 ${
                     msg.senderId === currentUser.uid
-                      ? "bg-slate-100/30 text-primary"
+                      ? "bg-slate-300/25"
                       : "bg-background text-foreground"
                   }`}
                 >
@@ -442,8 +524,10 @@ export function ChatArea({
                 </div>
               )}
 
+              {/* Message content */}
               {renderMessageContent(msg)}
 
+              {/* Message metadata */}
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
                 <span>
                   {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -452,6 +536,7 @@ export function ChatArea({
                   })}
                 </span>
 
+                {/* Message actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -492,6 +577,7 @@ export function ChatArea({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Reply preview */}
       {replyTo && (
         <div className="px-4 py-2 border-t flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -514,6 +600,7 @@ export function ChatArea({
         </div>
       )}
 
+      {/* Recording UI */}
       {isRecording && (
         <div className="px-4 py-2 border-t flex items-center justify-between bg-red-50 dark:bg-red-900/20">
           <div className="flex items-center gap-2">
@@ -533,34 +620,70 @@ export function ChatArea({
         </div>
       )}
 
+      {/* Message input */}
       <form onSubmit={sendMessage} className="border-t p-4">
         <div className="flex gap-2 items-center">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Paperclip className="h-8 w-8" />
-          </Button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileUpload}
-            accept="image/*,video/*,audio/*,application/*"
-          />
-
-          <Popover>
-            <PopoverTrigger asChild>
+          {/* File upload dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-full"
               >
-                <Smile className="h-8 w-8" />
+                <Paperclip className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
+                <Image className="mr-2 h-4 w-4" />
+                <span>Image</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
+                <Film className="mr-2 h-4 w-4" />
+                <span>Video</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                <File className="mr-2 h-4 w-4" />
+                <span>File</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Hidden file inputs */}
+          <input
+            type="file"
+            ref={imageInputRef}
+            className="hidden"
+            accept="image/*"
+            onChange={(e) => handleFileSelect(e, "image")}
+          />
+          <input
+            type="file"
+            ref={videoInputRef}
+            className="hidden"
+            accept="video/*"
+            onChange={(e) => handleFileSelect(e, "video")}
+          />
+          <input
+            type="file"
+            ref={fileInputRef}
+            className="hidden"
+            accept="application/*,text/*"
+            onChange={(e) => handleFileSelect(e, "file")}
+          />
+
+          {/* Emoji picker */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 rounded-full"
+              >
+                <Smile className="h-5 w-5" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -572,6 +695,7 @@ export function ChatArea({
             </PopoverContent>
           </Popover>
 
+          {/* Text input */}
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -579,6 +703,7 @@ export function ChatArea({
             className="flex-1 rounded-full"
           />
 
+          {/* Send or record button */}
           {message.trim() ? (
             <Button
               type="submit"
@@ -599,6 +724,87 @@ export function ChatArea({
           )}
         </div>
       </form>
+
+      {/* Media preview dialog */}
+      <Dialog
+        open={!!previewFile}
+        onOpenChange={(open) => !open && setPreviewFile(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {previewFile?.type === "image"
+                ? "Send Image"
+                : previewFile?.type === "video"
+                ? "Send Video"
+                : "Send File"}
+            </DialogTitle>
+            <DialogDescription>
+              Preview your media before sending
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Preview content */}
+            {previewFile?.type === "image" && (
+              <div className="flex justify-center">
+                <img
+                  src={previewFile.preview || "/placeholder.svg"}
+                  alt="Preview"
+                  className="max-h-60 max-w-full rounded-md object-contain"
+                />
+              </div>
+            )}
+
+            {previewFile?.type === "video" && (
+              <div className="flex justify-center">
+                <video
+                  src={previewFile.preview}
+                  controls
+                  className="max-h-60 max-w-full rounded-md"
+                />
+              </div>
+            )}
+
+            {previewFile?.type === "file" && (
+              <div className="flex items-center gap-2 p-4 border rounded-md">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">{previewFile.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(previewFile.file.size / 1024).toFixed(2)} KB
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Caption input */}
+            <div className="space-y-2">
+              <Label htmlFor="caption">Caption (optional)</Label>
+              <Textarea
+                id="caption"
+                placeholder="Add a caption..."
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewFile(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendMedia} disabled={isUploading}>
+              {isUploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                "Send"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

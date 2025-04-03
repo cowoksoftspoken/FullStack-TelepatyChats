@@ -23,20 +23,28 @@ import { useFirebase } from "@/lib/firebase-provider";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { auth, currentUser } = useFirebase();
+  const { auth, currentUser, loading } = useFirebase();
 
   useEffect(() => {
-    if (currentUser) {
+    // Only redirect if Firebase has initialized and user is logged in
+    if (!loading && currentUser) {
       router.push("/dashboard");
     }
-  }, [currentUser, router]);
+  }, [currentUser, loading, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    // Don't proceed if Firebase is still initializing
+    if (loading || !auth) {
+      setError("Authentication service is initializing. Please try again.");
+      return;
+    }
+
+    setFormLoading(true);
     setError("");
 
     try {
@@ -52,9 +60,19 @@ export default function LoginPage() {
         setError("Failed to login. Please try again.");
       }
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
+
+  // Show loading state while Firebase initializes
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Preparing login...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900">
@@ -101,8 +119,8 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={formLoading}>
+              {formLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Sign In

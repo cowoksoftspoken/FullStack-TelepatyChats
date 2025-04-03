@@ -25,23 +25,32 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { auth, db, currentUser } = useFirebase();
+  const { auth, db, currentUser, loading } = useFirebase();
 
   useEffect(() => {
-    if (currentUser) {
+    // Only redirect if Firebase has initialized and user is logged in
+    if (!loading && currentUser) {
       router.push("/dashboard");
     }
-  }, [currentUser, router]);
+  }, [currentUser, loading, router]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    // Don't proceed if Firebase is still initializing
+    if (loading || !auth || !db) {
+      setError("Authentication service is initializing. Please try again.");
+      return;
+    }
+
+    setFormLoading(true);
     setError("");
 
     try {
+      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -49,10 +58,12 @@ export default function RegisterPage() {
       );
       const user = userCredential.user;
 
+      // Update profile with display name
       await updateProfile(user, {
         displayName: name,
       });
 
+      // Create user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         displayName: name,
@@ -73,9 +84,19 @@ export default function RegisterPage() {
       }
       console.error(err);
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
+
+  // Show loading state while Firebase initializes
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2">Preparing registration...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900">
@@ -134,8 +155,8 @@ export default function RegisterPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" className="w-full" disabled={formLoading}>
+              {formLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               Register
