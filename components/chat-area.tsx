@@ -431,18 +431,20 @@ export function ChatArea({
         );
       case "file":
         return (
-          <div className="mt-1 flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            <a
-              href={msg.fileURL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 hover:underline"
-            >
-              {msg.fileName}
-            </a>
+          <div className="mt-1 inline-flex items-center flex-start flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              <a
+                href={msg.fileURL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 text-sm hover:underline"
+              >
+                {msg.fileName}
+              </a>
+            </div>
             {msg.text !== msg.fileName && (
-              <p className="mt-1 text-sm">{msg.text}</p>
+              <p className="mt-1 text-base">{msg.text}</p>
             )}
           </div>
         );
