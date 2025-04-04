@@ -10,8 +10,33 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "ZeroChats - Real time messaging app",
-  description:
-    "a real-time messaging app with a variety of features",
+  description: "A real-time messaging app with a variety of features",
+  openGraph: {
+    title: "ZeroChats - Real time messaging app",
+    description: "A real-time messaging app with a variety of features",
+    url: "https://zerochats.vercel.app",
+    siteName: "ZeroChats",
+    images: [
+      {
+        url: "/logo/8b2dd08b-d439-4116-b798-89421c394982.png",
+        width: 1200,
+        height: 630,
+        alt: "ZeroChats Logo",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ZeroChats - Real time messaging app",
+    description: "A real-time messaging app with a variety of features",
+    images: ["/logo/8b2dd08b-d439-4116-b798-89421c394982.png"],
+  },
+  icons: {
+    icon: "/logo/8b2dd08b-d439-4116-b798-89421c394982.png",
+    shortcut: "/logo/8b2dd08b-d439-4116-b798-89421c394982.png",
+    apple: "/logo/8b2dd08b-d439-4116-b798-89421c394982.png",
+  },
 };
 
 export default function RootLayout({

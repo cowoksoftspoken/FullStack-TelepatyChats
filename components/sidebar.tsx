@@ -18,6 +18,9 @@ import {
   Settings,
   UserPlus,
   Loader2,
+  Plus,
+  Eye,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,6 +31,9 @@ import { AddContact } from "@/components/add-contact";
 import type { User } from "@/types/user";
 import { useFirebase } from "@/lib/firebase-provider";
 import { UserAvatar } from "./user-avatar";
+import { StoryCreator } from "./story/story-creator";
+import { StoryCircle } from "./story/story-circle";
+import { VerificationRequest } from "./admin/verification-request";
 
 interface SidebarProps {
   user: any;
@@ -35,6 +41,8 @@ interface SidebarProps {
   selectedContact: User | null;
   setSelectedContact: (contact: User) => void;
   initiateCall: (contact: User, isVideo: boolean) => void;
+  setIsMobileMenuOpen: (open: boolean) => void;
+  setIsChatActive: (open: boolean) => void;
 }
 
 export function Sidebar({
@@ -43,11 +51,14 @@ export function Sidebar({
   selectedContact,
   setSelectedContact,
   initiateCall,
+  setIsMobileMenuOpen,
+  setIsChatActive,
 }: SidebarProps) {
   const { auth, db } = useFirebase();
   const [searchQuery, setSearchQuery] = useState("");
   const [userContacts, setUserContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [contactsWithStories, setContactsWithStories] = useState<User[]>([]);
 
   // Fetch user's contacts
   useEffect(() => {
@@ -72,6 +83,56 @@ export function Sidebar({
     return () => unsubscribe();
   }, [user, db]);
 
+  useEffect(() => {
+    if (!user?.uid || contacts.length === 0) return;
+
+    // Get current time
+    const now = new Date();
+
+    // Find contacts with active stories
+    const fetchContactsWithStories = async () => {
+      try {
+        const q = query(
+          collection(db, "stories"),
+          where("expiresAt", ">", now.toISOString())
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const storyUserIds = new Set<string>();
+
+          snapshot.forEach((doc) => {
+            const storyData = doc.data();
+
+            // Only include stories that the user has permission to view
+            if (
+              storyData.userId !== user.uid && // Not the current user's story
+              (storyData.privacy === "public" ||
+                (storyData.privacy === "contacts" &&
+                  userContacts.includes(storyData.userId)) ||
+                (storyData.privacy === "selected" &&
+                  storyData.allowedViewers?.includes(user.uid)))
+            ) {
+              storyUserIds.add(storyData.userId);
+            }
+          });
+
+          // Filter contacts to only include those with stories
+          const contactsWithActiveStories = contacts.filter((contact) =>
+            storyUserIds.has(contact.uid)
+          );
+
+          setContactsWithStories(contactsWithActiveStories);
+        });
+
+        return () => unsubscribe();
+      } catch (error) {
+        console.error("Error fetching stories:", error);
+      }
+    };
+
+    fetchContactsWithStories();
+  }, [user, contacts, db, userContacts]);
+
   const handleSignOut = async () => {
     try {
       // Update user status to offline
@@ -95,7 +156,15 @@ export function Sidebar({
   );
 
   return (
-    <div className="flex h-full w-80 flex-col border-r bg-background">
+    <div className="flex h-full w-80 relative flex-col border-r bg-background">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="p-1 absolute md:hidden -right-[2.5rem] rounded border"
+        onClick={() => setIsMobileMenuOpen(false)}
+      >
+        <X className="h-5 w-5" />
+      </Button>
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
           {/* <Avatar>
@@ -115,22 +184,93 @@ export function Sidebar({
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Link href="/settings">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" className="p-1" size="icon">
               <Settings className="h-5 w-5" />
             </Button>
           </Link>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
+          <Button
+            className="p-1"
+            variant="ghost"
+            size="icon"
+            onClick={handleSignOut}
+          >
             <LogOut className="h-5 w-5" />
           </Button>
+        </div>
+      </div>
+
+      {/* Stories section */}
+      {/* <div className="border-b p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-medium">Stories</h2>
+          <Link href="/stories">
+            <Button variant="ghost" size="sm" className="h-8 text-xs">
+              View All
+            </Button>
+          </Link>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          <Link href="/stories/create" className="flex flex-col items-center">
+            <div className="relative h-12 w-12 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                <span className="text-xl font-bold text-muted-foreground">
+                  +
+                </span>
+              </div>
+            </div>
+            <span className="mt-1 text-xs">Your Story</span>
+          </Link>
+        </div>
+      </div> */}
+
+      <div className="border-b p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-medium">Stories</h2>
+          <Link href="/stories">
+            <Button variant="ghost" size="sm" className="h-8 text-xs">
+              View All
+            </Button>
+          </Link>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {/* Your story */}
+          <div className="flex flex-col items-center">
+            <div className="relative h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                <span className="text-xl font-bold text-muted-foreground">
+                  +
+                </span>
+              </div>
+              <div className="absolute inset-0 opacity-0">
+                <StoryCreator />
+              </div>
+            </div>
+            <span className="mt-1 text-xs">Your Story</span>
+          </div>
+
+          {/* Contact stories */}
+          {contactsWithStories.map((contact) => (
+            <div
+              key={contact.uid}
+              className="flex flex-col items-center overflow-auto"
+            >
+              <StoryCircle user={contact} currentUser={user} />
+              <span className="mt-1 text-xs truncate max-w-[64px]">
+                {contact.displayName.split(" ")[0]}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-medium">Contacts</h2>
-          <AddContact />
+          <div className="flex gap-2">
+            <AddContact />
+          </div>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -166,7 +306,10 @@ export function Sidebar({
                       ? "bg-accent"
                       : "hover:bg-accent/50"
                   }`}
-                  onClick={() => setSelectedContact(contact)}
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setIsChatActive(true);
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -187,7 +330,25 @@ export function Sidebar({
                       )}
                     </div>
                     <div>
-                      <p className="font-medium">{contact.displayName}</p>
+                      <div className="flex items-center gap-1">
+                        <p className="font-medium">{contact.displayName}</p>
+                        {contact.isVerified && (
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              className="h-3 w-3 text-white"
+                            >
+                              <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {contact.online ? "Online" : "Offline"}
                       </p>

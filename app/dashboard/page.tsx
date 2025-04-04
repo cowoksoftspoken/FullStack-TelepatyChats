@@ -26,6 +26,7 @@ import {
 import type { User } from "@/types/user";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
+import { StoriesRow } from "@/components/story/stories-row";
 
 export default function DashboardPage() {
   const { currentUser, db, loading: authLoading } = useFirebase();
@@ -53,6 +54,7 @@ export default function DashboardPage() {
     isVideo: boolean;
   } | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [active, setIsChatActive] = useState(false);
   const { theme } = useTheme();
 
   const router = useRouter();
@@ -335,34 +337,14 @@ export default function DashboardPage() {
         theme === "dark" ? "dark" : ""
       }`}
     >
-      <button
-        className={`z-50 md:hidden ${
-          isMobileMenuOpen
-            ? "absolute right-[1rem] border bg-background rounded-r-sm text-primary-foreground dark:text-white w-[2.5rem] h-[2.5rem] p-2"
-            : "fixed h-[1em] dark:text-white text-black dark:bg-none px-1 py-2 top-4 left-2"
-        }`}
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        {isMobileMenuOpen ? (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className="dark:text-white text-black"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        ) : (
+      {!isMobileMenuOpen && !active && (
+        <button
+          className="absolute top-4 left-4 z-50 md:hidden"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
           <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
-        )}
-      </button>
+        </button>
+      )}
 
       <div
         className={`${
@@ -377,6 +359,8 @@ export default function DashboardPage() {
             setSelectedContact(contact);
             setIsMobileMenuOpen(false);
           }}
+          setIsChatActive={setIsChatActive}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
           initiateCall={handleStartCall}
         />
       </div>
@@ -389,9 +373,10 @@ export default function DashboardPage() {
             initiateCall={(isVideo) =>
               handleStartCall(selectedContact, isVideo)
             }
+            setIsMobileMenuOpen={setIsMobileMenuOpen}
           />
         ) : (
-          <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background">
+          <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background md:pt-0 pt-14">
             <p className="text-muted-foreground">
               Select a contact to start chatting
             </p>

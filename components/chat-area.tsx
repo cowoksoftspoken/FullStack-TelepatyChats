@@ -28,6 +28,7 @@ import {
   Film,
   File,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
@@ -67,12 +68,14 @@ interface ChatAreaProps {
   currentUser: any;
   contact: User;
   initiateCall: (isVideo: boolean) => void;
+  setIsMobileMenuOpen?: (isOpen: boolean) => void;
 }
 
 export function ChatArea({
   currentUser,
   contact,
   initiateCall,
+  setIsMobileMenuOpen,
 }: ChatAreaProps) {
   const { db, storage } = useFirebase();
   const [message, setMessage] = useState("");
@@ -406,11 +409,11 @@ export function ChatArea({
         );
       case "video":
         return (
-          <div className="mt-1">
+          <div className="mt-1 h-60">
             <video
               src={msg.fileURL}
               controls
-              className="max-w-full rounded-md max-h-72 object-contain"
+              className="max-w-full rounded-md h-full object-cover"
             />
             {msg.text !== msg.fileName && (
               <p className="mt-1 text-sm">{msg.text}</p>
@@ -456,7 +459,7 @@ export function ChatArea({
   return (
     <div className="flex flex-1 flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3 ml-6 md:ml-0">
+        <div className="flex items-center gap-3">
           {/* <Avatar>
             <AvatarImage
               src={contact.photoURL || ""}
@@ -467,6 +470,13 @@ export function ChatArea({
               {contact.displayName?.charAt(0) || "U"}
             </AvatarFallback>
           </Avatar> */}
+          <button
+            onClick={() => setIsMobileMenuOpen?.(true)}
+            className="md:hidden cursor-pointer"
+          >
+            <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
+          </button>
+
           <UserAvatar user={contact} />
           <div>
             <p className="font-medium">{contact.displayName}</p>

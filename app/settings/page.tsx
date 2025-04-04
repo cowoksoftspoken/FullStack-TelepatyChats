@@ -50,6 +50,7 @@ import {
   XCircle,
   AlertCircle,
   KeyRound,
+  CircleUser,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
@@ -57,6 +58,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserAvatar } from "@/components/user-avatar";
+import { VerificationRequest } from "@/components/admin/verification-request";
 
 export default function SettingsPage() {
   const {
@@ -290,6 +292,7 @@ export default function SettingsPage() {
             <CardTitle>Profile</CardTitle>
             <CardDescription>Manage your profile information</CardDescription>
           </CardHeader>
+
           <CardContent className="space-y-6">
             {/* Avatar */}
             <div className="flex flex-col items-center justify-center">
@@ -448,6 +451,7 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
+            {!currentUser.isVerified && <VerificationRequest />}
           </CardContent>
         </Card>
 
@@ -522,6 +526,46 @@ export default function SettingsPage() {
             </Dialog>
           </CardFooter>
         </Card>
+
+        {currentUser.isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Admin Controls</CardTitle>
+              <CardDescription>
+                Access admin features and controls
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                You have administrator privileges. Use the admin dashboard to
+                manage users, verification requests, and send broadcast
+                messages.
+              </p>
+              <Link href="/admin">
+                <Button className="w-full">
+                  <span className="flex items-center gap-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"></path>
+                      <path d="M12 8v8"></path>
+                      <path d="M12 16l4-4"></path>
+                      <path d="M12 16l-4-4"></path>
+                    </svg>
+                    <span>Access Admin Dashboard</span>
+                  </span>
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Appearance Settings */}
         <Card>
