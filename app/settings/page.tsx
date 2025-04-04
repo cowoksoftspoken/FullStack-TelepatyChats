@@ -14,7 +14,13 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
 } from "firebase/auth";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  deleteDoc,
+  updateDoc,
+  getDoc,
+  DocumentData,
+} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 import { Button } from "@/components/ui/button";
@@ -81,6 +87,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const [userData, setUserData] = useState<DocumentData | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -90,6 +97,17 @@ export default function SettingsPage() {
       setDisplayName(currentUser.displayName || "");
     }
   }, [authLoading, currentUser, router]);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const userSnapShot = await getDoc(doc(db, "users", currentUser.uid));
+      if (userSnapShot.exists()) {
+        setUserData(userSnapShot.data());
+      }
+    };
+
+    checkUser();
+  }, [currentUser]);
 
   const handleSignOut = async () => {
     try {
@@ -451,7 +469,7 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
-            {!currentUser.isVerified && <VerificationRequest />}
+            {!userData?.isVerified && <VerificationRequest />}
           </CardContent>
         </Card>
 
@@ -527,7 +545,7 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
 
-        {currentUser.isAdmin && (
+        {userData?.isAdmin && (
           <Card>
             <CardHeader>
               <CardTitle>Admin Controls</CardTitle>

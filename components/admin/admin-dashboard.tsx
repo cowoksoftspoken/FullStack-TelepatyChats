@@ -8,6 +8,8 @@ import {
   getDocs,
   doc,
   updateDoc,
+  getDoc,
+  DocumentData,
 } from "firebase/firestore";
 import { CheckCircle, XCircle, User, Users, MessageSquare } from "lucide-react";
 
@@ -27,8 +29,9 @@ import { toast } from "@/components/ui/use-toast";
 import type { User as UserType } from "@/types/user";
 import type { VerificationRequest } from "@/types/admin";
 
-export function AdminDashboard() {
+export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const { db, currentUser } = useFirebase();
+  // const [userData, setUserData] = useState<UserType | null>(null);
   const [verificationRequests, setVerificationRequests] = useState<
     (VerificationRequest & { user: UserType })[]
   >([]);
@@ -36,11 +39,33 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("verification");
 
-  // Fetch verification requests
-  useEffect(() => {
-    const fetchVerificationRequests = async () => {
-      if (!currentUser?.isAdmin) return;
+  // Fetch user details from Firestore
+  // useEffect(() => {
+  //   const fetchUserData = async () => {
+  //     if (!currentUser?.uid) return;
 
+  //     try {
+  //       const userRef = doc(db, "users", currentUser.uid);
+  //       const userSnap = await getDoc(userRef);
+
+  //       if (userSnap.exists()) {
+  //         setUserData(userSnap.data() as UserType);
+  //       } else {
+  //         console.warn("User data not found in Firestore.");
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching user data:", error);
+  //     }
+  //   };
+
+  //   fetchUserData();
+  // }, [currentUser, db]);
+
+  // Fetch verification requests and users only after userData is available
+  useEffect(() => {
+    if (!userData?.isAdmin) return;
+
+    const fetchVerificationRequests = async () => {
       try {
         const q = query(
           collection(db, "verificationRequests"),
@@ -50,16 +75,14 @@ export function AdminDashboard() {
         const querySnapshot = await getDocs(q);
         const requests: (VerificationRequest & { user: UserType })[] = [];
 
-        // Get user data for each request
         for (const docSnapshot of querySnapshot.docs) {
           const requestData = docSnapshot.data() as VerificationRequest;
-          const userDoc = await getDocs(
-            query(
-              collection(db, "users"),
-              where("uid", "==", requestData.userId)
-            )
+          const userQuery = query(
+            collection(db, "users"),
+            where("uid", "==", requestData.userId)
           );
 
+          const userDoc = await getDocs(userQuery);
           if (!userDoc.empty) {
             const userData = userDoc.docs[0].data() as UserType;
             requests.push({
@@ -77,8 +100,6 @@ export function AdminDashboard() {
     };
 
     const fetchUsers = async () => {
-      if (!currentUser?.isAdmin) return;
-
       try {
         const q = query(collection(db, "users"));
         const querySnapshot = await getDocs(q);
@@ -98,33 +119,30 @@ export function AdminDashboard() {
 
     fetchVerificationRequests();
     fetchUsers();
-  }, [currentUser, db]);
+  }, [userData, db]);
 
   const handleVerificationAction = async (
     requestId: string,
     userId: string,
     approved: boolean
   ) => {
-    if (!currentUser?.isAdmin) return;
+    if (!userData?.isAdmin) return;
 
     try {
-      // Update verification request status
       await updateDoc(doc(db, "verificationRequests", requestId), {
         status: approved ? "approved" : "rejected",
-        reviewedBy: currentUser.uid,
+        reviewedBy: currentUser?.uid,
         reviewedAt: new Date().toISOString(),
       });
 
-      // If approved, update user's verification status
       if (approved) {
         await updateDoc(doc(db, "users", userId), {
           isVerified: true,
           verifiedAt: new Date().toISOString(),
-          verifiedBy: currentUser.uid,
+          verifiedBy: currentUser?.uid,
         });
       }
 
-      // Remove from local state
       setVerificationRequests((prev) =>
         prev.filter((req) => req.id !== requestId)
       );
@@ -146,12 +164,12 @@ export function AdminDashboard() {
     }
   };
 
-  if (!currentUser?.isAdmin) {
+  if (!userData?.isAdmin) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
         <XCircle className="mb-4 h-12 w-12 text-destructive" />
         <h2 className="text-xl font-bold">Access Denied</h2>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground text-center">
           You don't have permission to access the admin dashboard.
         </p>
       </div>
@@ -167,7 +185,7 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="container py-8">
+    <div className="container py-8 mx-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>

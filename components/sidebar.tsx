@@ -9,6 +9,8 @@ import {
   query,
   where,
   onSnapshot,
+  getDoc,
+  DocumentData,
 } from "firebase/firestore";
 import {
   LogOut,
@@ -59,6 +61,7 @@ export function Sidebar({
   const [userContacts, setUserContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactsWithStories, setContactsWithStories] = useState<User[]>([]);
+  const [userData, setUserData] = useState<DocumentData | null>(null);
 
   // Fetch user's contacts
   useEffect(() => {
@@ -155,6 +158,16 @@ export function Sidebar({
       contact.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  useEffect(() => {
+    const usersData = async () => {
+      const users = await getDoc(doc(db, "users", user.uid));
+      if (users.exists()) {
+        setUserData(users.data());
+      }
+    };
+    usersData();
+  }, [user]);
+
   return (
     <div className="flex h-full w-80 relative flex-col border-r bg-background">
       <Button
@@ -180,7 +193,25 @@ export function Sidebar({
           </Avatar> */}
           <UserAvatar user={user} />
           <div>
-            <p className="font-medium">{user?.displayName}</p>
+            <div className="flex items-center gap-1">
+              <p className="font-medium">{user?.displayName}</p>
+              {userData?.isVerified && (
+                <svg
+                  aria-label="Sudah Diverifikasi"
+                  fill="rgb(0, 149, 246)"
+                  height="14"
+                  role="img"
+                  viewBox="0 0 40 40"
+                  width="14"
+                >
+                  <title>Sudah Diverifikasi</title>
+                  <path
+                    d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                    fillRule="evenodd"
+                  ></path>
+                </svg>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
@@ -333,18 +364,20 @@ export function Sidebar({
                       <div className="flex items-center gap-1">
                         <p className="font-medium">{contact.displayName}</p>
                         {contact.isVerified && (
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500">
+                          <span className="">
                             <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="h-3 w-3 text-white"
+                              aria-label="Sudah Diverifikasi"
+                              fill="rgb(0, 149, 246)"
+                              height="14"
+                              role="img"
+                              viewBox="0 0 40 40"
+                              width="14"
                             >
-                              <polyline points="20 6 9 17 4 12"></polyline>
+                              <title>Sudah Diverifikasi</title>
+                              <path
+                                d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                                fillRule="evenodd"
+                              ></path>
                             </svg>
                           </span>
                         )}
