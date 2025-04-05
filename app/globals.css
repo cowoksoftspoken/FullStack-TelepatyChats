@@ -12,17 +12,6 @@ body {
   }
 }
 
---webkit-scrollbar {
-  width: 0.5rem;
-}
---webkit-scrollbar-track {
-  background: var(--sidebar-background);
-}
---webkit-scrollbar-thumb {
-  background: var(--sidebar-foreground);
-  border-radius: 0.5rem;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;

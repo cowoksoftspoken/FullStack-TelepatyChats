@@ -11,7 +11,14 @@ import {
   getDoc,
   DocumentData,
 } from "firebase/firestore";
-import { CheckCircle, XCircle, User, Users, MessageSquare } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  User,
+  Users,
+  MessageSquare,
+  ArrowLeft,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,6 +35,7 @@ import { useFirebase } from "@/lib/firebase-provider";
 import { toast } from "@/components/ui/use-toast";
 import type { User as UserType } from "@/types/user";
 import type { VerificationRequest } from "@/types/admin";
+import Link from "next/link";
 
 export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const { db, currentUser } = useFirebase();
@@ -188,6 +196,13 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     <div className="container py-8 mx-auto">
       <div className="mb-8 flex items-center justify-between">
         <div>
+          <Link
+            href="/dashboard"
+            className="flex items-center text-sm font-medium text-muted-foreground hover:text-foreground mb-2"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Chat
+          </Link>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <p className="text-muted-foreground">
             Manage users, verification requests, and send broadcasts

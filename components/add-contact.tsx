@@ -24,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useFirebase } from "@/lib/firebase-provider";
 import { toast } from "@/components/ui/use-toast";
 import { ToastAction } from "@/components/ui/toast";
@@ -103,7 +102,7 @@ export function AddContact() {
     setIsAdding((prev) => ({ ...prev, [contact.uid]: true }));
 
     try {
-      // Check if contact already exists
+      // Check if contact already exists for current user
       const contactRef = doc(
         db,
         "contacts",
@@ -119,12 +118,30 @@ export function AddContact() {
         return;
       }
 
-      // Add contact to contacts collection
+      // Add contact to current user's contacts collection
       await setDoc(contactRef, {
         userId: currentUser.uid,
         contactId: contact.uid,
         createdAt: new Date().toISOString(),
       });
+
+      // Add current user to the contact's contacts collection (two-way relationship)
+      const reverseContactRef = doc(
+        db,
+        "contacts",
+        `${contact.uid}_${currentUser.uid}`
+      );
+
+      // Check if reverse contact already exists
+      const reverseContactDoc = await getDoc(reverseContactRef);
+
+      if (!reverseContactDoc.exists()) {
+        await setDoc(reverseContactRef, {
+          userId: contact.uid,
+          contactId: currentUser.uid,
+          createdAt: new Date().toISOString(),
+        });
+      }
 
       toast({
         title: "Contact added",
@@ -199,17 +216,27 @@ export function AddContact() {
               className="flex items-center justify-between p-2 rounded-md hover:bg-accent"
             >
               <div className="flex items-center gap-3">
-                {/* <Avatar>
-                  <AvatarImage
-                    src={user.photoURL || ""}
-                    alt={user.displayName}
-                    className="object-cover"
-                  />
-                  <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
-                </Avatar> */}
                 <UserAvatar user={user} showEnlargeOnClick={false} />
                 <div>
-                  <p className="font-medium">{user.displayName}</p>
+                  <div className="flex items-center gap-1">
+                    <p className="font-medium">{user.displayName}</p>
+                    {user.isVerified && (
+                      <svg
+                        aria-label="Sudah Diverifikasi"
+                        fill="rgb(0, 149, 246)"
+                        height="16"
+                        role="img"
+                        viewBox="0 0 40 40"
+                        width="16"
+                      >
+                        <title>Sudah Diverifikasi</title>
+                        <path
+                          d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                          fillRule="evenodd"
+                        ></path>
+                      </svg>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
               </div>

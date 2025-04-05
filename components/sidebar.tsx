@@ -10,23 +10,24 @@ import {
   where,
   onSnapshot,
   getDoc,
-  DocumentData,
+  type DocumentData,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import {
-  LogOut,
-  Phone,
-  Search,
-  Video,
-  Settings,
-  UserPlus,
-  Loader2,
-  Plus,
-  Eye,
-  X,
-} from "lucide-react";
+  deleteObject as deleteStorageObject,
+  ref as storageRef,
+} from "firebase/storage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Link from "next/link";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddContact } from "@/components/add-contact";
@@ -35,13 +36,23 @@ import { useFirebase } from "@/lib/firebase-provider";
 import { UserAvatar } from "./user-avatar";
 import { StoryCreator } from "./story/story-creator";
 import { StoryCircle } from "./story/story-circle";
-import { VerificationRequest } from "./admin/verification-request";
+import {
+  Loader2,
+  LogOut,
+  Phone,
+  Search,
+  Settings,
+  Trash2,
+  UserPlus,
+  Video,
+  X,
+} from "lucide-react";
 
 interface SidebarProps {
   user: any;
   contacts: User[];
   selectedContact: User | null;
-  setSelectedContact: (contact: User) => void;
+  setSelectedContact: (contact: User | null) => void;
   initiateCall: (contact: User, isVideo: boolean) => void;
   setIsMobileMenuOpen: (open: boolean) => void;
   setIsChatActive: (open: boolean) => void;
@@ -56,12 +67,14 @@ export function Sidebar({
   setIsMobileMenuOpen,
   setIsChatActive,
 }: SidebarProps) {
-  const { auth, db } = useFirebase();
+  const { auth, db, storage } = useFirebase();
   const [searchQuery, setSearchQuery] = useState("");
   const [userContacts, setUserContacts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [contactsWithStories, setContactsWithStories] = useState<User[]>([]);
   const [userData, setUserData] = useState<DocumentData | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<string | null>(null);
 
   // Fetch user's contacts
   useEffect(() => {
@@ -136,6 +149,104 @@ export function Sidebar({
     fetchContactsWithStories();
   }, [user, contacts, db, userContacts]);
 
+  const handleDeleteContact = async (contactId: string) => {
+    // Open the dialog and set the contact to delete
+    setContactToDelete(contactId);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteContact = async () => {
+    if (!contactToDelete) return;
+
+    try {
+      // Get the contact document ID (the relationship between current user and contact)
+      const contactsQuery = query(
+        collection(db, "contacts"),
+        where("userId", "==", user.uid),
+        where("contactId", "==", contactToDelete)
+      );
+      const contactSnapshot = await getDocs(contactsQuery);
+
+      if (contactSnapshot.empty) {
+        console.error("Contact relationship not found");
+        return;
+      }
+
+      const contactDocId = contactSnapshot.docs[0].id;
+
+      // Get the reverse contact document ID (the relationship between contact and current user)
+      const reverseContactQuery = query(
+        collection(db, "contacts"),
+        where("userId", "==", contactToDelete),
+        where("contactId", "==", user.uid)
+      );
+      const reverseContactSnapshot = await getDocs(reverseContactQuery);
+
+      // Start a batch write to ensure all operations succeed or fail together
+      const batch = writeBatch(db);
+
+      // Delete the contact relationship from current user side
+      batch.delete(doc(db, "contacts", contactDocId));
+
+      // Delete the reverse contact relationship if it exists
+      if (!reverseContactSnapshot.empty) {
+        batch.delete(doc(db, "contacts", reverseContactSnapshot.docs[0].id));
+      }
+
+      // Get all chat messages between the users
+      const messagesQuery = query(
+        collection(db, "messages"),
+        where("participants", "array-contains", user.uid),
+        where("senderId", "in", [user.uid, contactToDelete]),
+        where("receiverId", "in", [user.uid, contactToDelete])
+      );
+
+      const messagesSnapshot = await getDocs(messagesQuery);
+
+      // Delete all messages and their associated files
+      for (const messageDoc of messagesSnapshot.docs) {
+        const messageData = messageDoc.data();
+
+        // If message has attachments, delete them from storage
+        if (messageData.attachments && messageData.attachments.length > 0) {
+          for (const attachment of messageData.attachments) {
+            // Delete the file from Firebase Storage
+            const fileRef = storageRef(storage, attachment.path);
+            try {
+              await deleteStorageObject(fileRef);
+            } catch (error) {
+              console.error("Error deleting file:", error);
+              // Continue with other deletions even if one fails
+            }
+          }
+        }
+
+        // Delete the message document
+        batch.delete(doc(db, "messages", messageDoc.id));
+      }
+
+      // Commit all the batch operations
+      await batch.commit();
+
+      // If the deleted contact was selected, clear the selection
+      if (selectedContact?.uid === contactToDelete) {
+        setSelectedContact(null);
+        setIsChatActive(false);
+      }
+
+      console.log("Contact and all associated data deleted successfully");
+
+      // Close the dialog and reset the contact to delete
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+    } catch (error) {
+      console.error("Error deleting contact:", error);
+      // Close the dialog even if there's an error
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       // Update user status to offline
@@ -180,17 +291,6 @@ export function Sidebar({
       </Button>
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-2">
-          {/* <Avatar>
-            <AvatarImage
-              src={user?.photoURL || ""}
-              alt={user?.displayName || "User"}
-              className="object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <AvatarFallback>
-              {user?.displayName?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar> */}
           <UserAvatar user={user} />
           <div>
             <div className="flex items-center gap-1">
@@ -231,30 +331,6 @@ export function Sidebar({
           </Button>
         </div>
       </div>
-
-      {/* Stories section */}
-      {/* <div className="border-b p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-medium">Stories</h2>
-          <Link href="/stories">
-            <Button variant="ghost" size="sm" className="h-8 text-xs">
-              View All
-            </Button>
-          </Link>
-        </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
-          <Link href="/stories/create" className="flex flex-col items-center">
-            <div className="relative h-12 w-12 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
-                <span className="text-xl font-bold text-muted-foreground">
-                  +
-                </span>
-              </div>
-            </div>
-            <span className="mt-1 text-xs">Your Story</span>
-          </Link>
-        </div>
-      </div> */}
 
       <div className="border-b p-4">
         <div className="flex items-center justify-between mb-2">
@@ -344,16 +420,6 @@ export function Sidebar({
                 >
                   <div className="flex items-center gap-3">
                     <div className="relative">
-                      {/* <Avatar>
-                        <AvatarImage
-                          src={contact.photoURL || ""}
-                          alt={contact.displayName || "User"}
-                          className="object-cover"
-                        />
-                        <AvatarFallback>
-                          {contact.displayName?.charAt(0) || "U"}
-                        </AvatarFallback>
-                      </Avatar> */}
                       <UserAvatar user={contact} showEnlargeOnClick={false} />
                       {/* Online status indicator */}
                       {contact.online && (
@@ -410,6 +476,17 @@ export function Sidebar({
                     >
                       <Video className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteContact(contact.uid);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))
@@ -417,6 +494,33 @@ export function Sidebar({
           </div>
         )}
       </div>
+      {/* Delete Contact Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Contact</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this contact? All messages and
+              shared files will be permanently deleted. This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setContactToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteContact}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

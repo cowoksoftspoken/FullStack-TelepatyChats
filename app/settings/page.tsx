@@ -469,7 +469,9 @@ export default function SettingsPage() {
                 )}
               </div>
             </div>
-            {!userData?.isVerified && <VerificationRequest />}
+            {!userData?.isVerified && userData?.emailVerified && (
+              <VerificationRequest />
+            )}
           </CardContent>
         </Card>
 

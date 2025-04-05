@@ -29,6 +29,7 @@ import {
   File,
   Loader2,
   ArrowLeft,
+  MoreVertical,
 } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
@@ -447,7 +448,7 @@ export function ChatArea({
               </a>
             </div>
             {msg.text !== msg.fileName && (
-              <p className="mt-1 text-base">{msg.text}</p>
+              <p className="mt-1 text-base flex justify-start">{msg.text}</p>
             )}
           </div>
         );
@@ -460,16 +461,6 @@ export function ChatArea({
     <div className="flex flex-1 flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex items-center gap-3">
-          {/* <Avatar>
-            <AvatarImage
-              src={contact.photoURL || ""}
-              alt={contact.displayName || "User"}
-              className="object-cover"
-            />
-            <AvatarFallback>
-              {contact.displayName?.charAt(0) || "U"}
-            </AvatarFallback>
-          </Avatar> */}
           <button
             onClick={() => setIsMobileMenuOpen?.(true)}
             className="md:hidden cursor-pointer"
@@ -517,6 +508,13 @@ export function ChatArea({
             onClick={() => initiateCall(true)}
           >
             <Video className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => alert("Coming Soon 😅")}
+          >
+            <MoreVertical className="h-5 w-5" />
           </Button>
         </div>
       </div>
