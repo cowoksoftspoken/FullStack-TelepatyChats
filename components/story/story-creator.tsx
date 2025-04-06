@@ -186,7 +186,7 @@ export function StoryCreator() {
             </div>
           ) : (
             <div className="relative">
-              <div className="relative aspect-[9/16] w-full overflow-hidden rounded-lg">
+              <div className="relative aspect-video w-full overflow-hidden rounded-lg">
                 {mediaType === "image" ? (
                   <img
                     src={preview || "/placeholder.svg"}

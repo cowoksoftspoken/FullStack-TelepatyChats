@@ -47,6 +47,7 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { useToast } from "./ui/use-toast";
 
 interface SidebarProps {
   user: any;
@@ -75,6 +76,11 @@ export function Sidebar({
   const [userData, setUserData] = useState<DocumentData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
+  const [blockedContacts, setBlockedContacts] = useState<string[]>([]);
+  const [contactsWhoBlockedMe, setContactsWhoBlockedMe] = useState<string[]>(
+    []
+  );
+  const { toast } = useToast();
 
   // Fetch user's contacts
   useEffect(() => {
@@ -98,6 +104,43 @@ export function Sidebar({
 
     return () => unsubscribe();
   }, [user, db]);
+
+  // Fetch blocked users and users who blocked the current user
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const fetchBlockedUsers = async () => {
+      try {
+        // Get current user's data to see who they've blocked
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setBlockedContacts(userData.blockedUsers || []);
+        }
+
+        // Check which contacts have blocked the current user
+        const blockedByList: string[] = [];
+
+        for (const contactId of userContacts) {
+          const contactDoc = await getDoc(doc(db, "users", contactId));
+          if (contactDoc.exists()) {
+            const contactData = contactDoc.data();
+            if (contactData.blockedUsers?.includes(user.uid)) {
+              blockedByList.push(contactId);
+            }
+          }
+        }
+
+        setContactsWhoBlockedMe(blockedByList);
+      } catch (error) {
+        console.error("Error fetching blocked users:", error);
+      }
+    };
+
+    if (userContacts.length > 0) {
+      fetchBlockedUsers();
+    }
+  }, [user, db, userContacts]);
 
   useEffect(() => {
     if (!user?.uid || contacts.length === 0) return;
@@ -247,6 +290,13 @@ export function Sidebar({
     }
   };
 
+  const isContactBlocked = (contactId: string) => {
+    return (
+      blockedContacts.includes(contactId) ||
+      contactsWhoBlockedMe.includes(contactId)
+    );
+  };
+
   const handleSignOut = async () => {
     try {
       // Update user status to offline
@@ -358,17 +408,19 @@ export function Sidebar({
           </div>
 
           {/* Contact stories */}
-          {contactsWithStories.map((contact) => (
-            <div
-              key={contact.uid}
-              className="flex flex-col items-center overflow-auto"
-            >
-              <StoryCircle user={contact} currentUser={user} />
-              <span className="mt-1 text-xs truncate max-w-[64px]">
-                {contact.displayName.split(" ")[0]}
-              </span>
-            </div>
-          ))}
+          {contactsWithStories
+            .filter((contact) => !isContactBlocked(contact.uid))
+            .map((contact) => (
+              <div
+                key={contact.uid}
+                className="flex flex-col items-center overflow-auto"
+              >
+                <StoryCircle user={contact} currentUser={user} />
+                <span className="mt-1 text-xs truncate max-w-[64px]">
+                  {contact.displayName.split(" ")[0]}
+                </span>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -405,91 +457,126 @@ export function Sidebar({
                 <p className="text-xs">Add contacts to start chatting</p>
               </div>
             ) : (
-              filteredContacts.map((contact) => (
-                <div
-                  key={contact.uid}
-                  className={`flex items-center justify-between rounded-lg p-2 ${
-                    selectedContact?.uid === contact.uid
-                      ? "bg-accent"
-                      : "hover:bg-accent/50"
-                  }`}
-                  onClick={() => {
-                    setSelectedContact(contact);
-                    setIsChatActive(true);
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <UserAvatar user={contact} showEnlargeOnClick={false} />
-                      {/* Online status indicator */}
-                      {contact.online && (
-                        <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background"></span>
-                      )}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1">
-                        <p className="font-medium">{contact.displayName}</p>
-                        {contact.isVerified && (
-                          <span className="">
-                            <svg
-                              aria-label="Sudah Diverifikasi"
-                              fill="rgb(0, 149, 246)"
-                              height="14"
-                              role="img"
-                              viewBox="0 0 40 40"
-                              width="14"
-                            >
-                              <title>Sudah Diverifikasi</title>
-                              <path
-                                d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </span>
+              filteredContacts.map((contact) => {
+                const blocked = isContactBlocked(contact.uid);
+                return (
+                  <div
+                    key={contact.uid}
+                    className={`flex items-center justify-between rounded-lg p-2 ${
+                      selectedContact?.uid === contact.uid
+                        ? "bg-accent"
+                        : "hover:bg-accent/50"
+                    }`}
+                    onClick={() => {
+                      setSelectedContact(contact);
+                      setIsChatActive(true);
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <UserAvatar
+                          user={contact}
+                          showEnlargeOnClick={false}
+                          isBlocked={blocked}
+                        />
+                        {/* Online status indicator */}
+                        {contact.online && !blocked && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background"></span>
+                        )}
+                        {/* Blocked status indicator */}
+                        {blocked && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-red-500 ring-2 ring-background"></span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {contact.online ? "Online" : "Offline"}
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium">{contact.displayName}</p>
+                          {contact.isVerified && (
+                            <span className="">
+                              <svg
+                                aria-label="Sudah Diverifikasi"
+                                fill="rgb(0, 149, 246)"
+                                height="14"
+                                role="img"
+                                viewBox="0 0 40 40"
+                                width="14"
+                              >
+                                <title>Sudah Diverifikasi</title>
+                                <path
+                                  d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                                  fillRule="evenodd"
+                                ></path>
+                              </svg>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {blocked
+                            ? "Blocked"
+                            : contact.online
+                            ? "Online"
+                            : "Offline"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (blocked) {
+                            toast({
+                              variant: "destructive",
+                              title: "Cannot initiate call",
+                              description:
+                                "You cannot call this contact because one of you has blocked the other.",
+                            });
+                          } else {
+                            initiateCall(contact, true);
+                          }
+                        }}
+                        disabled={blocked}
+                      >
+                        <Phone className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (blocked) {
+                            toast({
+                              variant: "destructive",
+                              title: "Cannot initiate call",
+                              description:
+                                "You cannot call this contact because one of you has blocked the other.",
+                            });
+                          } else {
+                            initiateCall(contact, true);
+                          }
+                        }}
+                        disabled={blocked}
+                      >
+                        <Video className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteContact(contact.uid);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        initiateCall(contact, false);
-                      }}
-                    >
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        initiateCall(contact, true);
-                      }}
-                    >
-                      <Video className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteContact(contact.uid);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

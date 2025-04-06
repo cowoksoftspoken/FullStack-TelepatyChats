@@ -11,6 +11,7 @@ import {
   where,
   doc,
   deleteDoc,
+  getDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
@@ -30,13 +31,13 @@ import {
   Loader2,
   ArrowLeft,
   MoreVertical,
+  Music,
 } from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Popover,
   PopoverContent,
@@ -64,6 +65,8 @@ import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
 import { UserAvatar } from "./user-avatar";
 import { AudioMessage } from "./audio-message";
+import { UserProfilePopup } from "./user-profile-popup";
+import { useToast } from "@/components/ui/use-toast";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -92,17 +95,57 @@ export function ChatArea({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const timerIntervalRef = useRef<number | null>(null); // Store interval ID in a ref instead
   const { theme } = useTheme();
+  const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const { toast } = useToast();
 
   // Media preview state
   const [previewFile, setPreviewFile] = useState<{
     file: File;
-    type: "image" | "video" | "file";
+    type: "image" | "video" | "file" | "audio";
     preview: string;
+    duration?: number;
   } | null>(null);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [audioPreviewDuration, setAudioPreviewDuration] = useState<
+    number | null
+  >(null);
+
+  // Check if either user has blocked the other
+  useEffect(() => {
+    if (!currentUser || !contact) return;
+
+    const checkBlockStatus = async () => {
+      try {
+        // Check if contact has blocked current user
+        const [contactDoc, currentUserDoc] = await Promise.all([
+          getDoc(doc(db, "users", contact.uid)),
+          getDoc(doc(db, "users", currentUser.uid)),
+        ]);
+
+        if (contactDoc.exists() && currentUserDoc.exists()) {
+          const contactData = contactDoc.data();
+          const currentUserData = currentUserDoc.data();
+
+          // Check both directions - if either user has blocked the other
+          const contactBlockedUser =
+            contactData.blockedUsers?.includes(currentUser.uid) || false;
+          const userBlockedContact =
+            currentUserData.blockedUsers?.includes(contact.uid) || false;
+
+          setIsBlocked(contactBlockedUser || userBlockedContact);
+        }
+      } catch (error) {
+        console.error("Error checking block status:", error);
+      }
+    };
+
+    checkBlockStatus();
+  }, [currentUser, contact, db]);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -143,6 +186,16 @@ export function ChatArea({
 
     if ((!message.trim() && !replyTo) || !currentUser || !contact) return;
 
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot send message",
+        description:
+          "You cannot send messages to this user because one of you has blocked the other.",
+      });
+      return;
+    }
+
     const chatId = [currentUser.uid, contact.uid].sort().join("_");
 
     try {
@@ -175,7 +228,7 @@ export function ChatArea({
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
-    type: "image" | "video" | "file"
+    type: "image" | "video" | "file" | "audio"
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -198,6 +251,20 @@ export function ChatArea({
         type,
         preview: url,
       });
+    } else if (type === "audio") {
+      const url = URL.createObjectURL(file);
+
+      // Get audio duration
+      const audio = new Audio(url);
+      audio.onloadedmetadata = () => {
+        setAudioPreviewDuration(Math.round(audio.duration));
+        setPreviewFile({
+          file,
+          type,
+          preview: url,
+          duration: Math.round(audio.duration),
+        });
+      };
     } else {
       setPreviewFile({
         file,
@@ -212,6 +279,18 @@ export function ChatArea({
 
   const handleSendMedia = async () => {
     if (!previewFile || !currentUser || !contact) return;
+
+    // Check if either user has blocked the other
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot send media",
+        description:
+          "You cannot send media to this user because one of you has blocked the other.",
+      });
+      setPreviewFile(null);
+      return;
+    }
 
     setIsUploading(true);
 
@@ -239,6 +318,8 @@ export function ChatArea({
         fileName: previewFile.file.name,
         fileType: previewFile.file.type,
         type: previewFile.type,
+        duration:
+          previewFile.type === "audio" ? previewFile.duration : undefined,
         replyTo: replyTo
           ? {
               id: replyTo.id,
@@ -252,9 +333,14 @@ export function ChatArea({
       setPreviewFile(null);
       setCaption("");
       setReplyTo(null);
+      setAudioPreviewDuration(null);
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Failed to upload file. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+      });
     } finally {
       setIsUploading(false);
 
@@ -262,6 +348,7 @@ export function ChatArea({
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (imageInputRef.current) imageInputRef.current.value = "";
       if (videoInputRef.current) videoInputRef.current.value = "";
+      if (audioInputRef.current) audioInputRef.current.value = "";
     }
   };
 
@@ -274,6 +361,16 @@ export function ChatArea({
   };
 
   const startRecording = async () => {
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot record audio",
+        description:
+          "You cannot send audio messages to this user because one of you has blocked the other.",
+      });
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -316,7 +413,12 @@ export function ChatArea({
       };
     } catch (error) {
       console.error("Error starting recording:", error);
-      alert("Could not access microphone. Please check your permissions.");
+      toast({
+        variant: "destructive",
+        title: "Microphone access denied",
+        description:
+          "Could not access microphone. Please check your permissions.",
+      });
     }
   };
 
@@ -347,6 +449,16 @@ export function ChatArea({
 
   const sendAudioMessage = async (audioBlob: Blob) => {
     if (!currentUser || !contact) return;
+
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot send audio",
+        description:
+          "You cannot send audio messages to this user because one of you has blocked the other.",
+      });
+      return;
+    }
 
     try {
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
@@ -382,7 +494,11 @@ export function ChatArea({
       setReplyTo(null);
     } catch (error) {
       console.error("Error sending audio message:", error);
-      alert("Failed to send audio message. Please try again.");
+      toast({
+        variant: "destructive",
+        title: "Failed to send audio",
+        description: "Failed to send audio message. Please try again.",
+      });
     }
   };
 
@@ -431,11 +547,14 @@ export function ChatArea({
               isDark={theme === "dark" ? true : false}
               className="max-w-full"
             />
+            {msg.text !== "Audio message" && msg.text !== msg.fileName && (
+              <p className="mt-1 text-sm w-full">{msg.text}</p>
+            )}
           </>
         );
       case "file":
         return (
-          <div className="mt-1 inline-flex items-center flex-start flex-col gap-2">
+          <div className="mt-1 flex items-center flex-col gap-2">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               <a
@@ -448,7 +567,7 @@ export function ChatArea({
               </a>
             </div>
             {msg.text !== msg.fileName && (
-              <p className="mt-1 text-base flex justify-start">{msg.text}</p>
+              <p className="mt-1 text-base flex">{msg.text}</p>
             )}
           </div>
         );
@@ -472,7 +591,7 @@ export function ChatArea({
           <div>
             <div className="flex items-center gap-1">
               <p className="font-medium">{contact.displayName}</p>
-              {contact.isVerified && (
+              {contact.isVerified && !isBlocked && (
                 <svg
                   aria-label="Sudah Diverifikasi"
                   fill="rgb(0, 149, 246)"
@@ -490,7 +609,11 @@ export function ChatArea({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {contact.online ? "Online" : "Offline"}
+              {isBlocked
+                ? "You cannot interact with this user"
+                : contact.online
+                ? "Online"
+                : "Offline"}
             </p>
           </div>
         </div>
@@ -498,6 +621,7 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
+            disabled={isBlocked}
             onClick={() => initiateCall(false)}
           >
             <Phone className="h-5 w-5" />
@@ -505,6 +629,7 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
+            disabled={isBlocked}
             onClick={() => initiateCall(true)}
           >
             <Video className="h-5 w-5" />
@@ -512,12 +637,18 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => alert("Coming Soon 😅")}
+            onClick={() => setIsUserProfileOpen(true)}
           >
             <MoreVertical className="h-5 w-5" />
           </Button>
         </div>
       </div>
+
+      {isBlocked && (
+        <div className="px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-center">
+          You cannot send messages because one of you has blocked the other.
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg) => (
@@ -659,6 +790,7 @@ export function ChatArea({
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-full"
+                disabled={isBlocked}
               >
                 <Paperclip className="h-5 w-5" />
               </Button>
@@ -671,6 +803,10 @@ export function ChatArea({
               <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
                 <Film className="mr-2 h-4 w-4" />
                 <span>Video</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
+                <Music className="mr-2 h-4 w-4" />
+                <span>Audio</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
                 <File className="mr-2 h-4 w-4" />
@@ -696,6 +832,13 @@ export function ChatArea({
           />
           <input
             type="file"
+            ref={audioInputRef}
+            className="hidden"
+            accept="audio/*"
+            onChange={(e) => handleFileSelect(e, "audio")}
+          />
+          <input
+            type="file"
             ref={fileInputRef}
             className="hidden"
             accept="application/*,text/*"
@@ -710,6 +853,7 @@ export function ChatArea({
                 variant="ghost"
                 size="icon"
                 className="h-5 w-5 rounded-full"
+                disabled={isBlocked}
               >
                 <Smile className="h-5 w-5" />
               </Button>
@@ -727,8 +871,13 @@ export function ChatArea({
           <Input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={
+              isBlocked
+                ? "You cannot send messages to this user"
+                : "Type a message..."
+            }
             className="flex-1 rounded-full"
+            disabled={isBlocked}
           />
 
           {/* Send or record button */}
@@ -737,6 +886,7 @@ export function ChatArea({
               type="submit"
               size="icon"
               className="h-10 w-10 rounded-full"
+              disabled={isBlocked}
             >
               <Send className="h-5 w-5" />
             </Button>
@@ -746,6 +896,7 @@ export function ChatArea({
               size="icon"
               className="h-10 w-10 rounded-full"
               onMouseDown={startRecording}
+              disabled={isBlocked}
             >
               <Mic className="h-5 w-5" />
             </Button>
@@ -765,6 +916,8 @@ export function ChatArea({
                 ? "Send Image"
                 : previewFile?.type === "video"
                 ? "Send Video"
+                : previewFile?.type === "audio"
+                ? "Send Audio"
                 : "Send File"}
             </DialogTitle>
             <DialogDescription>
@@ -791,6 +944,32 @@ export function ChatArea({
                   controls
                   className="max-h-60 max-w-full rounded-md"
                 />
+              </div>
+            )}
+
+            {previewFile?.type === "audio" && (
+              <div className="flex justify-center flex-col items-center gap-2 p-4 border rounded-md">
+                <Music className="h-8 w-8 text-muted-foreground" />
+                <div className="text-center">
+                  <p className="font-medium">{previewFile.file.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {previewFile.file.size < 1024 * 1024
+                      ? `${(previewFile.file.size / 1024).toFixed(2)} KB`
+                      : `${(previewFile.file.size / (1024 * 1024)).toFixed(
+                          2
+                        )} MB`}
+                  </p>
+                </div>
+                <audio
+                  src={previewFile.preview}
+                  controls
+                  className="w-full mt-2"
+                />
+                {previewFile.duration && (
+                  <p className="text-xs text-muted-foreground">
+                    Duration: {formatTime(previewFile.duration)}
+                  </p>
+                )}
               </div>
             )}
 
@@ -833,6 +1012,15 @@ export function ChatArea({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* User Profile Popup */}
+      <UserProfilePopup
+        user={contact}
+        currentUser={currentUser}
+        initiateCall={initiateCall}
+        open={isUserProfileOpen}
+        onClose={() => setIsUserProfileOpen(false)}
+      />
     </div>
   );
 }

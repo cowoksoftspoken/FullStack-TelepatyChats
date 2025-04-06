@@ -47,12 +47,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <FirebaseProvider>
-          <ThemeProvider defaultTheme="system" storageKey="webrtc-theme">
+        <ThemeProvider defaultTheme="system" storageKey="zerochats-theme">
+          <FirebaseProvider>
             {children}
             <Toaster />
-          </ThemeProvider>
-        </FirebaseProvider>
+          </FirebaseProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

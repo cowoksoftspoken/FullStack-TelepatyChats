@@ -121,16 +121,13 @@ export function AudioMessage({
 
   // Generate a simple waveform visualization with responsive number of bars
   const generateWaveform = () => {
-    // Adjust number of bars based on screen size
     const bars = isSmallScreen ? 15 : isMobile ? 20 : 30;
     const waveform = [];
 
     for (let i = 0; i < bars; i++) {
-      // Create a random height for each bar, but make it look like a waveform
       const height =
         10 + Math.sin((i / (bars / 8)) * Math.PI) * 15 + Math.random() * 10;
 
-      // Determine if this bar is "active" (part of the played portion)
       const isActive = i / bars < currentTime / audioDuration;
 
       waveform.push(

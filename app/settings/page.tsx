@@ -319,6 +319,7 @@ export default function SettingsPage() {
                   user={currentUser}
                   className="h-24 w-24 cursor-pointer"
                   showHoverCard={false}
+                  size="lg"
                   showEnlargeOnClick={true}
                 />
                 <div

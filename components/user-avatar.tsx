@@ -22,6 +22,8 @@ interface UserAvatarProps {
   className?: string;
   showHoverCard?: boolean;
   showEnlargeOnClick?: boolean;
+  size?: "sm" | "md" | "lg";
+  isBlocked?: boolean;
 }
 
 export function UserAvatar({
@@ -29,6 +31,8 @@ export function UserAvatar({
   className = "",
   showHoverCard = true,
   showEnlargeOnClick = true,
+  size = "md",
+  isBlocked = false,
 }: UserAvatarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -42,8 +46,30 @@ export function UserAvatar({
     );
   }
 
+  // Determine the size of the avatar based on the size prop
+
+  const getSizeClass = () => {
+    switch (size) {
+      case "sm":
+        return "h-8 w-8";
+      case "lg":
+        return "h-24 w-24";
+      case "md":
+      default:
+        return "h-10 w-10";
+    }
+  };
+
+  if (isBlocked) {
+    return (
+      <Avatar className={getSizeClass()}>
+        <AvatarFallback>{user?.displayName?.charAt(0) || "U"}</AvatarFallback>
+      </Avatar>
+    );
+  }
+
   const avatarComponent = (
-    <Avatar className={`${className} cursor-pointer`}>
+    <Avatar className={`${className} ${getSizeClass()} cursor-pointer`}>
       <AvatarImage
         src={user.photoURL || ""}
         alt={user.displayName || "User"}
