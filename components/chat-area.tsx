@@ -318,8 +318,9 @@ export function ChatArea({
         fileName: previewFile.file.name,
         fileType: previewFile.file.type,
         type: previewFile.type,
-        duration:
-          previewFile.type === "audio" ? previewFile.duration : undefined,
+        ...(previewFile.type === "audio" && {
+          duration: previewFile.duration || 0,
+        }),
         replyTo: replyTo
           ? {
               id: replyTo.id,
