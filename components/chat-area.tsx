@@ -517,7 +517,7 @@ export function ChatArea({
             <img
               src={msg.fileURL || "/placeholder.svg"}
               alt={msg.fileName}
-              className="max-w-full rounded-md max-h-60 object-contain"
+              className="w-full rounded-md max-h-60 object-cover"
               onClick={() => window.open(msg.fileURL, "_blank")}
             />
             {msg.text !== msg.fileName && (
@@ -527,7 +527,7 @@ export function ChatArea({
         );
       case "video":
         return (
-          <div className="mt-1 h-60">
+          <div className="mt-1">
             <video
               src={msg.fileURL}
               controls
@@ -540,18 +540,18 @@ export function ChatArea({
         );
       case "audio":
         return (
-          <>
+          <div className="mt-1">
             <AudioMessage
               src={msg.fileURL || ""}
               duration={msg.duration}
               fileName={msg.fileName}
-              isDark={theme === "dark" ? true : false}
+              isDark={theme === "dark" ? false : true}
               className="max-w-full"
             />
             {msg.text !== "Audio message" && msg.text !== msg.fileName && (
               <p className="mt-1 text-sm w-full">{msg.text}</p>
             )}
-          </>
+          </div>
         );
       case "file":
         return (
