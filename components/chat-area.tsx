@@ -201,7 +201,7 @@ export function ChatArea({
     try {
       await addDoc(collection(db, "messages"), {
         chatId,
-        text: message.trim() || (replyTo ? "" : "👍"), // Send thumbs up if empty and not replying
+        text: message.trim() || (replyTo ? "" : "👍"),
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -587,7 +587,7 @@ export function ChatArea({
             <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
           </button>
 
-          <UserAvatar user={contact} />
+          <UserAvatar user={contact} isBlocked={isBlocked} />
           <div>
             <div className="flex items-center gap-1">
               <p className="font-medium">{contact.displayName}</p>

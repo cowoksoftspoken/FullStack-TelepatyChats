@@ -223,7 +223,11 @@ export function StoryViewer({
         />
         <div className="text-white">
           <p className="font-medium flex items-center gap-1">
-            {storyUser?.displayName}
+            {storyUser?.uid === currentUser?.uid ? (
+              <span className="text-primary">You</span>
+            ) : (
+              <span>{storyUser?.displayName}</span>
+            )}
             {storyUser?.isVerified && (
               <svg
                 aria-label="Sudah Diverifikasi"

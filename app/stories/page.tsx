@@ -3,7 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  getDoc,
+  doc,
+} from "firebase/firestore";
 import { ArrowLeft, Plus, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,6 +20,7 @@ import { StoryViewer } from "@/components/story/story-viewer";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Story } from "@/types/story";
 import type { User } from "@/types/user";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function StoriesPage() {
   const { db, currentUser, loading: authLoading } = useFirebase();
@@ -21,7 +30,10 @@ export default function StoriesPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
   const [users, setUsers] = useState<Record<string, User>>({});
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+  const [usersWhoBlockedMe, setUsersWhoBlockedMe] = useState<string[]>([]);
   const router = useRouter();
+  const { toast } = useToast();
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -29,6 +41,63 @@ export default function StoriesPage() {
       router.push("/login");
     }
   }, [authLoading, currentUser, router]);
+
+  // Fetch blocked users and users who blocked the current user
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const fetchBlockedUsers = async () => {
+      try {
+        // Get current user's data to see who they've blocked
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setBlockedUsers(userData.blockedUsers || []);
+        }
+
+        // Check which contacts have blocked the current user
+        const contactsQuery = query(
+          collection(db, "contacts"),
+          where("userId", "==", currentUser.uid)
+        );
+        const contactsSnapshot = await getDocs(contactsQuery);
+        const contactIds: string[] = [];
+
+        contactsSnapshot.forEach((doc) => {
+          contactIds.push(doc.data().contactId);
+        });
+
+        if (contactIds.length === 0) return;
+
+        const blockedByList: string[] = [];
+
+        // For each contact, check if they've blocked the current user
+        for (const contactId of contactIds) {
+          const contactDoc = await getDoc(doc(db, "users", contactId));
+          if (contactDoc.exists()) {
+            const contactData = contactDoc.data();
+            if (contactData.blockedUsers?.includes(currentUser.uid)) {
+              blockedByList.push(contactId);
+            }
+          }
+        }
+
+        setUsersWhoBlockedMe(blockedByList);
+      } catch (error) {
+        console.error("Error fetching blocked users:", error);
+      }
+    };
+
+    fetchBlockedUsers();
+  }, [currentUser, db]);
+
+  // Check if a user is blocked (in either direction)
+  const isUserBlocked = (userId: string) => {
+    // Don't block current user's own stories
+    if (userId === currentUser?.uid) return false;
+
+    return blockedUsers.includes(userId) || usersWhoBlockedMe.includes(userId);
+  };
 
   // Fetch contacts
   useEffect(() => {
@@ -86,7 +155,7 @@ export default function StoriesPage() {
     };
 
     fetchContacts();
-  }, [currentUser, db]);
+  }, [currentUser, db, blockedUsers, usersWhoBlockedMe]);
 
   // Fetch stories for contacts
   const fetchStoriesForContacts = async (
@@ -112,13 +181,19 @@ export default function StoriesPage() {
         const storyData = { id: doc.id, ...doc.data() } as Story;
         const userId = storyData.userId;
 
+        // Skip stories from blocked users or users who blocked the current user
+        // But always include current user's own stories
+        if (isUserBlocked(userId) && userId !== currentUser?.uid) {
+          return;
+        }
+
         // Check if this is a story the current user can see
         if (
-          userId === currentUser.uid || // User's own story
+          userId === currentUser?.uid || // User's own story
           storyData.privacy === "public" || // Public story
           (storyData.privacy === "contacts" && userIds.includes(userId)) || // Story for contacts
           (storyData.privacy === "selected" &&
-            storyData.allowedViewers?.includes(currentUser.uid)) // Story for selected users
+            storyData.allowedViewers?.includes(currentUser?.uid)) // Story for selected users
         ) {
           if (!userStories[userId]) {
             userStories[userId] = [];
@@ -143,6 +218,16 @@ export default function StoriesPage() {
 
   // Handle story click
   const handleStoryClick = async (user: User) => {
+    // Check if user is blocked before showing their stories
+    if (isUserBlocked(user.uid) && user.uid !== currentUser?.uid) {
+      toast({
+        variant: "destructive",
+        title: "Cannot view stories",
+        description: "You cannot view stories from this user due to blocking.",
+      });
+      return;
+    }
+
     try {
       setSelectedUser(user);
 
@@ -240,6 +325,9 @@ export default function StoriesPage() {
               <StoryCircle user={user} currentUser={currentUser} size="lg" />
               <span className="mt-2 text-sm font-medium truncate max-w-full text-center">
                 {user.uid === currentUser.uid ? "Your Story" : user.displayName}
+                {isUserBlocked(user.uid) && user.uid !== currentUser.uid && (
+                  <span className="block text-xs text-red-500">(Blocked)</span>
+                )}
               </span>
             </div>
           ))}
