@@ -71,7 +71,7 @@ export function UserAvatar({
   const avatarComponent = (
     <Avatar className={`${className} ${getSizeClass()} cursor-pointer`}>
       <AvatarImage
-        src={user.photoURL || ""}
+        src={user.photoURL || undefined}
         alt={user.displayName || "User"}
         className="object-cover"
       />

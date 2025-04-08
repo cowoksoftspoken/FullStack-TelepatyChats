@@ -12,6 +12,8 @@ import {
   doc,
   deleteDoc,
   getDoc,
+  updateDoc,
+  setDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
@@ -114,6 +116,32 @@ export function ChatArea({
   const [audioPreviewDuration, setAudioPreviewDuration] = useState<
     number | null
   >(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [contactIsTyping, setContactIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!currentUser || !contact) return;
+
+    const chatId = [currentUser.uid, contact.uid].sort().join("_");
+    const typingStatusRef = doc(db, "typingStatus", chatId);
+
+    const unsubscribe = onSnapshot(typingStatusRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        // Periksa apakah kontak sedang mengetik
+        if (data[contact.uid] === true) {
+          setContactIsTyping(true);
+        } else {
+          setContactIsTyping(false);
+        }
+      } else {
+        setContactIsTyping(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, contact, db]);
 
   // Check if either user has blocked the other
   useEffect(() => {
@@ -181,6 +209,72 @@ export function ChatArea({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement> | string
+  ) => {
+    const value = typeof e === "string" ? e : e.target.value;
+    setMessage(value);
+
+    // Update status mengetik
+    if (currentUser && contact) {
+      const chatId = [currentUser.uid, contact.uid].sort().join("_");
+      const typingStatusRef = doc(db, "typingStatus", chatId);
+
+      // Jika mulai mengetik
+      if (!isTyping) {
+        setIsTyping(true);
+
+        // Update atau buat dokumen status mengetik
+        getDoc(typingStatusRef)
+          .then((docSnap) => {
+            if (docSnap.exists()) {
+              // Update dokumen yang sudah ada
+              const currentData = docSnap.data();
+              updateDoc(typingStatusRef, {
+                ...currentData,
+                [currentUser.uid]: true,
+                timestamp: new Date().toISOString(),
+              });
+            } else {
+              // Buat dokumen baru
+              setDoc(typingStatusRef, {
+                [currentUser.uid]: true,
+                timestamp: new Date().toISOString(),
+              });
+            }
+          })
+          .catch(console.error);
+      }
+
+      // Reset timeout setiap kali pengguna mengetik
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set timeout untuk mendeteksi ketika pengguna berhenti mengetik
+      typingTimeoutRef.current = setTimeout(() => {
+        if (isTyping) {
+          setIsTyping(false);
+
+          // Update status mengetik menjadi false
+          getDoc(typingStatusRef)
+            .then((docSnap) => {
+              if (docSnap.exists()) {
+                const currentData = docSnap.data();
+                updateDoc(typingStatusRef, {
+                  ...currentData,
+                  [currentUser.uid]: false,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            })
+            .catch(console.error);
+        }
+      }, 2000); // 2 detik setelah pengguna berhenti mengetik
+    }
+  };
+
+  // Modifikasi fungsi sendMessage untuk menambahkan field isSeen
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -205,6 +299,7 @@ export function ChatArea({
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
+        isSeen: false,
         replyTo: replyTo
           ? {
               id: replyTo.id,
@@ -214,6 +309,15 @@ export function ChatArea({
           : null,
         type: "text",
       });
+
+      if (isTyping) {
+        setIsTyping(false);
+        updateDoc(doc(db, "typingStatus", chatId), {
+          userId: currentUser.uid,
+          isTyping: false,
+          timestamp: new Date().toISOString(),
+        }).catch(console.error);
+      }
 
       setMessage("");
       setReplyTo(null);
@@ -503,6 +607,56 @@ export function ChatArea({
     }
   };
 
+  useEffect(() => {
+    if (!currentUser || !contact || messages.length === 0) return;
+
+    // Tandai pesan yang diterima sebagai telah dibaca
+    const markMessagesAsSeen = async () => {
+      try {
+        const unreadMessages = messages.filter(
+          (msg) => msg.senderId === contact.uid && !msg.isSeen
+        );
+
+        // Update semua pesan yang belum dibaca
+        const updatePromises = unreadMessages.map((msg) =>
+          updateDoc(doc(db, "messages", msg.id), { isSeen: true })
+        );
+
+        await Promise.all(updatePromises);
+      } catch (error) {
+        console.error("Error marking messages as seen:", error);
+      }
+    };
+
+    markMessagesAsSeen();
+  }, [currentUser, contact, messages, db]);
+
+  const renderSeenIndicator = (msg: Message) => {
+    if (msg.senderId !== currentUser.uid) return null;
+
+    return (
+      <span
+        className={`ml-1 ${msg.isSeen ? "text-blue-500" : "text-gray-500"}`}
+      >
+        {/* Indikator centang dua */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M18 6L7 17L2 12"></path>
+          <path d="M22 10L13 19L11 17"></path>
+        </svg>
+      </span>
+    );
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -612,6 +766,8 @@ export function ChatArea({
             <p className="text-xs text-muted-foreground">
               {isBlocked
                 ? "You cannot interact with this user"
+                : contactIsTyping
+                ? "Typing..."
                 : contact.online
                 ? "Online"
                 : "Offline"}
@@ -689,12 +845,15 @@ export function ChatArea({
 
               {/* Message metadata */}
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
-                <span>
-                  {new Date(msg.timestamp).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <div className="flex items-center">
+                  <span>
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  {renderSeenIndicator(msg)}
+                </div>
 
                 {/* Message actions */}
                 <DropdownMenu>
@@ -871,7 +1030,7 @@ export function ChatArea({
           {/* Text input */}
           <Input
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
+            onChange={(e) => handleInputChange(e)}
             placeholder={
               isBlocked
                 ? "You cannot send messages to this user"

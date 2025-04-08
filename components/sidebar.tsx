@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { signOut } from "firebase/auth";
 import {
   doc,
@@ -13,6 +13,8 @@ import {
   type DocumentData,
   getDocs,
   writeBatch,
+  orderBy,
+  limit,
 } from "firebase/firestore";
 import {
   deleteObject as deleteStorageObject,
@@ -82,6 +84,8 @@ export function Sidebar({
   );
   const { toast } = useToast();
 
+  const [lastMessageTimestamps, setLastMessageTimestamps] = useState<Record<string, string>>({})
+
   // Fetch user's contacts
   useEffect(() => {
     if (!user?.uid) return;
@@ -104,6 +108,44 @@ export function Sidebar({
 
     return () => unsubscribe();
   }, [user, db]);
+
+  useEffect(() => {
+    if (!user?.uid || userContacts.length === 0) return
+
+    const fetchLastMessages = async () => {
+      try {
+        // Buat listener untuk setiap kontak
+        const unsubscribes = userContacts.map((contactId) => {
+          const chatId = [user.uid, contactId].sort().join("_")
+          const q = query(
+            collection(db, "messages"),
+            where("chatId", "==", chatId),
+            orderBy("timestamp", "desc"),
+            limit(1),
+          )
+
+          return onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+              const lastMessage = snapshot.docs[0].data()
+              setLastMessageTimestamps((prev) => ({
+                ...prev,
+                [contactId]: lastMessage.timestamp,
+              }))
+            }
+          })
+        })
+
+        // Cleanup function
+        return () => {
+          unsubscribes.forEach((unsubscribe) => unsubscribe())
+        }
+      } catch (error) {
+        console.error("Error fetching last messages:", error)
+      }
+    }
+
+    fetchLastMessages()
+  }, [user, db, userContacts])
 
   // Fetch blocked users and users who blocked the current user
   useEffect(() => {
@@ -349,6 +391,22 @@ export function Sidebar({
       contact.displayName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredAndSortedContacts = useMemo(() => {
+    return filteredContacts.slice().sort((a, b) => {
+      const timestampA = lastMessageTimestamps[a.uid] || ""
+      const timestampB = lastMessageTimestamps[b.uid] || ""
+
+      if (!timestampA && !timestampB) {
+        return a.displayName.localeCompare(b.displayName)
+      }
+
+      if (!timestampA) return 1
+      if (!timestampB) return -1
+
+      return new Date(timestampB).getTime() - new Date(timestampA).getTime()
+    })
+  }, [filteredContacts, lastMessageTimestamps])
+
   useEffect(() => {
     const usersData = async () => {
       const users = await getDoc(doc(db, "users", user.uid));
@@ -504,14 +562,14 @@ export function Sidebar({
           </div>
         ) : (
           <div className="space-y-1 p-2">
-            {filteredContacts.length === 0 ? (
+            {filteredAndSortedContacts.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No contacts found</p>
                 <p className="text-xs">Add contacts to start chatting</p>
               </div>
             ) : (
-              filteredContacts.map((contact) => {
+              filteredAndSortedContacts.map((contact) => {
                 const blocked = isContactBlocked(contact.uid);
                 return (
                   <div
