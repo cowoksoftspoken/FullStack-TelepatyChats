@@ -637,6 +637,10 @@ export function ChatArea({
     return (
       <span
         className={`ml-1 ${msg.isSeen ? "text-blue-500" : "text-gray-500"}`}
+        title={msg.isSeen ? "Seen" : "Not seen"}
+        aria-label={msg.isSeen ? "Seen" : "Not seen"}
+        aria-live="assertive"
+        role="status"
       >
         {/* Indikator centang dua */}
         <svg
