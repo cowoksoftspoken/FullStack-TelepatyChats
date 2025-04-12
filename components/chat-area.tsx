@@ -69,6 +69,7 @@ import { UserAvatar } from "./user-avatar";
 import { AudioMessage } from "./audio-message";
 import { UserProfilePopup } from "./user-profile-popup";
 import { useToast } from "@/components/ui/use-toast";
+import VideoPlayer from "./video-message";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -685,12 +686,13 @@ export function ChatArea({
         );
       case "video":
         return (
-          <div className="mt-1">
-            <video
+          <div className="mt-1 w-full">
+            {/* <video
               src={msg.fileURL}
               controls
               className="max-w-full rounded-md h-full object-cover"
-            />
+            /> */}
+            <VideoPlayer fileURL={msg.fileURL || ""} />
             {msg.text !== msg.fileName && (
               <p className="mt-1 text-sm">{msg.text}</p>
             )}
@@ -820,7 +822,7 @@ export function ChatArea({
             }`}
           >
             <div
-              className={`max-w-[70%] rounded-lg px-4 py-2 ${
+              className={`max-w-[85%] md:max-w-[70%] rounded-lg px-3 py-2 ${
                 msg.senderId === currentUser.uid
                   ? "dark:bg-muted/25 bg-slate-200"
                   : "dark:bg-muted bg-slate-100"

@@ -192,6 +192,8 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     );
   }
 
+  console.log(users);
+
   return (
     <div className="container py-8 mx-auto">
       <div className="mb-8 flex items-center justify-between">
@@ -208,7 +210,7 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
             Manage users, verification requests, and send broadcasts
           </p>
         </div>
-        <BroadcastMessage users={users} />
+        <BroadcastMessage users={users} isAdmin={userData?.isAdmin} />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -389,7 +391,7 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
               Use the broadcast feature to send messages to multiple users at
               once.
             </p>
-            <BroadcastMessage users={users} />
+            <BroadcastMessage users={users} isAdmin={userData?.isAdmin} />
           </div>
         </TabsContent>
       </Tabs>
