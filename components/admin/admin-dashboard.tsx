@@ -192,8 +192,6 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     );
   }
 
-  console.log(users);
-
   return (
     <div className="container py-8 mx-auto">
       <div className="mb-8 flex items-center justify-between">
