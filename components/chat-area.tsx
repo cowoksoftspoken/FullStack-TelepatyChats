@@ -772,7 +772,7 @@ export function ChatArea({
             <p className="text-xs text-muted-foreground">
               {isBlocked
                 ? "You cannot interact with this user"
-                : contactIsTyping
+                : contactIsTyping && !isBlocked && contact.online
                 ? "Typing..."
                 : contact.online
                 ? "Online"
@@ -828,7 +828,6 @@ export function ChatArea({
                   : "dark:bg-muted bg-slate-100"
               }`}
             >
-              {/* Reply preview */}
               {msg.replyTo && (
                 <div
                   className={`text-xs p-2 rounded mb-2 ${
@@ -846,10 +845,8 @@ export function ChatArea({
                 </div>
               )}
 
-              {/* Message content */}
               {renderMessageContent(msg)}
 
-              {/* Message metadata */}
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
                 <div className="flex items-center">
                   <span>

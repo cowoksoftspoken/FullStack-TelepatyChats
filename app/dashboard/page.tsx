@@ -10,6 +10,7 @@ import {
   doc,
   updateDoc,
   getDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -84,6 +85,7 @@ export default function DashboardPage() {
       try {
         await updateDoc(doc(db, "users", currentUser.uid), {
           online: false,
+          lastSeen: serverTimestamp(),
         });
       } catch (error) {
         console.error("Error updating offline status:", error);
