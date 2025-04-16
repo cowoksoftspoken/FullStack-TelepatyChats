@@ -2,9 +2,6 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import {
   AuthProvider,
   GithubAuthProvider,
@@ -12,9 +9,11 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
 } from "firebase/auth";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -23,10 +22,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { db } from "@/lib/firebase";
 import { useFirebase } from "@/lib/firebase-provider";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -37,7 +37,6 @@ export default function LoginPage() {
   const { auth, currentUser, loading } = useFirebase();
 
   useEffect(() => {
-    // Only redirect if Firebase has initialized and user is logged in
     if (!loading && currentUser) {
       router.push("/dashboard");
     }
@@ -46,7 +45,6 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Don't proceed if Firebase is still initializing
     if (loading || !auth) {
       setError("Authentication service is initializing. Please try again.");
       return;
@@ -56,7 +54,21 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      const userRef = doc(db, "users", res.user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        await setDoc(userRef, {
+          uid: res.user.uid,
+          email: res.user.email,
+          displayName: res.user.displayName || "",
+          photoURL: res.user.photoURL || "",
+          provider: "email",
+          createdAt: serverTimestamp(),
+        });
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);

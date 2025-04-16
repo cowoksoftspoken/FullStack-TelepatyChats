@@ -2,55 +2,44 @@
 
 import type React from "react";
 
-import { useState, useEffect, useRef } from "react";
-import {
-  collection,
-  query,
-  addDoc,
-  onSnapshot,
-  where,
-  doc,
-  deleteDoc,
-  getDoc,
-  updateDoc,
-  setDoc,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import {
-  Phone,
-  Send,
-  Video,
-  Smile,
-  Paperclip,
-  X,
-  Reply,
-  Trash2,
-  FileText,
-  Mic,
-  Image,
-  Film,
-  File,
-  Loader2,
-  ArrowLeft,
-  MoreVertical,
-  Music,
-} from "lucide-react";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  ArrowLeft,
+  File,
+  FileText,
+  Film,
+  Image,
+  Loader2,
+  Mic,
+  MoreVertical,
+  Music,
+  Paperclip,
+  Phone,
+  Reply,
+  Send,
+  Smile,
+  Trash2,
+  Video,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -59,16 +48,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { User } from "@/types/user";
-import type { Message } from "@/types/message";
-import { useTheme } from "@/components/theme-provider";
-import { useFirebase } from "@/lib/firebase-provider";
-import { UserAvatar } from "./user-avatar";
-import { AudioMessage } from "./audio-message";
-import { UserProfilePopup } from "./user-profile-popup";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { useFirebase } from "@/lib/firebase-provider";
+import type { Message } from "@/types/message";
+import type { User } from "@/types/user";
+import { AudioMessage } from "./audio-message";
+import { UserAvatar } from "./user-avatar";
+import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 
 interface ChatAreaProps {
@@ -130,7 +130,6 @@ export function ChatArea({
     const unsubscribe = onSnapshot(typingStatusRef, (doc) => {
       if (doc.exists()) {
         const data = doc.data();
-        // Periksa apakah kontak sedang mengetik
         if (data[contact.uid] === true) {
           setContactIsTyping(true);
         } else {
@@ -160,7 +159,6 @@ export function ChatArea({
           const contactData = contactDoc.data();
           const currentUserData = currentUserDoc.data();
 
-          // Check both directions - if either user has blocked the other
           const contactBlockedUser =
             contactData.blockedUsers?.includes(currentUser.uid) || false;
           const userBlockedContact =
@@ -179,11 +177,8 @@ export function ChatArea({
   useEffect(() => {
     if (!currentUser || !contact) return;
 
-    // Create a unique chat ID (sorted UIDs to ensure consistency)
     const chatId = [currentUser.uid, contact.uid].sort().join("_");
 
-    // Instead of using orderBy which requires a composite index,
-    // we'll just filter by chatId and sort the messages in memory
     const q = query(collection(db, "messages"), where("chatId", "==", chatId));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -216,20 +211,16 @@ export function ChatArea({
     const value = typeof e === "string" ? e : e.target.value;
     setMessage(value);
 
-    // Update status mengetik
     if (currentUser && contact) {
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
       const typingStatusRef = doc(db, "typingStatus", chatId);
 
-      // Jika mulai mengetik
       if (!isTyping) {
         setIsTyping(true);
 
-        // Update atau buat dokumen status mengetik
         getDoc(typingStatusRef)
           .then((docSnap) => {
             if (docSnap.exists()) {
-              // Update dokumen yang sudah ada
               const currentData = docSnap.data();
               updateDoc(typingStatusRef, {
                 ...currentData,
@@ -237,7 +228,6 @@ export function ChatArea({
                 timestamp: new Date().toISOString(),
               });
             } else {
-              // Buat dokumen baru
               setDoc(typingStatusRef, {
                 [currentUser.uid]: true,
                 timestamp: new Date().toISOString(),
@@ -247,17 +237,14 @@ export function ChatArea({
           .catch(console.error);
       }
 
-      // Reset timeout setiap kali pengguna mengetik
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Set timeout untuk mendeteksi ketika pengguna berhenti mengetik
       typingTimeoutRef.current = setTimeout(() => {
         if (isTyping) {
           setIsTyping(false);
 
-          // Update status mengetik menjadi false
           getDoc(typingStatusRef)
             .then((docSnap) => {
               if (docSnap.exists()) {
@@ -275,7 +262,6 @@ export function ChatArea({
     }
   };
 
-  // Modifikasi fungsi sendMessage untuk menambahkan field isSeen
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -739,7 +725,7 @@ export function ChatArea({
 
   return (
     <div className="flex flex-1 flex-col h-full">
-      <div className="flex items-center justify-between p-4 border-b">
+      <div className="flex items-center justify-between p-4 border-b dark:bg-[#1c1c1d]">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileMenuOpen?.(true)}
@@ -813,7 +799,16 @@ export function ChatArea({
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        style={{
+          backgroundImage: `url("${
+            theme === "dark"
+              ? "https://i.ibb.co.com/m5p2Ttrf/wp-132-dark.jpg"
+              : "https://i.ibb.co.com/qLvfqFLR/wp-132.jpg"
+          }")`,
+        }}
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -824,7 +819,7 @@ export function ChatArea({
             <div
               className={`max-w-[85%] md:max-w-[70%] rounded-lg px-3 py-2 ${
                 msg.senderId === currentUser.uid
-                  ? "dark:bg-muted/25 bg-slate-200"
+                  ? "dark:bg-[#131418] bg-slate-200"
                   : "dark:bg-muted bg-slate-100"
               }`}
             >
@@ -943,7 +938,10 @@ export function ChatArea({
       )}
 
       {/* Message input */}
-      <form onSubmit={sendMessage} className="border-t p-4">
+      <form
+        onSubmit={sendMessage}
+        className="border-t p-4 px-2 md:px-4 dark:bg-[#151516]"
+      >
         <div className="flex gap-2 items-center">
           {/* File upload dropdown */}
           <DropdownMenu>

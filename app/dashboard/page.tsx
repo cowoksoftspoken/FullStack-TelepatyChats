@@ -1,33 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
   collection,
+  doc,
+  getDoc,
   onSnapshot,
   query,
-  where,
-  doc,
-  updateDoc,
-  getDoc,
   serverTimestamp,
+  updateDoc,
+  where,
 } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { Sidebar } from "@/components/sidebar";
-import { ChatArea } from "@/components/chat-area";
 import { CallInterface } from "@/components/call-interface";
+import { ChatArea } from "@/components/chat-area";
 import { IncomingCall } from "@/components/incoming-call";
-import {
-  initiateCall,
-  listenForCalls,
-  acceptCall,
-  endCall,
-} from "@/lib/webrtc";
-import type { User } from "@/types/user";
+import { Sidebar } from "@/components/sidebar";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
-import { StoriesRow } from "@/components/story/stories-row";
+import {
+  acceptCall,
+  endCall,
+  initiateCall,
+  listenForCalls,
+} from "@/lib/webrtc";
+import type { User } from "@/types/user";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
   const { currentUser, db, loading: authLoading } = useFirebase();
