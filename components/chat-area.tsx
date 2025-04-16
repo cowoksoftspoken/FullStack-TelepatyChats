@@ -70,6 +70,7 @@ import { AudioMessage } from "./audio-message";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
+import { YoutubeEmbed } from "./yt-embed";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -653,19 +654,6 @@ export function ChatArea({
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
-
-  const YoutubeEmbed = ({ videoId }: { videoId: string }) => (
-    <div className="mt-2">
-      <iframe
-        width="100%"
-        height="250"
-        src={`https://www.youtube.com/embed/${videoId}`}
-        title="YouTube video"
-        allowFullScreen
-        className="rounded-md"
-      ></iframe>
-    </div>
-  );
 
   function extractYouTubeId(text: string): string | null {
     const regex =
