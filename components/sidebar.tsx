@@ -424,7 +424,7 @@ export function Sidebar({
       <Button
         variant="ghost"
         size="icon"
-        className="p-1 absolute md:hidden -right-[2.5rem] rounded border"
+        className="p-1 absolute md:hidden -right-[2.5rem] dark:bg-[#151516] rounded border"
         onClick={() => setIsMobileMenuOpen(false)}
       >
         <X className="h-5 w-5" />

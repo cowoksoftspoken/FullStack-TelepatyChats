@@ -654,6 +654,41 @@ export function ChatArea({
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
+  const YoutubeEmbed = ({ videoId }: { videoId: string }) => (
+    <div className="mt-2">
+      <iframe
+        width="100%"
+        height="250"
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="YouTube video"
+        allowFullScreen
+        className="rounded-md"
+      ></iframe>
+    </div>
+  );
+
+  function extractYouTubeId(text: string): string | null {
+    const regex =
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = text.match(regex);
+    return match ? match[1] : null;
+  }
+
+  const checkingMessage = (text: string) => {
+    const urlPattern =
+      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+
+    if (urlPattern.test(text)) {
+      return text.replace(
+        urlPattern,
+        (url) =>
+          `<a href="${url}" class="text-indigo-500 underline" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`
+      );
+    } else {
+      return text;
+    }
+  };
+
   const renderMessageContent = (msg: Message) => {
     switch (msg.type) {
       case "image":
@@ -719,7 +754,17 @@ export function ChatArea({
           </div>
         );
       default:
-        return <p>{msg.text}</p>;
+        const youtubeId = extractYouTubeId(msg.text);
+        return (
+          <>
+            {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
+            <p
+              dangerouslySetInnerHTML={{
+                __html: checkingMessage(msg.text),
+              }}
+            />
+          </>
+        );
     }
   };
 
