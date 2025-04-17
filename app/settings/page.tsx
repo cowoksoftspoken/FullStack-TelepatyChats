@@ -242,7 +242,10 @@ export default function SettingsPage() {
     if (!currentUser) return;
 
     try {
-      await sendEmailVerification(currentUser);
+      await sendEmailVerification(currentUser, {
+        url: 'https://zerochats.vercel.app/handle-action',
+        handleCodeInApp: true,
+      });
       setVerificationSent(true);
       toast({
         title: "Verification email sent",
@@ -265,7 +268,7 @@ export default function SettingsPage() {
 
     try {
       await sendPasswordResetEmail(auth, currentUser.email, {
-        url: "https://zerochats.vercel.app/reset-password",
+        url: "https://zerochats.vercel.app/handle-action",
         handleCodeInApp: true,
       });
       setResetPasswordSent(true);
