@@ -50,6 +50,11 @@ export default function LoginPage() {
       return;
     }
 
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
     setFormLoading(true);
     setError("");
 
@@ -177,7 +182,10 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                }}
+                minLength={6}
                 required
               />
             </div>
