@@ -68,7 +68,7 @@ export default function VerifyEmailPage() {
           <>
             <XCircle className="w-6 h-6 mx-auto mb-4 text-red-500" />
             <p className="text-center text-red-600 font-medium">
-              Invalid or expired verification link 😢
+              Invalid or expired verification link
             </p>
             <p className="text-center text-sm text-muted-foreground mt-1">
               Try requesting a new verification email.
