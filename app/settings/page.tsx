@@ -264,7 +264,10 @@ export default function SettingsPage() {
     if (!currentUser || !currentUser.email) return;
 
     try {
-      await sendPasswordResetEmail(auth, currentUser.email);
+      await sendPasswordResetEmail(auth, currentUser.email, {
+        url: "https://zerochats.vercel.app/reset-password",
+        handleCodeInApp: true,
+      });
       setResetPasswordSent(true);
       toast({
         title: "Password reset email sent",

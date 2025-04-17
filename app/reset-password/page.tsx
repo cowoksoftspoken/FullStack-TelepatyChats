@@ -36,11 +36,11 @@ export default function ResetPasswordPage() {
     //   setError("Invalid Link");
     //   setLoading(false);
     //   return;
-    // } else if (!auth) {
-    //   setError("Authentication service is initializing. Please try again.");
-    //   setLoading(false);
-    //   return;
-    // }
+    if (!auth) {
+      setError("Authentication service is initializing. Please try again.");
+      setLoading(false);
+      return;
+    }
 
     verifyPasswordResetCode(auth, oobCode!)
       .then((email) => {
