@@ -665,13 +665,17 @@ export function ChatArea({
   const checkingMessage = (text: string) => {
     const urlPattern =
       /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+    const youtubeRegex =
+      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
     if (urlPattern.test(text)) {
-      return text.replace(
-        urlPattern,
-        (url) =>
-          `<a href="${url}" class="text-indigo-500 underline" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`
-      );
+      return text.replace(urlPattern, (url) => {
+        if (youtubeRegex.test(url)) {
+          return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
+        } else {
+          return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
+        }
+      });
     } else {
       return text;
     }
@@ -747,6 +751,7 @@ export function ChatArea({
           <>
             {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
             <p
+              className="w-full text-sm md:text-base break-words"
               dangerouslySetInnerHTML={{
                 __html: checkingMessage(msg.text),
               }}
@@ -833,7 +838,7 @@ export function ChatArea({
       )}
 
       <div
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]"
         style={{
           backgroundImage: `url("${
             theme === "dark"
@@ -929,7 +934,7 @@ export function ChatArea({
 
       {/* Reply preview */}
       {replyTo && (
-        <div className="px-4 py-2 border-t flex items-center justify-between">
+        <div className="px-4 py-2 border-t flex items-center justify-between dark:bg-[#151516]">
           <div className="flex items-center gap-2">
             <Reply className="h-4 w-4 text-muted-foreground" />
             <div className="text-sm">
@@ -1070,7 +1075,7 @@ export function ChatArea({
                 ? "You cannot send messages to this user"
                 : "Type a message..."
             }
-            className="flex-1 rounded-full"
+            className="flex-1 rounded-full dark:bg-[#000000]/30"
             disabled={isBlocked}
           />
 

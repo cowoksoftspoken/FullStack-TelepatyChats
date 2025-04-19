@@ -40,7 +40,13 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Don't proceed if Firebase is still initializing
+    if (name.length !== 3 || name.length > 12) {
+      setError(
+        "Name must be at least 3 characters long and up to 12 characters long."
+      );
+      return;
+    }
+
     if (loading || !auth || !db) {
       setError("Authentication service is initializing. Please try again.");
       return;
@@ -125,6 +131,8 @@ export default function RegisterPage() {
                 placeholder="John Doe"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                minLength={3}
+                maxLength={12}
                 required
               />
             </div>

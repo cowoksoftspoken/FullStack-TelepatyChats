@@ -557,7 +557,7 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]">
         {loading ? (
           <div className="flex items-center justify-center h-20">
             <Loader2 className="h-5 w-5 animate-spin text-primary" />

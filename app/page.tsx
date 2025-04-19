@@ -10,7 +10,6 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Only redirect after Firebase has initialized and auth state is determined
     if (!loading) {
       if (currentUser) {
         router.push("/dashboard");
@@ -20,7 +19,6 @@ export default function Home() {
     }
   }, [currentUser, loading, router]);
 
-  // Show loading state while determining auth state
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -30,7 +28,6 @@ export default function Home() {
     );
   }
 
-  // This will briefly show before the redirect happens
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
