@@ -18,8 +18,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Copy, Loader2, RefreshCw } from "lucide-react";
 import { useFirebase } from "@/lib/firebase-provider";
+
+const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{6,}$/;
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -28,10 +30,10 @@ export default function RegisterPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState<boolean>(false);
   const { auth, db, currentUser, loading } = useFirebase();
 
   useEffect(() => {
-    // Only redirect if Firebase has initialized and user is logged in
     if (!loading && currentUser) {
       router.push("/dashboard");
     }
@@ -40,9 +42,16 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (name.length !== 3 || name.length > 12) {
+    if (name.length < 3 || name.length > 12) {
       setError(
         "Name must be at least 3 characters long and up to 12 characters long."
+      );
+      return;
+    }
+
+    if (!passwordRegex.test(password)) {
+      setError(
+        "Password must be at least 6-12 characters and contain capital letters, numbers, and special characters."
       );
       return;
     }
@@ -56,7 +65,6 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -64,12 +72,10 @@ export default function RegisterPage() {
       );
       const user = userCredential.user;
 
-      // Update profile with display name
       await updateProfile(user, {
         displayName: name,
       });
 
-      // Create user document in Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         displayName: name,
@@ -84,7 +90,9 @@ export default function RegisterPage() {
       if (err.code === "auth/email-already-in-use") {
         setError("Email already in use");
       } else if (err.code === "auth/weak-password") {
-        setError("Password should be at least 6 characters");
+        setError(
+          "Password must be at least 6-12 characters and contain capital letters, numbers, and special characters."
+        );
       } else {
         setError("Failed to create account");
       }
@@ -94,7 +102,17 @@ export default function RegisterPage() {
     }
   };
 
-  // Show loading state while Firebase initializes
+  const generatePassword = (length = 12) => {
+    const alphabet =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+    }
+
+    return password;
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -153,13 +171,76 @@ export default function RegisterPage() {
               <label htmlFor="password" className="text-sm font-medium">
                 Password
               </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="flex items-center relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute right-10 mx-4 text-muted-foreground hover:text-primary"
+                  onClick={() => {
+                    const newPass = generatePassword();
+                    setPassword(newPass);
+                  }}
+                  title="Generate password"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-6 mx-2 text-muted-foreground hover:text-primary"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(password);
+                  }}
+                  title="Copy to clipboard"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="absolute right-2 text-muted-foreground hover:text-primary"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.03-10-9s4.477-9 10-9c1.32 0 2.58.26 3.75.725M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 3l18 18M10.586 10.586A2 2 0 0112 12a2 2 0 01-1.414 1.414M15.472 15.472A8.936 8.936 0 0112 18c-4.418 0-8-3.582-8-8 0-1.657.507-3.195 1.378-4.472M9.88 9.88a3 3 0 014.243 4.243"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

@@ -50,8 +50,8 @@ export default function LoginPage() {
       return;
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 6 || password.length > 12) {
+      setError("Password must be at least 6-12 characters");
       return;
     }
 
@@ -133,7 +133,6 @@ export default function LoginPage() {
     }
   };
 
-  // Show loading state while Firebase initializes
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -185,7 +184,8 @@ export default function LoginPage() {
                 onChange={(e) => {
                   setPassword(e.target.value);
                 }}
-                minLength={6}
+                autoComplete="current-password"
+                placeholder="••••••••"
                 required
               />
             </div>
