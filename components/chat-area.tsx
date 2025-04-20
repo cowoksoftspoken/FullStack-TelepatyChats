@@ -62,7 +62,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";

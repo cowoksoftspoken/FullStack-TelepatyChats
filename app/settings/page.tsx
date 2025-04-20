@@ -60,7 +60,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserAvatar } from "@/components/user-avatar";
@@ -207,15 +207,21 @@ export default function SettingsPage() {
   const handleUpdateName = async () => {
     if (!currentUser || !displayName.trim()) return;
 
+    if (displayName.length < 3 || displayName.length > 12) {
+      toast({
+        title: "Error",
+        description: "Display name must be between 3 and 12 characters long.",
+      });
+      return;
+    }
+
     setNameUpdateLoading(true);
 
     try {
-      // Update user profile
       await updateProfile(currentUser, {
         displayName: displayName,
       });
 
-      // Update user document in Firestore
       await updateDoc(doc(db, "users", currentUser.uid), {
         displayName: displayName,
       });
@@ -243,7 +249,7 @@ export default function SettingsPage() {
 
     try {
       await sendEmailVerification(currentUser, {
-        url: 'https://zerochats.vercel.app/handle-action',
+        url: "https://zerochats.vercel.app/handle-action",
         handleCodeInApp: true,
       });
       setVerificationSent(true);
