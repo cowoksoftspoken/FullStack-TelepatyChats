@@ -6,9 +6,13 @@ export interface Message {
   senderId: string;
   receiverId: string;
   timestamp: string;
-  type?: "text" | "image" | "video" | "audio" | "file";
+  type?: "text" | "image" | "video" | "audio" | "file" | "location";
   fileURL?: string;
   fileName?: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
   fileType?: string;
   duration?: number;
   replyTo?: {

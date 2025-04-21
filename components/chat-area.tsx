@@ -24,6 +24,7 @@ import {
   Film,
   Image,
   Loader2,
+  MapPin,
   Mic,
   MoreVertical,
   Music,
@@ -71,6 +72,7 @@ import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { YoutubeEmbed } from "./yt-embed";
+import MapPreview from "./map-preview";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -121,6 +123,13 @@ export function ChatArea({
   const [isTyping, setIsTyping] = useState(false);
   const [contactIsTyping, setContactIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Location State (kode ne menyentuh 1000 njir)
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
+    null
+  );
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -259,7 +268,88 @@ export function ChatArea({
             })
             .catch(console.error);
         }
-      }, 2000); // 2 detik setelah pengguna berhenti mengetik
+      }, 2000);
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot share location",
+        description:
+          "You cannot share location with this user because one of you has blocked the other.",
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
+          });
+        }
+      );
+
+      setLocation({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      });
+      setIsLocationDialogOpen(true);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      toast({
+        variant: "destructive",
+        title: "Location access denied",
+        description:
+          "Could not access your location. Please check your permissions.",
+      });
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const sendLocationMessage = async () => {
+    if (!location || !currentUser || !contact) return;
+
+    try {
+      const chatId = [currentUser.uid, contact.uid].sort().join("_");
+
+      await addDoc(collection(db, "messages"), {
+        chatId,
+        text: caption || "📍 Location",
+        senderId: currentUser.uid,
+        receiverId: contact.uid,
+        timestamp: new Date().toISOString(),
+        isSeen: false,
+        type: "location",
+        location: {
+          lat: location.lat,
+          lng: location.lng,
+        },
+        replyTo: replyTo
+          ? {
+              id: replyTo.id,
+              text: replyTo.text,
+              senderId: replyTo.senderId,
+            }
+          : null,
+      });
+
+      setIsLocationDialogOpen(false);
+      setLocation(null);
+      setReplyTo(null);
+    } catch (error) {
+      console.error("Error sending location:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to send location",
+        description: "Failed to send location. Please try again.",
+      });
     }
   };
 
@@ -393,13 +483,10 @@ export function ChatArea({
         `chats/${chatId}/${Date.now()}_${previewFile.file.name}`
       );
 
-      // Upload file
       await uploadBytes(fileRef, previewFile.file);
 
-      // Get download URL
       const downloadURL = await getDownloadURL(fileRef);
 
-      // Add message to Firestore
       await addDoc(collection(db, "messages"), {
         chatId,
         text: caption || previewFile.file.name,
@@ -711,6 +798,21 @@ export function ChatArea({
             )}
           </div>
         );
+      case "location":
+        return (
+          <div className="mt-1 w-full">
+            <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${msg.location?.lat}&mlon=${msg.location?.lng}#map=15/${msg.location?.lat}/${msg.location?.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 text-sm hover:underline mt-2 inline-block"
+            >
+              (View Location Details)
+            </a>
+            {msg.text && <p className="mt-1 text-sm">{msg.text}</p>}
+          </div>
+        );
       case "audio":
         return (
           <div className="mt-1">
@@ -1011,10 +1113,18 @@ export function ChatArea({
                 <File className="mr-2 h-4 w-4" />
                 <span>File</span>
               </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleShareLocation}
+                disabled={isGettingLocation}
+              >
+                <MapPin className="mr-2 h-5 w-5" />
+                <span>
+                  {isGettingLocation ? "Getting location..." : "Location"}
+                </span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* Hidden file inputs */}
           <input
             type="file"
             ref={imageInputRef}
@@ -1208,6 +1318,61 @@ export function ChatArea({
                 "Send"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isLocationDialogOpen}
+        onOpenChange={setIsLocationDialogOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Share Location</DialogTitle>
+            <DialogDescription>
+              Preview your location before sharing
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {location && (
+              <div className="h-64 w-full rounded-md border overflow-hidden">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  marginHeight={0}
+                  marginWidth={0}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                    location.lng - 0.01
+                  }%2C${location.lat - 0.01}%2C${location.lng + 0.01}%2C${
+                    location.lat + 0.01
+                  }&layer=mapnik&marker=${location.lat}%2C${location.lng}`}
+                  style={{ border: "1px solid #ccc" }}
+                ></iframe>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="caption">Caption (optional)</Label>
+            <Textarea
+              id="caption"
+              placeholder="Add a caption..."
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsLocationDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={sendLocationMessage}>Share Location</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

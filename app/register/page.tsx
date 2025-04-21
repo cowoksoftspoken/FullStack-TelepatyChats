@@ -21,8 +21,6 @@ import {
 import { Copy, Loader2, RefreshCw } from "lucide-react";
 import { useFirebase } from "@/lib/firebase-provider";
 
-const passwordRegex = /^(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{6,}$/;
-
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,7 +47,7 @@ export default function RegisterPage() {
       return;
     }
 
-    if (!passwordRegex.test(password)) {
+    if (password.length < 6 || password.length > 12) {
       setError(
         "Password must be at least 6-12 characters and contain capital letters, numbers, and special characters."
       );
