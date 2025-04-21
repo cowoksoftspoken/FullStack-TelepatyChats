@@ -73,6 +73,7 @@ import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { YoutubeEmbed } from "./yt-embed";
 import MapPreview from "./map-preview";
+import ContactStatus from "./contact-status";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -102,7 +103,7 @@ export function ChatArea({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
-  const timerIntervalRef = useRef<number | null>(null); // Store interval ID in a ref instead
+  const timerIntervalRef = useRef<number | null>(null);
   const { theme } = useTheme();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -896,13 +897,18 @@ export function ChatArea({
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {isBlocked
+              {/* {isBlocked
                 ? "You cannot interact with this user"
                 : contactIsTyping && !isBlocked && contact.online
                 ? "Typing..."
                 : contact.online
                 ? "Online"
-                : "Offline"}
+                : "Offline"} */}
+              <ContactStatus
+                isBlocked={isBlocked}
+                contact={contact}
+                contactIsTyping={contactIsTyping}
+              />
             </p>
           </div>
         </div>
