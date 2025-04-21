@@ -334,7 +334,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className={`flex h-screen w-full overflow-hidden ${
+      className={`flex h-[100dvh] w-full overflow-hidden ${
         theme === "dark" ? "dark" : ""
       }`}
     >
