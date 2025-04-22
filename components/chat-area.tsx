@@ -19,6 +19,7 @@ import {
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   ArrowLeft,
+  Camera,
   File,
   FileText,
   Film,
@@ -68,12 +69,13 @@ import { useFirebase } from "@/lib/firebase-provider";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
 import { AudioMessage } from "./audio-message";
+import { CameraDialog } from "./camera-dialog";
+import ContactStatus from "./contact-status";
+import MapPreview from "./map-preview";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { YoutubeEmbed } from "./yt-embed";
-import MapPreview from "./map-preview";
-import ContactStatus from "./contact-status";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -131,6 +133,7 @@ export function ChatArea({
   );
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -154,13 +157,11 @@ export function ChatArea({
     return () => unsubscribe();
   }, [currentUser, contact, db]);
 
-  // Check if either user has blocked the other
   useEffect(() => {
     if (!currentUser || !contact) return;
 
     const checkBlockStatus = async () => {
       try {
-        // Check if contact has blocked current user
         const [contactDoc, currentUserDoc] = await Promise.all([
           getDoc(doc(db, "users", contact.uid)),
           getDoc(doc(db, "users", currentUser.uid)),
@@ -198,7 +199,6 @@ export function ChatArea({
         messageList.push({ id: doc.id, ...doc.data() } as Message);
       });
 
-      // Sort messages by timestamp in memory
       messageList.sort((a, b) => {
         return (
           new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
@@ -354,6 +354,63 @@ export function ChatArea({
     }
   };
 
+  const handleSendCapture = async (blob: Blob, caption?: string) => {
+    if (!currentUser || !contact) return;
+
+    if (isBlocked) {
+      toast({
+        variant: "destructive",
+        title: "Cannot send image",
+        description:
+          "You cannot send images to this user because one of you has blocked the other.",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const chatId = [currentUser.uid, contact.uid].sort().join("_");
+      const fileRef = ref(
+        storage,
+        `/chats/${chatId}/${btoa(`camera_captured_${Date.now()}.jpg`)}`
+      );
+
+      await uploadBytes(fileRef, blob);
+
+      const downloadURL = await getDownloadURL(fileRef);
+
+      await addDoc(collection(db, "messages"), {
+        chatId,
+        text: caption || "Photo",
+        senderId: currentUser.uid,
+        receiverId: contact.uid,
+        timestamp: new Date().toISOString(),
+        isSeen: false,
+        fileURL: downloadURL,
+        fileName: btoa(`camera_captured_${Date.now()}.jpg`),
+        fileType: "image/jpeg",
+        type: "image",
+        replyTo: replyTo
+          ? {
+              id: replyTo.id,
+              text: replyTo.text,
+              senderId: replyTo.senderId,
+            }
+          : null,
+      });
+      setReplyTo(null);
+    } catch (error) {
+      console.error("Error sending camera image:", error);
+      toast({
+        variant: "destructive",
+        title: "Failed to send image",
+        description: "Failed to send camera image. Please try again.",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -463,7 +520,6 @@ export function ChatArea({
   const handleSendMedia = async () => {
     if (!previewFile || !currentUser || !contact) return;
 
-    // Check if either user has blocked the other
     if (isBlocked) {
       toast({
         variant: "destructive",
@@ -481,7 +537,7 @@ export function ChatArea({
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
       const fileRef = ref(
         storage,
-        `chats/${chatId}/${Date.now()}_${previewFile.file.name}`
+        `chats/${chatId}/${btoa(`${Date.now()}_${previewFile.file.name}`)}`
       );
 
       await uploadBytes(fileRef, previewFile.file);
@@ -570,7 +626,6 @@ export function ChatArea({
         setIsRecording(false);
         setRecordingTime(0);
 
-        // Stop all tracks
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -579,9 +634,7 @@ export function ChatArea({
       recorder.start();
       setIsRecording(true);
 
-      // Start timer
       const startTime = Date.now();
-      // Store interval ID in the ref instead of on the MediaRecorder object
       timerIntervalRef.current = window.setInterval(() => {
         setRecordingTime(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
@@ -606,7 +659,6 @@ export function ChatArea({
   const stopRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
-      // Clear the timer interval
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -617,7 +669,6 @@ export function ChatArea({
   const cancelRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.stop();
-      // Clear the timer interval
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
         timerIntervalRef.current = null;
@@ -912,7 +963,7 @@ export function ChatArea({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex md:gap-2 gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -968,22 +1019,27 @@ export function ChatArea({
                   ? "dark:bg-[#131418] bg-slate-200"
                   : "dark:bg-muted bg-slate-100"
               }`}
+              id={msg.id}
             >
               {msg.replyTo && (
-                <div
-                  className={`text-xs p-2 rounded mb-2 ${
+                <a
+                  className={`inline-block w-full text-xs p-2 rounded mb-2 ${
                     msg.senderId === currentUser.uid
                       ? "bg-slate-300/25"
                       : "bg-background text-foreground"
                   }`}
+                  href={"#" + msg.replyTo.id}
+                  id={btoa(msg.replyTo.id)}
                 >
                   <div className="font-semibold">
                     {msg.replyTo.senderId === currentUser.uid
                       ? "You"
                       : contact.displayName}
                   </div>
-                  <div className="truncate">{msg.replyTo.text}</div>
-                </div>
+                  <div className="break-words text-ellipsis">
+                    {msg.replyTo.text}
+                  </div>
+                </a>
               )}
 
               {renderMessageContent(msg)}
@@ -1128,6 +1184,10 @@ export function ChatArea({
                   {isGettingLocation ? "Getting location..." : "Location"}
                 </span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsCameraDialogOpen(true)}>
+                <Camera className="mr-2 h-4 w-4" />
+                <span>Camera</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -1236,7 +1296,7 @@ export function ChatArea({
                 : "Send File"}
             </DialogTitle>
             <DialogDescription>
-              Preview your media before sending
+              Preview your {previewFile?.type} before sending
             </DialogDescription>
           </DialogHeader>
 
@@ -1383,7 +1443,12 @@ export function ChatArea({
         </DialogContent>
       </Dialog>
 
-      {/* User Profile Popup */}
+      <CameraDialog
+        open={isCameraDialogOpen}
+        onClose={() => setIsCameraDialogOpen(false)}
+        onCapture={handleSendCapture}
+      />
+
       <UserProfilePopup
         user={contact}
         currentUser={currentUser}
