@@ -5,6 +5,7 @@ export default function MapPreview({
   lat: number | undefined;
   lng: number | undefined;
 }) {
+
   if (lat === undefined || lng === undefined) {
     return (
       <div className="text-sm text-red-500">
@@ -22,11 +23,7 @@ export default function MapPreview({
         scrolling="no"
         marginHeight={0}
         marginWidth={0}
-        src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-          lng - 0.01
-        }%2C${lat - 0.01}%2C${lng + 0.01}%2C${
-          lat + 0.01
-        }&layer=mapnik&marker=${lat}%2C${lng}`}
+        src={`https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
         style={{ border: "1px solid #ccc" }}
       ></iframe>
     </div>
