@@ -14,7 +14,7 @@ export default function MapPreview({
   }
 
   return (
-    <div className="h-48 w-full rounded-md border overflow-hidden">
+    <div className="h-full w-full rounded-md border overflow-hidden">
       <iframe
         width="100%"
         height="100%"
@@ -22,11 +22,7 @@ export default function MapPreview({
         scrolling="no"
         marginHeight={0}
         marginWidth={0}
-        src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-          lng - 0.01
-        }%2C${lat - 0.01}%2C${lng + 0.01}%2C${
-          lat + 0.01
-        }&layer=mapnik&marker=${lat}%2C${lng}`}
+        src={`https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
         style={{ border: "1px solid #ccc" }}
       ></iframe>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 import {
   X,
   ChevronLeft,
@@ -10,6 +10,7 @@ import {
   Play,
   Volume2,
   VolumeX,
+  Users,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,11 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Story } from "@/types/story";
 import type { User } from "@/types/user";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDistanceToNow } from "date-fns";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -37,20 +43,115 @@ export function StoryViewer({
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMediaReady, setIsMediaReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
-  const storyDuration = 5000; // 5 seconds for images
+  const IMAGE_DURATION = 30000;
 
   const currentStory = stories[currentIndex];
   const storyUser = users[currentStory?.userId];
 
-  // Mark story as viewed
+  const [showViewers, setShowViewers] = useState(false);
+  const [viewersData, setViewersData] = useState<
+    Array<{
+      id: string;
+      displayName: string;
+      photoURL: string;
+      lastSeen: {
+        seconds: number;
+      };
+    }>
+  >([]);
+  const [viewersLoading, setViewersLoading] = useState(false);
+  const savedProgressRef = useRef(0);
+
+  useEffect(() => {
+    setProgress(0);
+    setIsLoading(true);
+    setIsMediaReady(false);
+
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+  }, [currentIndex]);
+
+  const fetchViewersData = async () => {
+    if (!currentStory) return;
+
+    setViewersLoading(true);
+    try {
+      const storiesDoc = await getDoc(doc(db, "stories", currentStory.id));
+
+      if (!storiesDoc.exists()) {
+        setViewersData([]);
+        return;
+      }
+
+      const filteredViewers = storiesDoc
+        .data()
+        .viewers.filter((viewerId: string) => viewerId !== currentStory.userId);
+
+      if (filteredViewers.length === 0) {
+        setViewersData([]);
+        return;
+      }
+
+      const viewersPromises = filteredViewers.map(async (viewerId: string) => {
+        const userDoc = await getDoc(doc(db, "users", viewerId));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          return {
+            id: viewerId,
+            displayName: userData.displayName || "Anonymous User",
+            photoURL: userData.photoURL || "",
+            lastSeen: userData.lastSeen || new Date().toISOString(),
+          };
+        }
+        return null;
+      });
+
+      const results = await Promise.all(viewersPromises);
+      setViewersData(
+        results.filter(Boolean) as {
+          id: string;
+          displayName: string;
+          photoURL: string;
+          lastSeen: {
+            seconds: number;
+          };
+        }[]
+      );
+    } catch (error) {
+      console.error("Error fetching viewers data:", error);
+    } finally {
+      setViewersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchViewersData();
+
+    if (showViewers) {
+      savedProgressRef.current = progress;
+      setIsPaused(true);
+      if (currentStory.mediaType === "video" && videoRef.current) {
+        videoRef.current.pause();
+      }
+    } else if (savedProgressRef.current > 0) {
+      setProgress(savedProgressRef.current);
+    }
+  }, [showViewers, currentUser, currentStory]);
+
+  const toggleViewers = () => {
+    setShowViewers(!showViewers);
+  };
+
   useEffect(() => {
     if (!currentStory || !currentUser) return;
 
     const markAsViewed = async () => {
       try {
-        // Only mark as viewed if the current user hasn't viewed it yet
         if (!currentStory.viewers.includes(currentUser.uid)) {
           await updateDoc(doc(db, "stories", currentStory.id), {
             viewers: arrayUnion(currentUser.uid),
@@ -64,32 +165,25 @@ export function StoryViewer({
     markAsViewed();
   }, [currentStory, currentUser, db]);
 
-  // Handle story progression
   useEffect(() => {
-    if (!currentStory || isPaused) return;
-    setIsLoading(true);
+    if (!currentStory || !isMediaReady || isPaused) return;
 
-    // Clear any existing interval
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
       progressInterval.current = null;
     }
 
-    setProgress(0);
-
     const duration =
-      currentStory.mediaType === "video"
-        ? (videoRef.current?.duration || 10) * 1000
-        : storyDuration;
+      currentStory.mediaType === "video" && videoRef.current
+        ? videoRef.current.duration * 1000
+        : IMAGE_DURATION;
 
-    // Start progress
     const interval = setInterval(() => {
       setProgress((prev) => {
         const newProgress = prev + 100 / (duration / 100);
 
         if (newProgress >= 100) {
           clearInterval(interval);
-          // Move to next story
           if (currentIndex < stories.length - 1) {
             setCurrentIndex(currentIndex + 1);
           } else {
@@ -109,7 +203,14 @@ export function StoryViewer({
         clearInterval(progressInterval.current);
       }
     };
-  }, [currentStory, isPaused, currentIndex, stories.length, onClose]);
+  }, [
+    currentStory,
+    isPaused,
+    currentIndex,
+    stories.length,
+    onClose,
+    isMediaReady,
+  ]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) {
@@ -145,6 +246,11 @@ export function StoryViewer({
     }
   };
 
+  const handleMediaLoaded = () => {
+    setIsLoading(false);
+    setIsMediaReady(true);
+  };
+
   const formatTimeAgo = (timestamp: string) => {
     const now = new Date();
     const storyTime = new Date(timestamp);
@@ -164,10 +270,15 @@ export function StoryViewer({
   };
 
   if (!currentStory) return null;
+  // console.log(
+  //   currentStory.viewers,
+  //   currentStory.id,
+  //   currentStory.userId,
+  //   viewersData
+  // );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-      {/* Close button */}
       <button
         className="absolute right-4 top-4 z-50 text-white"
         onClick={onClose}
@@ -175,7 +286,6 @@ export function StoryViewer({
         <X className="h-6 w-6" />
       </button>
 
-      {/* Story navigation */}
       <button
         className="absolute left-4 top-1/2 z-50 -translate-y-1/2 text-white"
         onClick={handlePrevious}
@@ -205,7 +315,9 @@ export function StoryViewer({
               style={{
                 width:
                   index === currentIndex
-                    ? `${progress}%`
+                    ? !isMediaReady
+                      ? "0%"
+                      : `${progress}%`
                     : index < currentIndex
                     ? "100%"
                     : "0%",
@@ -215,7 +327,6 @@ export function StoryViewer({
         ))}
       </div>
 
-      {/* User info */}
       <div className="absolute top-6 left-0 right-0 z-50 flex items-center gap-3 px-4">
         <UserAvatar
           user={storyUser}
@@ -251,14 +362,13 @@ export function StoryViewer({
         </div>
       </div>
 
-      {/* Story content */}
       <div className="relative h-full w-full max-w-md">
         {currentStory.mediaType === "image" ? (
           <img
             src={currentStory.mediaUrl || "/placeholder.svg"}
             alt="Story"
             className="h-full w-full object-contain"
-            onLoad={() => setIsLoading(false)}
+            onLoad={handleMediaLoaded}
           />
         ) : (
           <video
@@ -268,12 +378,11 @@ export function StoryViewer({
             autoPlay
             playsInline
             muted={isMuted}
-            onLoadedData={() => setIsLoading(false)}
+            onLoadedData={handleMediaLoaded}
             onEnded={handleNext}
           />
         )}
 
-        {/* Caption */}
         {currentStory.caption && (
           <div className="absolute bottom-20 left-0 right-0 p-4">
             <p className="text-center text-white text-shadow-sm">
@@ -282,7 +391,6 @@ export function StoryViewer({
           </div>
         )}
 
-        {/* Controls */}
         <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-4">
           <Button
             variant="ghost"
@@ -311,15 +419,94 @@ export function StoryViewer({
               )}
             </Button>
           )}
+
+          {viewersData &&
+            viewersData.length > 0 &&
+            currentStory.userId === currentUser?.uid && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full bg-black/30 text-white"
+                onClick={toggleViewers}
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            )}
         </div>
       </div>
 
-      {/* Loading indicator */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/50">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showViewers && (
+          <motion.div
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 500 }}
+            className="absolute bottom-0 left-0 right-0 z-50 bg-background/95 rounded-t-xl backdrop-blur-sm md:max-w-2xl max-w-full mx-auto"
+            style={{ height: "50vh" }}
+          >
+            <div className="flex items-center justify-between border-b p-4">
+              <h3 className="font-medium">Viewers</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowViewers(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <ScrollArea className="p-4" style={{ height: "calc(50vh - 60px)" }}>
+              {viewersLoading ? (
+                <div className="flex justify-center p-4">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+                </div>
+              ) : viewersData.length > 0 ? (
+                <div className="space-y-3">
+                  {viewersData.map((viewer) => (
+                    <Card
+                      key={viewer.id}
+                      className="p-3 flex items-center gap-3"
+                    >
+                      <Avatar>
+                        <AvatarImage
+                          src={viewer.photoURL}
+                          alt={viewer.displayName}
+                        />
+                        <AvatarFallback>
+                          {viewer.displayName.substring(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium">{viewer.displayName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Seen{" "}
+                          {formatDistanceToNow(
+                            new Date(viewer.lastSeen.seconds * 1000),
+                            {
+                              addSuffix: true,
+                            }
+                          )}
+                        </p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground p-4">
+                  No viewers data available
+                </p>
+              )}
+            </ScrollArea>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

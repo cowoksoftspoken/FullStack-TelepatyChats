@@ -855,7 +855,7 @@ export function ChatArea({
           <div className="mt-1 w-full">
             <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
             <a
-              href={`https://www.openstreetmap.org/?mlat=${msg.location?.lat}&mlon=${msg.location?.lng}#map=15/${msg.location?.lat}/${msg.location?.lng}`}
+              href={`https://www.google.com/maps/search/?api=1&query=${msg.location?.lat},${msg.location?.lng}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 text-sm hover:underline mt-2 inline-block"
