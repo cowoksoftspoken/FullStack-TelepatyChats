@@ -478,6 +478,7 @@ export function StoryViewer({
                         <AvatarImage
                           src={viewer.photoURL}
                           alt={viewer.displayName}
+                          className="object-cover"
                         />
                         <AvatarFallback>
                           {viewer.displayName.substring(0, 2).toUpperCase()}
