@@ -5,6 +5,7 @@ export default function MapPreview({
   lat: number | undefined;
   lng: number | undefined;
 }) {
+
   if (lat === undefined || lng === undefined) {
     return (
       <div className="text-sm text-red-500">

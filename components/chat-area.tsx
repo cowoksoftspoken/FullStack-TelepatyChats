@@ -1409,11 +1409,7 @@ export function ChatArea({
                   scrolling="no"
                   marginHeight={0}
                   marginWidth={0}
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${
-                    location.lng - 0.01
-                  }%2C${location.lat - 0.01}%2C${location.lng + 0.01}%2C${
-                    location.lat + 0.01
-                  }&layer=mapnik&marker=${location.lat}%2C${location.lng}`}
+                  src={`https://www.google.com/maps?q=${location.lat},${location.lng}&z=15&output=embed`}
                   style={{ border: "1px solid #ccc" }}
                 ></iframe>
               </div>
