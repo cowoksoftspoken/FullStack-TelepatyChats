@@ -276,7 +276,6 @@ export function Sidebar({
     if (!contactToDelete) return;
 
     try {
-      // Get the contact document ID (the relationship between current user and contact)
       const contactsQuery = query(
         collection(db, "contacts"),
         where("userId", "==", user.uid),
@@ -291,7 +290,6 @@ export function Sidebar({
 
       const contactDocId = contactSnapshot.docs[0].id;
 
-      // Get the reverse contact document ID (the relationship between contact and current user)
       const reverseContactQuery = query(
         collection(db, "contacts"),
         where("userId", "==", contactToDelete),
@@ -299,18 +297,14 @@ export function Sidebar({
       );
       const reverseContactSnapshot = await getDocs(reverseContactQuery);
 
-      // Start a batch write to ensure all operations succeed or fail together
       const batch = writeBatch(db);
 
-      // Delete the contact relationship from current user side
       batch.delete(doc(db, "contacts", contactDocId));
 
-      // Delete the reverse contact relationship if it exists
       if (!reverseContactSnapshot.empty) {
         batch.delete(doc(db, "contacts", reverseContactSnapshot.docs[0].id));
       }
 
-      // Get all chat messages between the users
       const messagesQuery = query(
         collection(db, "messages"),
         where("participants", "array-contains", user.uid),
@@ -320,32 +314,25 @@ export function Sidebar({
 
       const messagesSnapshot = await getDocs(messagesQuery);
 
-      // Delete all messages and their associated files
       for (const messageDoc of messagesSnapshot.docs) {
         const messageData = messageDoc.data();
 
-        // If message has attachments, delete them from storage
         if (messageData.attachments && messageData.attachments.length > 0) {
           for (const attachment of messageData.attachments) {
-            // Delete the file from Firebase Storage
             const fileRef = storageRef(storage, attachment.path);
             try {
               await deleteStorageObject(fileRef);
             } catch (error) {
               console.error("Error deleting file:", error);
-              // Continue with other deletions even if one fails
             }
           }
         }
 
-        // Delete the message document
         batch.delete(doc(db, "messages", messageDoc.id));
       }
 
-      // Commit all the batch operations
       await batch.commit();
 
-      // If the deleted contact was selected, clear the selection
       if (selectedContact?.uid === contactToDelete) {
         setSelectedContact(null);
         setIsChatActive(false);
@@ -353,12 +340,10 @@ export function Sidebar({
 
       console.log("Contact and all associated data deleted successfully");
 
-      // Close the dialog and reset the contact to delete
       setDeleteDialogOpen(false);
       setContactToDelete(null);
     } catch (error) {
       console.error("Error deleting contact:", error);
-      // Close the dialog even if there's an error
       setDeleteDialogOpen(false);
       setContactToDelete(null);
     }
@@ -373,7 +358,6 @@ export function Sidebar({
 
   const handleSignOut = async () => {
     try {
-      // Update user status to offline
       if (user?.uid) {
         await updateDoc(doc(db, "users", user.uid), {
           online: false,
@@ -386,7 +370,6 @@ export function Sidebar({
     }
   };
 
-  // Filter contacts to only show added contacts
   const filteredContacts = contacts.filter(
     (contact) =>
       userContacts.includes(contact.uid) &&

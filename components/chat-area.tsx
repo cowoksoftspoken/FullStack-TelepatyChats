@@ -915,6 +915,7 @@ export function ChatArea({
     }
   };
 
+
   return (
     <div className="flex flex-1 flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b dark:bg-[#1c1c1d]">

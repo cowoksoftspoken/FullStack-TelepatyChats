@@ -65,37 +65,101 @@ export default function DashboardPage() {
     }
   }, [authLoading, currentUser, router]);
 
+  // useEffect(() => {
+  //   if (!currentUser) return;
+
+  //   const updateOnlineStatus = async () => {
+  //     try {
+  //       await updateDoc(doc(db, "users", currentUser.uid), {
+  //         online: true,
+  //       });
+  //     } catch (error) {
+  //       console.error("Error updating online status:", error);
+  //     }
+  //   };
+
+  //   updateOnlineStatus();
+
+  //   const handleBeforeUnload = async () => {
+  //     try {
+  //       await updateDoc(doc(db, "users", currentUser.uid), {
+  //         online: false,
+  //         lastSeen: serverTimestamp(),
+  //       });
+  //     } catch (error) {
+  //       console.error("Error updating offline status:", error);
+  //     }
+  //   };
+
+  //   window.addEventListener("beforeunload", handleBeforeUnload);
+
+  //   return () => {
+  //     window.removeEventListener("beforeunload", handleBeforeUnload);
+  //     handleBeforeUnload();
+  //   };
+  // }, [currentUser, db]);
+
   useEffect(() => {
     if (!currentUser) return;
 
-    const updateOnlineStatus = async () => {
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const setOnline = async () => {
       try {
-        await updateDoc(doc(db, "users", currentUser.uid), {
+        await updateDoc(userRef, {
           online: true,
         });
       } catch (error) {
-        console.error("Error updating online status:", error);
+        console.error("Error setting online:", error);
       }
     };
 
-    updateOnlineStatus();
-
-    const handleBeforeUnload = async () => {
+    const setOffline = async () => {
       try {
-        await updateDoc(doc(db, "users", currentUser.uid), {
+        await updateDoc(userRef, {
           online: false,
           lastSeen: serverTimestamp(),
         });
       } catch (error) {
-        console.error("Error updating offline status:", error);
+        console.error("Error setting offline:", error);
       }
     };
 
+    const handleBeforeUnload = () => {
+      setOffline();
+    };
+
+    const handleBlur = () => {
+      setOffline();
+    };
+
+    const handleFocus = () => {
+      setOnline();
+    };
+
+    const handleOffline = () => {
+      setOffline();
+    };
+
+    const handleOnline = () => {
+      setOnline();
+    };
+
+    setOnline();
+
     window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      handleBeforeUnload();
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+      setOffline();
     };
   }, [currentUser, db]);
 
