@@ -289,13 +289,46 @@ const handleShareLocation = async () => {
 
   setIsGettingLocation(true);
 
-  const getLocation = (): Promise<GeolocationPosition> => {
-    return new Promise((resolve, reject) => {
+  try {
+    await new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          resolve(position);
+          const accuracy = position.coords.accuracy;
+          setAccuracy(accuracy);
+
+          if (accuracy <= 20) {
+            // Akurasi sangat baik, langsung lanjut
+            setLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            setIsLocationDialogOpen(true);
+            resolve(position);
+          } else {
+            // Akurasi lebih dari 20m, tetap lanjut tapi kasih warning
+            setLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+            });
+            setIsLocationDialogOpen(true);
+
+            toast({
+              variant: accuracy <= 80 ? "default" : "destructive", // Red warning jika accuracy > 80
+              title: accuracy <= 80 ? "Location might be a bit off" : "Location accuracy too low",
+              description: `Current accuracy: ${accuracy}m. You can still share the location, but it might not be precise.`,
+            });
+
+            resolve(position);
+          }
         },
         (error) => {
+          console.error("Error getting location:", error);
+          toast({
+            variant: "destructive",
+            title: "Location access denied",
+            description:
+              "Could not access your location. Please check your permissions.",
+          });
           reject(error);
         },
         {
@@ -305,65 +338,13 @@ const handleShareLocation = async () => {
         }
       );
     });
-  };
-
-  try {
-    let attempts = 0;
-    let position: GeolocationPosition | null = null;
-    let accuracy = Infinity;
-
-    while (attempts < 3) {
-      try {
-        const pos = await getLocation();
-        accuracy = pos.coords.accuracy;
-        console.log(`Attempt ${attempts + 1} - Accuracy: ${accuracy}m`);
-
-        if (accuracy <= 80) {
-          position = pos;
-          break;
-        }
-
-        attempts++;
-      } catch (err) {
-        console.error("Error while trying to get location:", err);
-        break;
-      }
-    }
-
-    if (position) {
-      setAccuracy(accuracy);
-      setLocation({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      });
-      setIsLocationDialogOpen(true);
-
-      if (accuracy > 20 && accuracy <= 80) {
-        toast({
-          variant: "warning",
-          title: "Location not super accurate",
-          description: `Accuracy is around ${accuracy}m, so it might be a bit off.`,
-        });
-      }
-    } else {
-      toast({
-        variant: "default",
-        title: "Location too inaccurate",
-        description: `Couldn't get precise location (accuracy: ${accuracy}m). Try again later or move to an open area.`,
-      });
-    }
   } catch (error) {
-    console.error("Final error:", error);
-    toast({
-      variant: "destructive",
-      title: "Failed to get location",
-      description:
-        "Could not access your location. Please check your settings.",
-    });
+    console.log("Error:", error);
   } finally {
     setIsGettingLocation(false);
   }
 };
+
 
   const sendLocationMessage = async () => {
     if (!location || !currentUser || !contact) return;
