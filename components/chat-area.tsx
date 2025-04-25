@@ -308,7 +308,7 @@ export function ChatArea({
               toast({
                 variant: "default",
                 title: "Location accuracy still off",
-                description: `Current accuracy: ${accuracy}m. We're retrying to get a more accurate location. Please wait...`,
+                description: `Current accuracy: ${accuracy}m. Please Try Again...`,
               });
               console.log(accuracy);
               reject("Accuracy not good enough, retrying...");
@@ -333,14 +333,6 @@ export function ChatArea({
       });
     } catch (error) {
       console.log("Error:", error);
-      if (error === "Accuracy not good enough, retrying...") {
-        toast({
-          variant: "destructive",
-          title: "Timeout reached",
-          description:
-            "We couldn't get an accurate location. Please try again later.",
-        });
-      }
     } finally {
       setIsGettingLocation(false);
     }
