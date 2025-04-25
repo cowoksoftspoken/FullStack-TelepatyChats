@@ -23,6 +23,7 @@ import {
   File,
   FileText,
   Film,
+  Globe,
   Image,
   Loader2,
   MapPin,
@@ -76,6 +77,7 @@ import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { YoutubeEmbed } from "./yt-embed";
+import { resolve } from "path";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -110,6 +112,7 @@ export function ChatArea({
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const { toast } = useToast();
+  const [accuracy, setAccuracy] = useState(0);
 
   // Media preview state
   const [previewFile, setPreviewFile] = useState<{
@@ -285,30 +288,59 @@ export function ChatArea({
     }
 
     setIsGettingLocation(true);
-    try {
-      const position = await new Promise<GeolocationPosition>(
-        (resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 5000,
-            maximumAge: 0,
-          });
-        }
-      );
 
-      setLocation({
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
+    try {
+      await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const accuracy = position.coords.accuracy;
+
+            setAccuracy(accuracy);
+
+            if (accuracy <= 20 || accuracy <= 80) {
+              setLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              });
+              setIsLocationDialogOpen(true);
+              resolve(position);
+            } else {
+              toast({
+                variant: "default",
+                title: "Location accuracy still off",
+                description: `Current accuracy: ${accuracy}m. We're retrying to get a more accurate location. Please wait...`,
+              });
+              console.log(accuracy);
+              reject("Accuracy not good enough, retrying...");
+            }
+          },
+          (error) => {
+            console.error("Error getting location:", error);
+            toast({
+              variant: "destructive",
+              title: "Location access denied",
+              description:
+                "Could not access your location. Please check your permissions.",
+            });
+            reject(error);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
       });
-      setIsLocationDialogOpen(true);
     } catch (error) {
-      console.error("Error getting location:", error);
-      toast({
-        variant: "destructive",
-        title: "Location access denied",
-        description:
-          "Could not access your location. Please check your permissions.",
-      });
+      console.log("Error:", error);
+      if (error === "Accuracy not good enough, retrying...") {
+        toast({
+          variant: "destructive",
+          title: "Timeout reached",
+          description:
+            "We couldn't get an accurate location. Please try again later.",
+        });
+      }
     } finally {
       setIsGettingLocation(false);
     }
@@ -328,6 +360,7 @@ export function ChatArea({
         timestamp: new Date().toISOString(),
         isSeen: false,
         type: "location",
+        accuracy,
         location: {
           lat: location.lat,
           lng: location.lng,
@@ -855,14 +888,20 @@ export function ChatArea({
           <div className="mt-1 w-full">
             <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
             <a
-              href={`https://www.google.com/maps/search/?api=1&query=${msg.location?.lat},${msg.location?.lng}`}
+              href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-500 text-sm hover:underline mt-2 inline-block"
+              className="text-blue-500 text-sm hover:underline mt-2 flex items-center"
             >
-              (View Location Details)
+              <Globe className="mr-2 h-4 w-4" /> Location Details
             </a>
-            {msg.text && <p className="mt-1 text-sm">{msg.text}</p>}
+            {msg.accuracy && (
+              <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
+                <MapPin className="h-4 w-4  mr-2" />
+                Accuracy {msg.accuracy}m
+              </p>
+            )}
+            {msg.text && <p className="mt-4 text-sm">{msg.text}</p>}
           </div>
         );
       case "audio":
@@ -914,7 +953,6 @@ export function ChatArea({
         );
     }
   };
-
 
   return (
     <div className="flex flex-1 flex-col h-full">
@@ -1416,6 +1454,10 @@ export function ChatArea({
               </div>
             )}
           </div>
+          <p className="w-full break-words space-y-1 text-base flex items-center text-muted-foreground">
+            <MapPin className="mr-2 h-5 w-5 text-muted-foreground" />{" "}
+            {`Accurate ${accuracy} meters`}
+          </p>
 
           <div className="space-y-2">
             <Label htmlFor="caption">Caption (optional)</Label>

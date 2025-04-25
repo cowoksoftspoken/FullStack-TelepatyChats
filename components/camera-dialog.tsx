@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +28,20 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
   const [hasCameraPermission, setHasCameraPermission] = useState<
     boolean | null
   >(null);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDevices = async () => {
+      const deviceInfos = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = deviceInfos.filter(
+        (device) => device.kind === "videoinput"
+      );
+      setDevices(videoDevices);
+    };
+
+    fetchDevices();
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -41,23 +53,28 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
     }
   }, [open]);
 
-  const startCamera = async () => {
+  const startCamera = async (deviceId: string | null = null) => {
     try {
       if (stream) {
         stopCamera();
       }
 
       const facingMode = isFrontCamera ? "user" : "environment";
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-      });
+      const constraints = {
+        video: {
+          facingMode,
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+        },
+      };
 
+      const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(newStream);
       setHasCameraPermission(true);
 
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
+      setCurrentDeviceId(deviceId || null);
     } catch (error) {
       console.error("Error accessing camera:", error);
       setHasCameraPermission(false);
@@ -77,6 +94,13 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
 
   const switchCamera = () => {
     setIsFrontCamera(!isFrontCamera);
+
+    const nextDevice = devices.find(
+      (device) => device.deviceId !== currentDeviceId
+    );
+    if (nextDevice) {
+      startCamera(nextDevice.deviceId);
+    }
   };
 
   const captureImage = () => {
@@ -152,7 +176,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
               />
             </div>
           ) : (
-            <div className="relative w-full aspect-video max-h-72 rounded-md overflow-hidden border">
+            <div className="relative w-full h-72 rounded-md overflow-hidden border">
               <video
                 ref={videoRef}
                 autoPlay
@@ -165,7 +189,9 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
           )}
 
           <canvas ref={canvasRef} className="hidden" />
-
+          {devices[0]?.label && (
+            <p className="mt-2 text-sm">{devices[0].label}</p>
+          )}
           {!capturedImage && stream && (
             <div className="flex justify-center gap-4 mt-4">
               <Button

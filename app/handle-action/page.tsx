@@ -19,12 +19,12 @@ export default function HandleActionPage() {
     switch (mode) {
       case "resetPassword":
         router.push(
-          `/reset-password?oobCode=${oobCode}&mode=${mode}&requestDate=${Date.now().toLocaleString()}`
+          `/reset-password?oobCode=${oobCode}&mode=${mode}&requestDate=${Date.now()}`
         );
         break;
       case "verifyEmail":
         router.push(
-          `/verify-email?oobCode=${oobCode}&mode=${mode}&requestDate=${Date.now().toLocaleString()}`
+          `/verify-email?oobCode=${oobCode}&mode=${mode}&requestDate=${Date.now()}`
         );
         break;
     }

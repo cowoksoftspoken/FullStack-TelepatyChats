@@ -5,7 +5,6 @@ export default function MapPreview({
   lat: number | undefined;
   lng: number | undefined;
 }) {
-
   if (lat === undefined || lng === undefined) {
     return (
       <div className="text-sm text-red-500">
@@ -15,7 +14,7 @@ export default function MapPreview({
   }
 
   return (
-    <div className="h-full w-full rounded-md border overflow-hidden">
+    <div className="h-60 w-full rounded-md border overflow-hidden">
       <iframe
         width="100%"
         height="100%"

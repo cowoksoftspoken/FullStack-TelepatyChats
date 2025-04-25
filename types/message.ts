@@ -9,6 +9,7 @@ export interface Message {
   type?: "text" | "image" | "video" | "audio" | "file" | "location";
   fileURL?: string;
   fileName?: string;
+  accuracy: number;
   location?: {
     lat: number;
     lng: number;
