@@ -259,6 +259,17 @@ export default function RegisterPage() {
             </div>
           </CardFooter>
         </form>
+        <div className="text-balance text-sm px-4 pb-4 text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary text-center">
+          By clicking continue, you agree to our{" "}
+          <a href="/terms-and-conditions" className="text-xs">
+            Terms of Conditions
+          </a>{" "}
+          and{" "}
+          <a href="/privacy-policy" className="text-xs">
+            Privacy Policy
+          </a>
+          .
+        </div>
       </Card>
     </div>
   );

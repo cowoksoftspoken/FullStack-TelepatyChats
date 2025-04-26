@@ -294,10 +294,9 @@ export function ChatArea({
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const accuracy = position.coords.accuracy;
-
             setAccuracy(accuracy);
 
-            if (accuracy <= 20 || accuracy <= 80) {
+            if (accuracy <= 20) {
               setLocation({
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
@@ -305,13 +304,22 @@ export function ChatArea({
               setIsLocationDialogOpen(true);
               resolve(position);
             } else {
-              toast({
-                variant: "default",
-                title: "Location accuracy still off",
-                description: `Current accuracy: ${accuracy}m. We're retrying to get a more accurate location. Please wait...`,
+              setLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
               });
-              console.log(accuracy);
-              reject("Accuracy not good enough, retrying...");
+              setIsLocationDialogOpen(true);
+
+              toast({
+                variant: accuracy <= 80 ? "default" : "destructive",
+                title:
+                  accuracy <= 80
+                    ? "Location might be a bit off"
+                    : "Location accuracy too low",
+                description: `Current accuracy: ${accuracy}m. You can still share the location, but it might not be precise.`,
+              });
+
+              resolve(position);
             }
           },
           (error) => {
@@ -333,14 +341,6 @@ export function ChatArea({
       });
     } catch (error) {
       console.log("Error:", error);
-      if (error === "Accuracy not good enough, retrying...") {
-        toast({
-          variant: "destructive",
-          title: "Timeout reached",
-          description:
-            "We couldn't get an accurate location. Please try again later.",
-        });
-      }
     } finally {
       setIsGettingLocation(false);
     }
@@ -1286,9 +1286,7 @@ export function ChatArea({
             value={message}
             onChange={(e) => handleInputChange(e)}
             placeholder={
-              isBlocked
-                ? "You cannot send messages to this user"
-                : "Type a message..."
+              isBlocked ? "You cannot send messages to this user" : "Message..."
             }
             className="flex-1 rounded-full dark:bg-[#000000]/30"
             disabled={isBlocked}
@@ -1353,18 +1351,25 @@ export function ChatArea({
 
             {previewFile?.type === "video" && (
               <div className="flex justify-center">
-                <video
+                {/* <video
                   src={previewFile.preview}
                   controls
                   className="max-h-60 max-w-full rounded-md"
-                />
+                /> */}
+                <VideoPlayer fileURL={previewFile.preview} />
               </div>
             )}
 
             {previewFile?.type === "audio" && (
               <div className="flex justify-center flex-col items-center gap-2 p-4 border rounded-md">
-                <Music className="h-8 w-8 text-muted-foreground" />
-                <div className="text-center">
+                {/* <Music className="h-8 w-8 text-muted-foreground" /> */}
+                <AudioMessage
+                  src={previewFile.preview}
+                  duration={previewFile.duration}
+                  fileName={previewFile.file.name}
+                  className="w-full h-full"
+                />
+                {/* <div className="text-center">
                   <p className="font-medium">{previewFile.file.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {previewFile.file.size < 1024 * 1024
@@ -1373,17 +1378,17 @@ export function ChatArea({
                           2
                         )} MB`}
                   </p>
-                </div>
-                <audio
+                </div> */}
+                {/* <audio
                   src={previewFile.preview}
                   controls
                   className="w-full mt-2"
-                />
-                {previewFile.duration && (
+                /> */}
+                {/* {previewFile.duration && (
                   <p className="text-xs text-muted-foreground">
                     Duration: {formatTime(previewFile.duration)}
                   </p>
-                )}
+                )} */}
               </div>
             )}
 
@@ -1454,9 +1459,8 @@ export function ChatArea({
               </div>
             )}
           </div>
-          <p className="w-full break-words space-y-1 text-base flex items-center text-muted-foreground">
-            <MapPin className="mr-2 h-5 w-5 text-muted-foreground" />{" "}
-            {`Accurate ${accuracy} meters`}
+          <p className="w-full break-words space-y-1 text-indigo-400 text-base flex items-center">
+            <MapPin className="mr-2 h-5 w-5" /> {`Accuracy ${accuracy} meters`}
           </p>
 
           <div className="space-y-2">

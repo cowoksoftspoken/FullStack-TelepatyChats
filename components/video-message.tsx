@@ -155,7 +155,7 @@ export default function VideoPlayer({ fileURL }: { fileURL: string }) {
   }, []);
 
   return (
-    <div className="max-w-full h-full object-cover bg-gray-900 flex items-center justify-center">
+    <div className="max-w-full h-full rounded-xl object-cover bg-gray-900 flex items-center justify-center">
       <div
         ref={videoContainerRef}
         className={`max-w-4xl w-full bg-black rounded-xl overflow-hidden shadow-2xl ${

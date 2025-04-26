@@ -32,10 +32,6 @@ export default function ResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    // if (!oobCode) {
-    //   setError("Invalid Link");
-    //   setLoading(false);
-    //   return;
     if (!auth) {
       setError("Authentication service is initializing. Please try again.");
       setLoading(false);
@@ -91,16 +87,14 @@ export default function ResetPasswordPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Reset Password</CardTitle>
           <CardDescription>
-            {error ? (
-              <span className="text-red-500">{error}</span>
-            ) : (
-              `Reset password for ${email}`
-            )}
+            {!error ? `Reset password for ${email}` : ""}
           </CardDescription>
         </CardHeader>
 
         <CardContent>
-          {success ? (
+          {error && !success ? (
+            <p className="text-red-500 text-sm mb-4">{error}</p>
+          ) : success ? (
             <p className="text-green-500 text-sm mb-4">{success}</p>
           ) : (
             <>
