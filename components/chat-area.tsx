@@ -294,10 +294,9 @@ export function ChatArea({
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const accuracy = position.coords.accuracy;
-
             setAccuracy(accuracy);
 
-            if (accuracy <= 20 || accuracy <= 80) {
+            if (accuracy <= 20) {
               setLocation({
                 lat: position.coords.latitude,
                 lng: position.coords.longitude,
@@ -305,13 +304,22 @@ export function ChatArea({
               setIsLocationDialogOpen(true);
               resolve(position);
             } else {
-              toast({
-                variant: "default",
-                title: "Location accuracy still off",
-                description: `Current accuracy: ${accuracy}m. We're retrying to get a more accurate location. Please wait...`,
+              setLocation({
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
               });
-              console.log(accuracy);
-              reject("Accuracy not good enough, retrying...");
+              setIsLocationDialogOpen(true);
+
+              toast({
+                variant: accuracy <= 80 ? "default" : "destructive",
+                title:
+                  accuracy <= 80
+                    ? "Location might be a bit off"
+                    : "Location accuracy too low",
+                description: `Current accuracy: ${accuracy}m. You can still share the location, but it might not be precise.`,
+              });
+
+              resolve(position);
             }
           },
           (error) => {
@@ -333,14 +341,6 @@ export function ChatArea({
       });
     } catch (error) {
       console.log("Error:", error);
-      if (error === "Accuracy not good enough, retrying...") {
-        toast({
-          variant: "destructive",
-          title: "Timeout reached",
-          description:
-            "We couldn't get an accurate location. Please try again later.",
-        });
-      }
     } finally {
       setIsGettingLocation(false);
     }
