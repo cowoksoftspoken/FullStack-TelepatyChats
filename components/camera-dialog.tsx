@@ -30,39 +30,14 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
   >(null);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [currentDeviceId, setCurrentDeviceId] = useState<string | null>(null);
-  const [currentDeviceLabel, setCurrentDeviceLabel] = useState<string>("");
 
   useEffect(() => {
     const fetchDevices = async () => {
-      try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
-        tempStream.getTracks().forEach((track) => track.stop());
-
-        const deviceInfos = await navigator.mediaDevices.enumerateDevices();
-        const videoDevices = deviceInfos.filter(
-          (device) => device.kind === "videoinput"
-        );
-        setDevices(videoDevices);
-
-        if (videoDevices.length > 0) {
-          const frontCamera = videoDevices.find(
-            (device) =>
-              device.label.toLowerCase().includes("front") ||
-              device.label.toLowerCase().includes("user") ||
-              device.label.toLowerCase().includes("selfie")
-          );
-
-          const defaultCamera = frontCamera || videoDevices[0];
-          setCurrentDeviceId(defaultCamera.deviceId);
-          setCurrentDeviceLabel(defaultCamera.label);
-          setIsFrontCamera(!!frontCamera || true);
-        }
-      } catch (error) {
-        console.error("Error enumerating devices:", error);
-        setHasCameraPermission(false);
-      }
+      const deviceInfos = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = deviceInfos.filter(
+        (device) => device.kind === "videoinput"
+      );
+      setDevices(videoDevices);
     };
 
     fetchDevices();
@@ -78,54 +53,36 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
     }
   }, [open]);
 
-  const startCamera = async () => {
+  const startCamera = async (deviceId: string | null = null) => {
     try {
       if (stream) {
         stopCamera();
       }
 
-      let constraints;
-
-      if (currentDeviceId) {
-        constraints = {
-          video: { deviceId: { exact: currentDeviceId } },
-        };
-      } else {
-        constraints = {
-          video: { facingMode: isFrontCamera ? "user" : "environment" },
-        };
-      }
+      const facingMode = isFrontCamera ? "user" : "environment";
+      const constraints = {
+        video: {
+          facingMode,
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+        },
+      };
 
       const newStream = await navigator.mediaDevices.getUserMedia(constraints);
       setStream(newStream);
       setHasCameraPermission(true);
 
       if (videoRef.current) {
+        videoRef.current.srcObject = null;
         videoRef.current.srcObject = newStream;
       }
-
-      const tracks = newStream.getVideoTracks();
-      if (tracks.length > 0) {
-        const settings = tracks[0].getSettings();
-        if (settings.deviceId) {
-          setCurrentDeviceId(settings.deviceId);
-
-          const deviceInfos = await navigator.mediaDevices.enumerateDevices();
-          const device = deviceInfos.find(
-            (d) => d.deviceId === settings.deviceId
-          );
-          if (device) {
-            setCurrentDeviceLabel(device.label);
-          }
-        }
-      }
+      setCurrentDeviceId(deviceId || null);
     } catch (error) {
       console.error("Error accessing camera:", error);
       setHasCameraPermission(false);
     }
   };
 
-  const stopCamera = async () => {
+  const stopCamera = () => {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
@@ -136,32 +93,15 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
     }
   };
 
-  const switchCamera = async () => {
-    if (devices.length <= 1) {
-      setIsFrontCamera(!isFrontCamera);
-      await stopCamera();
-      startCamera();
-      return;
+  const switchCamera = () => {
+    setIsFrontCamera((prev) => !prev);
+
+    const nextDevice = devices.find(
+      (device) => device.deviceId !== currentDeviceId
+    );
+    if (nextDevice) {
+      startCamera(nextDevice.deviceId);
     }
-
-    const currentIndex = devices.findIndex(
-      (d) => d.deviceId === currentDeviceId
-    );
-    const nextIndex = (currentIndex + 1) % devices.length;
-    const nextDevice = devices[nextIndex];
-
-    setCurrentDeviceId(nextDevice.deviceId);
-    setCurrentDeviceLabel(nextDevice.label);
-    setIsFrontCamera(
-      nextDevice.label.toLowerCase().includes("front") ||
-        nextDevice.label.toLowerCase().includes("user") ||
-        nextDevice.label.toLowerCase().includes("selfie")
-    );
-
-    await stopCamera();
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    startCamera();
   };
 
   const captureImage = () => {
@@ -237,7 +177,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
               />
             </div>
           ) : (
-            <div className="relative w-full h-80 rounded-md overflow-hidden border">
+            <div className="relative w-full h-72 rounded-md overflow-hidden border">
               <video
                 ref={videoRef}
                 autoPlay
@@ -250,17 +190,20 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
           )}
 
           <canvas ref={canvasRef} className="hidden" />
-          {currentDeviceLabel && (
-            <p className="mt-2 text-sm text-center">{currentDeviceLabel}</p>
+          {currentDeviceId && (
+            <p className="mt-2 text-sm">
+              {devices.find((d) => d.deviceId === currentDeviceId)?.label ||
+                "Unknown Camera"}
+            </p>
           )}
+
           {!capturedImage && stream && (
             <div className="flex justify-center gap-4 mt-4">
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-full h-12 w-12 disabled:opacity-50 disabled:cursor-not-allowed hover:animate-spin"
+                className="rounded-full h-12 w-12"
                 onClick={switchCamera}
-                disabled={devices.length <= 1}
               >
                 <RefreshCw className="h-5 w-5" />
               </Button>
