@@ -125,7 +125,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
     }
   };
 
-  const stopCamera = () => {
+  const stopCamera = async () => {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
       setStream(null);
@@ -157,7 +157,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
         nextDevice.label.toLowerCase().includes("selfie")
     );
 
-    stopCamera();
+    await stopCamera();
     setTimeout(() => startCamera(), 100);
   };
 
