@@ -33,22 +33,20 @@ export default function PrivacyPolicyPage() {
           <div className="prose prose-gray max-w-none dark:prose-invert">
             <h2>Interpretation and Definitions</h2>
             <p>
-              The words of which the initial letter is capitalized have meanings
-              defined under the following conditions. The following definitions
-              shall have the same meaning regardless of whether they appear in
-              singular or in plural.
+              The words with an initial capital letter have meanings defined
+              under the following conditions. These definitions have the same
+              meaning whether they appear in singular or plural.
             </p>
             <h3>For the purposes of this Privacy Policy:</h3>
             <ul>
               <li>
                 <strong>You</strong> means the individual accessing or using the
-                Service, or other legal entity on behalf of which such
-                individual is accessing or using the Service, as applicable.
+                Service, or the legal entity on behalf of which such individual
+                is accessing or using the Service, as applicable.
               </li>
               <li>
-                <strong>Developer</strong> (referred to as either "the
-                Developer", "I", "Me" or "My" in this Agreement) refers to ISB
-                Developer.
+                <strong>Developer</strong> (referred to as "Developer", "I",
+                "me", or "my" in this Agreement) refers to ISB Developer.
               </li>
               <li>
                 <strong>Personal Data</strong> means any information that
@@ -59,11 +57,13 @@ export default function PrivacyPolicyPage() {
                 using the Service.
               </li>
             </ul>
+
             <h2>Collecting and Using Your Personal Data</h2>
             <h3>Types of Data Collected</h3>
+
             <h4>Personal Data</h4>
             <p>
-              While using the Service, I may ask you to provide Me with certain
+              While using the Service, I may ask you to provide certain
               personally identifiable information that can be used to contact or
               identify you. Personally identifiable information may include, but
               is not limited to:
@@ -71,73 +71,79 @@ export default function PrivacyPolicyPage() {
             <ul>
               <li>Email address</li>
               <li>Photo profile</li>
-              <li>Your protected and encrypted chat data</li>
-              <li>DisplayName</li>
-              <li>Last seen, Typing status, Online status, etc</li>
+              <li>Encrypted chat data</li>
+              <li>Display Name</li>
+              <li>Last seen, typing status, online status, etc.</li>
             </ul>
+
             <h4>Usage Data</h4>
             <p>
-              Usage Data is collected automatically when You interact with the
-              Service, such as when You log in or engage in chats.
+              Usage Data is collected automatically when you interact with the
+              Service, such as logging in or engaging in chats.
             </p>
+
             <h3>Use of Your Personal Data</h3>
-            <p>
-              The Developer may use Personal Data for the following purposes:
-            </p>
+            <p>I may use your Personal Data for the following purposes:</p>
             <ul>
               <li>
-                <strong>To Improve Our Service:</strong> The information we
+                <strong>To Improve My Service:</strong> The information I
                 collect is used to analyze and understand how the Service is
-                used, allowing us to continuously improve its features,
-                functionality, and user experience. The use of this data is
-                limited to the purpose of enhancing the Service.
+                used, allowing me to continuously improve its features,
+                functionality, and user experience.
               </li>
               <li>
-                <strong>For Service Providers:</strong> The information we
-                collect is shared with third-party service providers to help
-                improve and optimize the Service.
+                <strong>For Service Providers:</strong> I may share information
+                with trusted third-party service providers to help enhance and
+                optimize the Service.
               </li>
             </ul>
+
             <h2>Ownership and Sharing of Your Information</h2>
             <p>
-              We want to emphasize that your personal information is rightfully
-              yours. We do not share your personal information with any third
-              parties.
+              Your personal information remains fully yours. I do not share your
+              personal information with any third parties.
             </p>
+
             <h2>Retention of Your Personal Data</h2>
             <p>
-              Your personal information is securely stored within our cloud and
-              database.
+              Your personal information is securely stored within my cloud
+              storage and database systems.
             </p>
+
             <h2>Security of Your Personal Data</h2>
             <p>
-              The security of your data is Our priority. We implement
-              multi-layered security measures, including end-to-end encryption
-              and Base64, to protect your information from unauthorized access.
+              Protecting your data is my top priority. I implement multi-layered
+              security measures, including end-to-end encryption and Base64
+              encoding, to safeguard your information against unauthorized
+              access.
             </p>
+
             <h2>Access to and Updating Your Personal Data</h2>
             <p>
               You have the ability to access and update your personal data
-              through the user interface (UI/UX) of the application that We have
-              provided.
+              directly through the application's user interface.
             </p>
-            <h2>Children's Privacy Policy</h2>
+
+            <h2>Children's Privacy</h2>
             <p>
-              Our Service is not intended for users under the age of 13. We do
-              not knowingly collect personally identifiable information from
-              children under the age of 13. Users of the Service are expected to
-              be 13 years of age or older.
+              My Service is not intended for users under the age of 13. I do not
+              knowingly collect personally identifiable information from anyone
+              under 13 years old. If you are a parent or guardian and you are
+              aware that your child has provided me with Personal Data, please
+              contact me.
             </p>
+
             <h2>Notification of Changes to this Privacy Policy</h2>
             <p>
-              Any significant changes to this Privacy Policy will be notified to
-              You through a pop-up notification within the application and via
-              the email address registered to your account.
+              Any significant changes to this Privacy Policy will be
+              communicated to you through a notification within the application
+              and via the email address linked to your account.
             </p>
-            <h2>Contact Us</h2>
+
+            <h2>Contact Me</h2>
             <p>
               If you have any questions or concerns regarding this Privacy
-              Policy, you can contact us via email:{" "}
+              Policy, you can contact me at:{" "}
               <a href="mailto:dbgaming679@gmail.com" className="text-blue-500">
                 Contact Developer
               </a>
