@@ -139,6 +139,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
   const switchCamera = async () => {
     if (devices.length <= 1) {
       setIsFrontCamera(!isFrontCamera);
+      await stopCamera();
       startCamera();
       return;
     }
@@ -158,7 +159,9 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
     );
 
     await stopCamera();
-    setTimeout(() => startCamera(), 100);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    startCamera();
   };
 
   const captureImage = () => {
