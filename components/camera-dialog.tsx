@@ -51,7 +51,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
         stopCamera();
       }
 
-      const constraints = {
+      const constraints: MediaStreamConstraints = {
         video: {
           facingMode: isFrontCamera ? "user" : "environment",
         },

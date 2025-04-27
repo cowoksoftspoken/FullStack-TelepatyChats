@@ -190,30 +190,16 @@ export default function TermsAndConditionsPage() {
           </p>
           <h2>Governing Law</h2>
           <p>
-            The laws of Your App's Target Country (e.g., Indonesia), excluding
-            its conflicts of law rules, shall govern this Terms. Your use of the
-            Application and the Service may also be subject to other local,
-            state, national, or international laws.
+            The laws of Indonesia's gonverment, excluding its conflicts of law
+            rules, shall govern this Terms. Your use of the Application and the
+            Service may also be subject to other local, state, national, or
+            international laws.
           </p>
           <h2>Disputes Resolution</h2>
           <p>
             If You have any concern or dispute about the Service, You agree to
             first try to resolve the dispute informally by contacting the
             Developer.
-          </p>
-          <h2>For European Union (EU) Users</h2>
-          <p>
-            If You are a European Union consumer, you will benefit from any
-            mandatory provisions of the law of the country in which you are
-            resident in.
-          </p>
-          <h2>United States Legal Compliance</h2>
-          <p>
-            You represent and warrant that (i) You are not located in a country
-            that is subject to the United States government embargo, or that has
-            been designated by the United States government as a "terrorist
-            supporting" country, and (ii) You are not listed on any United
-            States government list of prohibited or restricted parties.
           </p>
           <h2>Severability and Waiver</h2>
           <h3>Severability</h3>

@@ -63,9 +63,9 @@ export default function PrivacyPolicyPage() {
             <h3>Types of Data Collected</h3>
             <h4>Personal Data</h4>
             <p>
-              While using Our Service, We may ask You to provide Us with certain
+              While using the Service, I may ask you to provide Me with certain
               personally identifiable information that can be used to contact or
-              identify You. Personally identifiable information may include, but
+              identify you. Personally identifiable information may include, but
               is not limited to:
             </p>
             <ul>
@@ -81,7 +81,9 @@ export default function PrivacyPolicyPage() {
               Service, such as when You log in or engage in chats.
             </p>
             <h3>Use of Your Personal Data</h3>
-            <p>The Company may use Personal Data for the following purposes:</p>
+            <p>
+              The Developer may use Personal Data for the following purposes:
+            </p>
             <ul>
               <li>
                 <strong>To Improve Our Service:</strong> The information we

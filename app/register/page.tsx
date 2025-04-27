@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const router = useRouter();
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const { auth, db, currentUser, loading } = useFirebase();
@@ -40,10 +41,20 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!agreed) {
+      setError("You must agree to the terms and conditions.");
+      return;
+    }
+
     if (name.length < 3 || name.length > 12) {
       setError(
         "Name must be at least 3 characters long and up to 12 characters long."
       );
+      return;
+    }
+
+    if (!email) {
+      setError("Email is required");
       return;
     }
 
@@ -144,7 +155,7 @@ export default function RegisterPage() {
               </label>
               <Input
                 id="name"
-                placeholder="John Doe"
+                placeholder="Example"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 minLength={3}
@@ -240,9 +251,39 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="agree"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="h-4 w-4"
+                required
+              />
+              <label htmlFor="agree" className="text-sm">
+                I agree to the{" "}
+                <Link
+                  href="/terms-and-conditions"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
+                  Terms
+                </Link>{" "}
+                and{" "}
+                <Link
+                  href="/privacy-policy"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={formLoading}>
+            <Button
+              type="submit"
+              className="w-full disabled:bg-muted-foreground"
+              disabled={formLoading || !agreed}
+            >
               {formLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}

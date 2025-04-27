@@ -626,11 +626,15 @@ export default function SettingsPage() {
         </Card>
       </div>
       <p className="text-sm text-muted-foreground mt-8 text-center break-words">
-        Please read our privacy policy before using our service.
-        <br />
+        By using this service, you agree to our{" "}
         <Link href="/privacy-policy" className="text-indigo-500 underline">
-          Privacy & Policy
+          Privacy Policy
+        </Link>{" "}
+        and{" "}
+        <Link href="/terms-and-conditions" className="text-indigo-500 underline">
+          Terms & Conditions
         </Link>
+        .
       </p>
     </div>
   );
