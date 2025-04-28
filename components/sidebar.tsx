@@ -464,7 +464,7 @@ export function Sidebar({
             </Button>
           </Link>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="flex gap-4 items-center overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]">
           <div className="flex flex-col items-center">
             {currentUserHasStory ? (
               <>
@@ -490,10 +490,7 @@ export function Sidebar({
 
           {/* Contact stories - filter out blocked contacts */}
           {contactsWithStories.map((contact) => (
-            <div
-              key={contact.uid}
-              className="flex flex-col items-center overflow-auto"
-            >
+            <div key={contact.uid} className="flex flex-col items-center">
               <StoryCircle user={contact} currentUser={user} />
               <span className="mt-1 text-xs truncate max-w-[64px] flex items-center gap-1">
                 {contact.displayName.split(" ")[0]}

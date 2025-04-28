@@ -41,6 +41,11 @@ export function StoryCreator() {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+  const [errorMessage, setErrorMessage] = useState({
+    isError: false,
+    title: "",
+    description: "",
+  });
 
   const handleFileSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -48,16 +53,21 @@ export function StoryCreator() {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 50 * 1024 * 1024) {
+      setErrorMessage({
+        isError: true,
+        title: "File too large",
+        description: "Please select a file less than 50MB",
+      });
+      return;
+    }
 
     setMediaType(type);
     setMediaFile(file);
 
-    // Create preview
     const url = URL.createObjectURL(file);
     setPreview(url);
   };
-
-  // Ubah bagian handleCreateStory untuk menghindari penggunaan undefined
 
   const handleCreateStory = async () => {
     if (!mediaFile || !mediaType || !currentUser) return;
@@ -65,7 +75,6 @@ export function StoryCreator() {
     setIsUploading(true);
 
     try {
-      // Upload media
       const storageRef = ref(
         storage,
         `stories/${currentUser.uid}/${Date.now()}_${mediaFile.name}`
@@ -73,13 +82,11 @@ export function StoryCreator() {
       await uploadBytes(storageRef, mediaFile);
       const mediaUrl = await getDownloadURL(storageRef);
 
-      // Calculate expiry time (24 hours from now)
       const now = new Date();
       const expiresAt = new Date(
         now.getTime() + 24 * 60 * 60 * 1000
       ).toISOString();
 
-      // Buat objek story dasar
       const storyData: {
         userId: string;
         mediaUrl: string;
@@ -101,12 +108,10 @@ export function StoryCreator() {
         privacy,
       };
 
-      // Tambahkan allowedViewers hanya jika privacy adalah "selected"
       if (privacy === "selected") {
         storyData.allowedViewers = [];
       }
 
-      // Add story to Firestore
       await addDoc(collection(db, "stories"), storyData);
 
       toast({
@@ -114,7 +119,6 @@ export function StoryCreator() {
         description: "Your story has been published successfully.",
       });
 
-      // Reset form and close dialog
       setPreview(null);
       setMediaType(null);
       setCaption("");
@@ -131,6 +135,25 @@ export function StoryCreator() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleClose = (): void => {
+    setErrorMessage({
+      isError: false,
+      title: "",
+      description: "",
+    });
+
+    setMediaFile(null);
+    setMediaType(null);
+    setPreview(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+    if (videoInputRef.current) {
+      videoInputRef.current.value = "";
     }
   };
 
@@ -151,6 +174,16 @@ export function StoryCreator() {
             Share a photo or video that will be visible for 24 hours.
           </DialogDescription>
         </DialogHeader>
+
+        {errorMessage.isError && (
+          <div className="p-3 w-full bg-red-50 dark:bg-red-900/20 rounded-sm">
+            <div className="flex items-center justify-between">
+              <p>{errorMessage.title}</p>
+              <X className="h-4 w-4 cursor-pointer" onClick={handleClose} />
+            </div>
+            <p className="text-sm mt-2">{errorMessage.description}</p>
+          </div>
+        )}
 
         <div className="space-y-4 py-4">
           {!preview ? (
@@ -232,7 +265,9 @@ export function StoryCreator() {
                 <label className="text-sm font-medium">Privacy</label>
                 <Select
                   value={privacy}
-                  onValueChange={(value) => setPrivacy(value as any)}
+                  onValueChange={(value: "public" | "contacts" | "selected") =>
+                    setPrivacy(value)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Who can see your story" />

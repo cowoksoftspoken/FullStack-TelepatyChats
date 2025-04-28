@@ -142,7 +142,7 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
 
         <div className="flex flex-col items-center justify-center mt-2">
           {hasCameraPermission === false && (
-            <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-md">
+            <div className="text-center py-2 w-full bg-red-50 dark:bg-red-900/20 rounded-sm">
               <p>Camera access denied or not available.</p>
               <p className="text-sm mt-2">
                 Please check your browser permissions.
@@ -159,7 +159,11 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
               />
             </div>
           ) : (
-            <div className="relative w-full h-80 rounded-md overflow-hidden border">
+            <div
+              className={`relative w-full h-80 rounded-md overflow-hidden ${
+                hasCameraPermission === false ? "hidden" : "inline-block border"
+              }`}
+            >
               <video
                 ref={videoRef}
                 autoPlay
@@ -173,9 +177,11 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
 
           <canvas ref={canvasRef} className="hidden" />
 
-          <p className="mt-2 text-sm">
-            {isFrontCamera ? "Front Camera" : "Back Camera"}
-          </p>
+          {hasCameraPermission && (
+            <p className="mt-2 text-sm">
+              {isFrontCamera ? "Front Camera" : "Back Camera"}
+            </p>
+          )}
 
           {!capturedImage && stream && (
             <div className="flex justify-center gap-4 mt-4">

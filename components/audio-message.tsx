@@ -31,7 +31,6 @@ export function AudioMessage({
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
 
-  // Load audio metadata when component mounts
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -47,7 +46,6 @@ export function AudioMessage({
     };
   }, []);
 
-  // Handle play/pause
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -58,7 +56,6 @@ export function AudioMessage({
         setIsPlaying(false);
       });
 
-      // Update current time
       intervalRef.current = setInterval(() => {
         setCurrentTime(audio.currentTime);
         if (audio.currentTime >= audioDuration) {
@@ -119,7 +116,6 @@ export function AudioMessage({
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  // Generate a simple waveform visualization with responsive number of bars
   const generateWaveform = () => {
     const bars = isSmallScreen ? 15 : isMobile ? 20 : 30;
     const waveform = [];
@@ -142,7 +138,7 @@ export function AudioMessage({
               ? "bg-primary-foreground/30"
               : "bg-primary/30"
           }`}
-          style={{ height: `${height}px` }}
+          style={{ height: `${height}px`, transition: "height 0.1s linear" }}
         />
       );
     }
@@ -152,18 +148,13 @@ export function AudioMessage({
 
   return (
     <div
-      className={`rounded-lg p-3 ${
+      className={`rounded-lg ${
         isDark ? "bg-primary text-primary-foreground" : "bg-muted"
-      } ${className}`}
+      } ${className} ${isSmallScreen ? "p-1 py-3" : "p-3"}`}
     >
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      <div
-        className={`flex ${
-          isSmallScreen ? "flex-col gap-2" : "items-center gap-3"
-        }`}
-      >
-        {/* Play/Pause button */}
+      <div className={`flex ${isSmallScreen ? "gap-2 w-full" : "items-center gap-3"}`}>
         <button
           onClick={togglePlayPause}
           className={`flex-shrink-0 ${
@@ -183,15 +174,18 @@ export function AudioMessage({
         </button>
 
         <div className="flex-1 space-y-2">
-          {/* Waveform visualization */}
           <div className="flex items-center h-10 gap-[2px]">
             {generateWaveform()}
           </div>
 
-          {/* Time slider and display */}
+          {isSmallScreen && (
+            <div className="py-2 text-xs font-mono whitespace-nowrap w-full">
+              {formatTime(currentTime)} / {formatTime(audioDuration)}
+            </div>
+          )}
           <div
             className={`flex items-center ${
-              isSmallScreen ? "flex-col gap-1" : "gap-2"
+              isSmallScreen ? "gap-1 justify-between" : "gap-2"
             }`}
           >
             <Slider
@@ -201,22 +195,20 @@ export function AudioMessage({
               onValueChange={handleTimeChange}
               className="flex-1"
             />
-            <div
-              className={`text-xs font-mono whitespace-nowrap ${
-                isSmallScreen ? "self-end" : ""
-              }`}
-            >
-              {formatTime(currentTime)} / {formatTime(audioDuration)}
-            </div>
+            {!isSmallScreen && (
+              <div className={`text-xs font-mono whitespace-nowrap`}>
+                {formatTime(currentTime)} / {formatTime(audioDuration)}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Volume control - hidden on small screens */}
-        {!isSmallScreen && (
+        {isSmallScreen && (
           <div className="relative flex-shrink-0">
             <button
               onClick={toggleMute}
               onMouseEnter={() => setShowVolumeSlider(true)}
+              onMouseLeave={() => setShowVolumeSlider(false)}
               className={`h-8 w-8 rounded-full flex items-center justify-center ${
                 isDark
                   ? "hover:bg-primary-foreground/20"
@@ -248,8 +240,7 @@ export function AudioMessage({
         )}
       </div>
 
-      {/* File name if provided */}
-      {fileName && fileName !== "Audio message" && (
+      {fileName && !isSmallScreen && fileName !== "Audio message" && (
         <div className="mt-2 text-xs opacity-70 truncate">{fileName}</div>
       )}
     </div>

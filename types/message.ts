@@ -10,6 +10,7 @@ export interface Message {
   fileURL?: string;
   fileName?: string;
   accuracy: number;
+  size?: number;
   location?: {
     lat: number;
     lng: number;

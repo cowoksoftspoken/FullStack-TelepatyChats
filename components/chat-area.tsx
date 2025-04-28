@@ -119,6 +119,7 @@ export function ChatArea({
     file: File;
     type: "image" | "video" | "file" | "audio";
     preview: string;
+    size?: number;
     duration?: number;
   } | null>(null);
   const [caption, setCaption] = useState("");
@@ -505,6 +506,7 @@ export function ChatArea({
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 50 * 1024 * 1024) return;
 
     // Create preview
     if (type === "image") {
@@ -586,6 +588,7 @@ export function ChatArea({
         fileURL: downloadURL,
         fileName: previewFile.file.name,
         fileType: previewFile.file.type,
+        size: previewFile.file.size,
         type: previewFile.type,
         ...(previewFile.type === "audio" && {
           duration: previewFile.duration || 0,
@@ -599,7 +602,6 @@ export function ChatArea({
           : null,
       });
 
-      // Clear preview and caption
       setPreviewFile(null);
       setCaption("");
       setReplyTo(null);
@@ -912,7 +914,7 @@ export function ChatArea({
               duration={msg.duration}
               fileName={msg.fileName}
               isDark={theme === "dark" ? false : true}
-              className="max-w-full"
+              className="w-full"
             />
             {msg.text !== "Audio message" && msg.text !== msg.fileName && (
               <p className="mt-1 text-sm w-full">{msg.text}</p>
@@ -921,20 +923,27 @@ export function ChatArea({
         );
       case "file":
         return (
-          <div className="mt-1 flex items-center flex-col gap-2">
-            <div className="flex items-center gap-2">
+          <div className="mt-1 block gap-2">
+            <div className="flex items-center gap-2 bg-muted rounded-md p-2">
               <FileText className="h-5 w-5" />
-              <a
-                href={msg.fileURL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 text-sm hover:underline"
-              >
-                {msg.fileName}
-              </a>
+              <div className="block">
+                <a
+                  href={msg.fileURL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 text-sm hover:underline"
+                >
+                  {msg.fileName}
+                </a>
+                <p className="text-xs text-muted-foreground">
+                  {(msg?.size ?? 0) < 1024 * 1024
+                    ? `${((msg?.size ?? 0) / 1024).toFixed(2)} KB`
+                    : `${((msg?.size ?? 0) / (1024 * 1024)).toFixed(2)} MB`}
+                </p>
+              </div>
             </div>
             {msg.text !== msg.fileName && (
-              <p className="mt-1 text-base flex">{msg.text}</p>
+              <p className="mt-2 text-base">{msg.text}</p>
             )}
           </div>
         );
@@ -1361,7 +1370,7 @@ export function ChatArea({
             )}
 
             {previewFile?.type === "audio" && (
-              <div className="flex justify-center flex-col items-center gap-2 p-4 border rounded-md">
+              <div className="flex justify-center flex-col items-center gap-2 p-4 rounded-md">
                 {/* <Music className="h-8 w-8 text-muted-foreground" /> */}
                 <AudioMessage
                   src={previewFile.preview}
@@ -1398,7 +1407,11 @@ export function ChatArea({
                 <div>
                   <p className="font-medium">{previewFile.file.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {(previewFile.file.size / 1024).toFixed(2)} KB
+                    {previewFile.file.size < 1024 * 1024
+                      ? `${(previewFile.file.size / 1024).toFixed(2)} KB`
+                      : `${(previewFile.file.size / (1024 * 1024)).toFixed(
+                          2
+                        )} MB`}
                   </p>
                 </div>
               </div>
