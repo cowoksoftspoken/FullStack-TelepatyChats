@@ -117,7 +117,7 @@ export function AudioMessage({
   };
 
   const generateWaveform = () => {
-    const bars = isSmallScreen ? 15 : isMobile ? 20 : 30;
+    const bars = isSmallScreen ? 25 : isMobile ? 30 : 35;
     const waveform = [];
 
     for (let i = 0; i < bars; i++) {
@@ -149,12 +149,16 @@ export function AudioMessage({
   return (
     <div
       className={`rounded-lg ${
-        isDark ? "bg-primary text-primary-foreground" : "bg-muted"
-      } ${className} ${isSmallScreen ? "p-1 py-3" : "p-3"}`}
+        isDark ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20"
+      } ${className} ${isSmallScreen ? "px-2 py-2" : "p-3"}`}
     >
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      <div className={`flex ${isSmallScreen ? "gap-2 w-full" : "items-center gap-3"}`}>
+      <div
+        className={`flex ${
+          isSmallScreen ? "gap-2 w-full" : "items-center gap-3"
+        }`}
+      >
         <button
           onClick={togglePlayPause}
           className={`flex-shrink-0 ${
@@ -178,11 +182,6 @@ export function AudioMessage({
             {generateWaveform()}
           </div>
 
-          {isSmallScreen && (
-            <div className="py-2 text-xs font-mono whitespace-nowrap w-full">
-              {formatTime(currentTime)} / {formatTime(audioDuration)}
-            </div>
-          )}
           <div
             className={`flex items-center ${
               isSmallScreen ? "gap-1 justify-between" : "gap-2"
@@ -201,9 +200,15 @@ export function AudioMessage({
               </div>
             )}
           </div>
+          {isSmallScreen && (
+            <div className="flex justify-between text-xs font-mono whitespace-nowrap w-full">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(audioDuration)}</span>
+            </div>
+          )}
         </div>
 
-        {isSmallScreen && (
+        {!isSmallScreen && (
           <div className="relative flex-shrink-0">
             <button
               onClick={toggleMute}

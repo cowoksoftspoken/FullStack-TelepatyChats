@@ -888,6 +888,7 @@ export function ChatArea({
       case "location":
         return (
           <div className="mt-1 w-full">
+            <div className="rounded-xl w-full p-2 dark:bg-muted-foreground/20 bg-muted">
             <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
             <a
               href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
@@ -903,12 +904,13 @@ export function ChatArea({
                 Accuracy {msg.accuracy}m
               </p>
             )}
+            </div>
             {msg.text && <p className="mt-4 text-sm">{msg.text}</p>}
           </div>
         );
       case "audio":
         return (
-          <div className="mt-1">
+          <div className="mt-1 w-full">
             <AudioMessage
               src={msg.fileURL || ""}
               duration={msg.duration}
