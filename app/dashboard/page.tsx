@@ -398,8 +398,6 @@ export default function DashboardPage() {
     );
   }
 
-  console.log("selectedContact", selectedContact);
-
   return (
     <ChatProvider>
       <NotificationProvider
