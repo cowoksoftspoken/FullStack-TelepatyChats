@@ -54,7 +54,7 @@ export default function VerifyEmailPage() {
       case "success":
         return (
           <>
-            <CheckCircle2 className="w-6 h-6 mx-auto mb-4 text-green-500" />
+            <CheckCircle2 className="w-8 h-8 mx-auto mb-4 text-green-500" />
             <p className="text-center text-green-600 font-medium">
               Your email has been verified! 🎉
             </p>
@@ -66,7 +66,7 @@ export default function VerifyEmailPage() {
       case "error":
         return (
           <>
-            <XCircle className="w-6 h-6 mx-auto mb-4 text-red-500" />
+            <XCircle className="w-8 h-8 mx-auto mb-4 text-red-500" />
             <p className="text-center text-red-600 font-medium">
               Invalid or expired verification link
             </p>

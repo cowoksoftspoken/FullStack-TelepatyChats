@@ -27,6 +27,8 @@ import {
 } from "@/lib/webrtc";
 import type { User } from "@/types/user";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { ChatProvider } from "@/components/chat-context";
+import { NotificationProvider } from "@/components/notification-provider";
 
 export default function DashboardPage() {
   const { currentUser, db, loading: authLoading } = useFirebase();
@@ -396,79 +398,88 @@ export default function DashboardPage() {
     );
   }
 
+  console.log("selectedContact", selectedContact);
+
   return (
-    <div
-      className={`flex h-[100dvh] w-full overflow-hidden ${
-        theme === "dark" ? "dark" : ""
-      }`}
-    >
-      {!isMobileMenuOpen && !active && (
-        <button
-          className="absolute top-4 left-4 z-50 md:hidden"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
-        </button>
-      )}
-
+    <ChatProvider>
+      <NotificationProvider
+        currentUserId={currentUser.uid}
+        contacts={contacts}
+        selectedContact={selectedContact}
+      />
       <div
-        className={`${
-          isMobileMenuOpen ? "block" : "hidden"
-        } md:block md:relative fixed inset-0 z-40 bg-background`}
+        className={`flex h-[100dvh] w-full overflow-hidden ${
+          theme === "dark" ? "dark" : ""
+        }`}
       >
-        <Sidebar
-          user={currentUser}
-          contacts={contacts}
-          selectedContact={selectedContact}
-          setSelectedContact={(contact) => {
-            setSelectedContact(contact);
-            setIsMobileMenuOpen(false);
-          }}
-          setIsChatActive={setIsChatActive}
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
-          initiateCall={handleStartCall}
-        />
-      </div>
+        {!isMobileMenuOpen && !active && (
+          <button
+            className="absolute top-4 left-4 z-50 md:hidden"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
+          </button>
+        )}
 
-      <div className="flex-1 md:block">
-        {selectedContact ? (
-          <ChatArea
-            currentUser={currentUser}
-            contact={selectedContact}
-            initiateCall={(isVideo) =>
-              handleStartCall(selectedContact, isVideo)
-            }
+        <div
+          className={`${
+            isMobileMenuOpen ? "block" : "hidden"
+          } md:block md:relative fixed inset-0 z-40 bg-background`}
+        >
+          <Sidebar
+            user={currentUser}
+            contacts={contacts}
+            selectedContact={selectedContact}
+            setSelectedContact={(contact) => {
+              setSelectedContact(contact);
+              setIsMobileMenuOpen(false);
+            }}
+            setIsChatActive={setIsChatActive}
             setIsMobileMenuOpen={setIsMobileMenuOpen}
+            initiateCall={handleStartCall}
           />
-        ) : (
-          <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background md:pt-0 pt-14">
-            <p className="text-muted-foreground">
-              Select a contact to start chatting
-            </p>
-          </div>
+        </div>
+
+        <div className="flex-1 md:block">
+          {selectedContact ? (
+            <ChatArea
+              currentUser={currentUser}
+              contact={selectedContact}
+              initiateCall={(isVideo) =>
+                handleStartCall(selectedContact, isVideo)
+              }
+              setIsMobileMenuOpen={setIsMobileMenuOpen}
+            />
+          ) : (
+            <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background md:pt-0 pt-14">
+              <p className="text-muted-foreground">
+                Select a contact to start chatting
+              </p>
+            </div>
+          )}
+        </div>
+
+        {callState.isActive && (
+          <CallInterface
+            isVideo={callState.isVideo}
+            remoteStream={callState.remoteStream}
+            localStream={callState.localStream}
+            contact={callState.isIncoming ? callState.caller : selectedContact}
+            endCall={handleEndCall}
+            toggleMute={handleToggleMute}
+            toggleVideo={handleToggleVideo}
+          />
+        )}
+
+        {incomingCall && incomingCall.caller && (
+          <IncomingCall
+            caller={incomingCall.caller}
+            isVideo={incomingCall.isVideo}
+            onAccept={handleAcceptCall}
+            onReject={handleRejectCall}
+          />
         )}
       </div>
-
-      {callState.isActive && (
-        <CallInterface
-          isVideo={callState.isVideo}
-          remoteStream={callState.remoteStream}
-          localStream={callState.localStream}
-          contact={callState.isIncoming ? callState.caller : selectedContact}
-          endCall={handleEndCall}
-          toggleMute={handleToggleMute}
-          toggleVideo={handleToggleVideo}
-        />
-      )}
-
-      {incomingCall && incomingCall.caller && (
-        <IncomingCall
-          caller={incomingCall.caller}
-          isVideo={incomingCall.isVideo}
-          onAccept={handleAcceptCall}
-          onReject={handleRejectCall}
-        />
-      )}
-    </div>
+    </ChatProvider>
   );
 }
