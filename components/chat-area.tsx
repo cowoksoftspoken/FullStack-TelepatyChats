@@ -2,8 +2,6 @@
 
 import type React from "react";
 
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
 import {
   addDoc,
   collection,
@@ -12,29 +10,20 @@ import {
   getDoc,
   onSnapshot,
   query,
-  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   ArrowLeft,
-  Camera,
-  File,
   FileText,
-  Film,
   Globe,
-  Image,
   Loader2,
   MapPin,
-  Mic,
   MoreVertical,
-  Music,
-  Paperclip,
   Phone,
   Reply,
   Send,
-  Smile,
   Trash2,
   Video,
   X,
@@ -57,13 +46,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/lib/firebase-provider";
@@ -73,11 +56,11 @@ import { AudioMessage } from "./audio-message";
 import { CameraDialog } from "./camera-dialog";
 import ContactStatus from "./contact-status";
 import MapPreview from "./map-preview";
+import MessageInput from "./message-input";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { YoutubeEmbed } from "./yt-embed";
-import { resolve } from "path";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -93,7 +76,6 @@ export function ChatArea({
   setIsMobileMenuOpen,
 }: ChatAreaProps) {
   const { db, storage } = useFirebase();
-  const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -114,7 +96,6 @@ export function ChatArea({
   const { toast } = useToast();
   const [accuracy, setAccuracy] = useState(0);
 
-  // Media preview state
   const [previewFile, setPreviewFile] = useState<{
     file: File;
     type: "image" | "video" | "file" | "audio";
@@ -131,7 +112,6 @@ export function ChatArea({
   const [contactIsTyping, setContactIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Location State (kode ne menyentuh 1000 njir)
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
@@ -220,62 +200,62 @@ export function ChatArea({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement> | string
-  ) => {
-    const value = typeof e === "string" ? e : e.target.value;
-    setMessage(value);
+  // const handleInputChange = (
+  //   e: React.ChangeEvent<HTMLInputElement> | string
+  // ) => {
+  //   const value = typeof e === "string" ? e : e.target.value;
+  //   setMessage(value);
 
-    if (currentUser && contact) {
-      const chatId = [currentUser.uid, contact.uid].sort().join("_");
-      const typingStatusRef = doc(db, "typingStatus", chatId);
+  //   if (currentUser && contact) {
+  //     const chatId = [currentUser.uid, contact.uid].sort().join("_");
+  //     const typingStatusRef = doc(db, "typingStatus", chatId);
 
-      if (!isTyping) {
-        setIsTyping(true);
+  //     if (!isTyping) {
+  //       setIsTyping(true);
 
-        getDoc(typingStatusRef)
-          .then((docSnap) => {
-            if (docSnap.exists()) {
-              const currentData = docSnap.data();
-              updateDoc(typingStatusRef, {
-                ...currentData,
-                [currentUser.uid]: true,
-                timestamp: new Date().toISOString(),
-              });
-            } else {
-              setDoc(typingStatusRef, {
-                [currentUser.uid]: true,
-                timestamp: new Date().toISOString(),
-              });
-            }
-          })
-          .catch(console.error);
-      }
+  //       getDoc(typingStatusRef)
+  //         .then((docSnap) => {
+  //           if (docSnap.exists()) {
+  //             const currentData = docSnap.data();
+  //             updateDoc(typingStatusRef, {
+  //               ...currentData,
+  //               [currentUser.uid]: true,
+  //               timestamp: new Date().toISOString(),
+  //             });
+  //           } else {
+  //             setDoc(typingStatusRef, {
+  //               [currentUser.uid]: true,
+  //               timestamp: new Date().toISOString(),
+  //             });
+  //           }
+  //         })
+  //         .catch(console.error);
+  //     }
 
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+  //     if (typingTimeoutRef.current) {
+  //       clearTimeout(typingTimeoutRef.current);
+  //     }
 
-      typingTimeoutRef.current = setTimeout(() => {
-        if (isTyping) {
-          setIsTyping(false);
+  //     typingTimeoutRef.current = setTimeout(() => {
+  //       if (isTyping) {
+  //         setIsTyping(false);
 
-          getDoc(typingStatusRef)
-            .then((docSnap) => {
-              if (docSnap.exists()) {
-                const currentData = docSnap.data();
-                updateDoc(typingStatusRef, {
-                  ...currentData,
-                  [currentUser.uid]: false,
-                  timestamp: new Date().toISOString(),
-                });
-              }
-            })
-            .catch(console.error);
-        }
-      }, 2000);
-    }
-  };
+  //         getDoc(typingStatusRef)
+  //           .then((docSnap) => {
+  //             if (docSnap.exists()) {
+  //               const currentData = docSnap.data();
+  //               updateDoc(typingStatusRef, {
+  //                 ...currentData,
+  //                 [currentUser.uid]: false,
+  //                 timestamp: new Date().toISOString(),
+  //               });
+  //             }
+  //           })
+  //           .catch(console.error);
+  //       }
+  //     }, 2000);
+  //   }
+  // };
 
   const handleShareLocation = async () => {
     if (isBlocked) {
@@ -445,9 +425,7 @@ export function ChatArea({
     }
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const sendMessage = async (message: string) => {
     if ((!message.trim() && !replyTo) || !currentUser || !contact) return;
 
     if (isBlocked) {
@@ -480,8 +458,8 @@ export function ChatArea({
         type: "text",
       });
 
-      if (isTyping) {
-        setIsTyping(false);
+      if (contactIsTyping) {
+        setContactIsTyping(false);
         updateDoc(doc(db, "typingStatus", chatId), {
           userId: currentUser.uid,
           isTyping: false,
@@ -489,15 +467,10 @@ export function ChatArea({
         }).catch(console.error);
       }
 
-      setMessage("");
       setReplyTo(null);
     } catch (error) {
       console.error("Error sending message:", error);
     }
-  };
-
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage((prev) => prev + emoji.native);
   };
 
   const handleFileSelect = (
@@ -889,21 +862,21 @@ export function ChatArea({
         return (
           <div className="mt-1 w-full">
             <div className="rounded-xl w-full p-2 dark:bg-muted-foreground/20 bg-muted">
-            <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
-            <a
-              href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 text-sm hover:underline mt-2 flex items-center"
-            >
-              <Globe className="mr-2 h-4 w-4" /> Location Details
-            </a>
-            {msg.accuracy && (
-              <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
-                <MapPin className="h-4 w-4  mr-2" />
-                Accuracy {msg.accuracy}m
-              </p>
-            )}
+              <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
+              <a
+                href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 text-sm hover:underline mt-2 flex items-center"
+              >
+                <Globe className="mr-2 h-4 w-4" /> Location Details
+              </a>
+              {msg.accuracy && (
+                <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
+                  <MapPin className="h-4 w-4  mr-2" />
+                  Accuracy {msg.accuracy}m
+                </p>
+              )}
             </div>
             {msg.text && <p className="mt-4 text-sm">{msg.text}</p>}
           </div>
@@ -1189,143 +1162,21 @@ export function ChatArea({
         </div>
       )}
 
-      {/* Message input */}
-      <form
-        onSubmit={sendMessage}
-        className="border-t p-4 px-2 md:px-4 dark:bg-[#151516]"
-      >
-        <div className="flex gap-2 items-center">
-          {/* File upload dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-full"
-                disabled={isBlocked}
-              >
-                <Paperclip className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => imageInputRef.current?.click()}>
-                <Image className="mr-2 h-4 w-4" />
-                <span>Image</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => videoInputRef.current?.click()}>
-                <Film className="mr-2 h-4 w-4" />
-                <span>Video</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => audioInputRef.current?.click()}>
-                <Music className="mr-2 h-4 w-4" />
-                <span>Audio</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                <File className="mr-2 h-4 w-4" />
-                <span>File</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={handleShareLocation}
-                disabled={isGettingLocation}
-              >
-                <MapPin className="mr-2 h-5 w-5" />
-                <span>
-                  {isGettingLocation ? "Getting location..." : "Location"}
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsCameraDialogOpen(true)}>
-                <Camera className="mr-2 h-4 w-4" />
-                <span>Camera</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <input
-            type="file"
-            ref={imageInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={(e) => handleFileSelect(e, "image")}
-          />
-          <input
-            type="file"
-            ref={videoInputRef}
-            className="hidden"
-            accept="video/*"
-            onChange={(e) => handleFileSelect(e, "video")}
-          />
-          <input
-            type="file"
-            ref={audioInputRef}
-            className="hidden"
-            accept="audio/*"
-            onChange={(e) => handleFileSelect(e, "audio")}
-          />
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="application/*,text/*"
-            onChange={(e) => handleFileSelect(e, "file")}
-          />
-
-          {/* Emoji picker */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-5 w-5 rounded-full"
-                disabled={isBlocked}
-              >
-                <Smile className="h-5 w-5" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Picker
-                data={data}
-                onEmojiSelect={handleEmojiSelect}
-                theme={theme}
-              />
-            </PopoverContent>
-          </Popover>
-
-          {/* Text input */}
-          <Input
-            value={message}
-            onChange={(e) => handleInputChange(e)}
-            placeholder={
-              isBlocked ? "You cannot send messages to this user" : "Message..."
-            }
-            className="flex-1 rounded-full dark:bg-[#000000]/30"
-            disabled={isBlocked}
-          />
-
-          {/* Send or record button */}
-          {message.trim() ? (
-            <Button
-              type="submit"
-              size="icon"
-              className="h-10 w-10 rounded-full"
-              disabled={isBlocked}
-            >
-              <Send className="h-5 w-5" />
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              size="icon"
-              className="h-10 w-10 rounded-full"
-              onMouseDown={startRecording}
-              disabled={isBlocked}
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
-      </form>
+      <MessageInput
+        currentUser={currentUser}
+        contact={contact}
+        isBlocked={isBlocked}
+        sendMessage={sendMessage}
+        handleFileSelect={handleFileSelect}
+        handleShareLocation={handleShareLocation}
+        startRecording={startRecording}
+        setIsCameraDialogOpen={setIsCameraDialogOpen}
+        isGettingLocation={isGettingLocation}
+        imageInputRef={imageInputRef}
+        videoInputRef={videoInputRef}
+        audioInputRef={audioInputRef}
+        fileInputRef={fileInputRef}
+      />
 
       {/* Media preview dialog */}
       <Dialog
