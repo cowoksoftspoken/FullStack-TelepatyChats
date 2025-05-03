@@ -34,6 +34,7 @@ export function NotificationProvider({
   const [lastMessageIds, setLastMessageIds] = useState<Record<string, string>>(
     {}
   );
+  const soundNotif = new Audio("/sound/notification.mp3");
 
   const contactMap = contacts.reduce((acc, contact) => {
     acc[contact.uid] = contact.displayName;
@@ -77,6 +78,7 @@ export function NotificationProvider({
               ...prev,
               [contact.uid]: doc.id,
             }));
+            soundNotif.play();
           }
         });
       });
@@ -85,7 +87,6 @@ export function NotificationProvider({
     return () => unsubscribes.forEach((unsub) => unsub());
   }, [contacts, db, currentUserId, selectedContact]);
 
-  // Hapus notif
   const clearNotification = (userId: string) => {
     setNotifications((prev) => {
       const updated = { ...prev };

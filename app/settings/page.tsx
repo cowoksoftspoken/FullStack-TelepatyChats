@@ -616,7 +616,11 @@ export default function SettingsPage() {
               </div>
               <Switch
                 id="dark-mode"
-                checked={theme === "dark"}
+                checked={
+                  theme === "dark" ||
+                  (typeof window !== "undefined" &&
+                    localStorage.getItem("zerochats-theme") === "dark")
+                }
                 onCheckedChange={(checked) =>
                   setTheme(checked ? "dark" : "light")
                 }
@@ -631,7 +635,10 @@ export default function SettingsPage() {
           Privacy Policy
         </Link>{" "}
         and{" "}
-        <Link href="/terms-and-conditions" className="text-indigo-500 underline">
+        <Link
+          href="/terms-and-conditions"
+          className="text-indigo-500 underline"
+        >
           Terms & Conditions
         </Link>
         .

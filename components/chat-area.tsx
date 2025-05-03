@@ -200,63 +200,6 @@ export function ChatArea({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // const handleInputChange = (
-  //   e: React.ChangeEvent<HTMLInputElement> | string
-  // ) => {
-  //   const value = typeof e === "string" ? e : e.target.value;
-  //   setMessage(value);
-
-  //   if (currentUser && contact) {
-  //     const chatId = [currentUser.uid, contact.uid].sort().join("_");
-  //     const typingStatusRef = doc(db, "typingStatus", chatId);
-
-  //     if (!isTyping) {
-  //       setIsTyping(true);
-
-  //       getDoc(typingStatusRef)
-  //         .then((docSnap) => {
-  //           if (docSnap.exists()) {
-  //             const currentData = docSnap.data();
-  //             updateDoc(typingStatusRef, {
-  //               ...currentData,
-  //               [currentUser.uid]: true,
-  //               timestamp: new Date().toISOString(),
-  //             });
-  //           } else {
-  //             setDoc(typingStatusRef, {
-  //               [currentUser.uid]: true,
-  //               timestamp: new Date().toISOString(),
-  //             });
-  //           }
-  //         })
-  //         .catch(console.error);
-  //     }
-
-  //     if (typingTimeoutRef.current) {
-  //       clearTimeout(typingTimeoutRef.current);
-  //     }
-
-  //     typingTimeoutRef.current = setTimeout(() => {
-  //       if (isTyping) {
-  //         setIsTyping(false);
-
-  //         getDoc(typingStatusRef)
-  //           .then((docSnap) => {
-  //             if (docSnap.exists()) {
-  //               const currentData = docSnap.data();
-  //               updateDoc(typingStatusRef, {
-  //                 ...currentData,
-  //                 [currentUser.uid]: false,
-  //                 timestamp: new Date().toISOString(),
-  //               });
-  //             }
-  //           })
-  //           .catch(console.error);
-  //       }
-  //     }, 2000);
-  //   }
-  // };
-
   const handleShareLocation = async () => {
     if (isBlocked) {
       toast({
@@ -900,13 +843,14 @@ export function ChatArea({
         return (
           <div className="mt-1 block gap-2">
             <div className="flex items-center gap-2 bg-muted rounded-md p-2">
-              <FileText className="h-5 w-5" />
+              <FileText className="h- w-5" />
               <div className="block">
                 <a
                   href={msg.fileURL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-500 text-sm hover:underline"
+                  data-type={msg.fileType}
                 >
                   {msg.fileName}
                 </a>
