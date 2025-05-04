@@ -1,6 +1,8 @@
 "use client";
 
-import { collection, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
+import type React from "react";
+
+import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { useFirebase } from "@/lib/firebase-provider";
 import { useTheme } from "@/components/theme-provider";
 import { Input } from "@/components/ui/input";
@@ -14,7 +16,7 @@ import { Button } from "./ui/button";
 import {
   Paperclip,
   Smile,
-  Image,
+  ImageIcon,
   Film,
   Music,
   File,
@@ -22,12 +24,19 @@ import {
   Camera,
   Mic,
   Send,
+  Lock,
 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { useEffect, useRef, useState } from "react";
@@ -47,6 +56,7 @@ export default function MessageInput({
   videoInputRef,
   audioInputRef,
   fileInputRef,
+  isEncryptionEnabled = false,
 }: {
   currentUser: User;
   contact: User;
@@ -64,6 +74,7 @@ export default function MessageInput({
   videoInputRef: React.RefObject<HTMLInputElement | null>;
   audioInputRef: React.RefObject<HTMLInputElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
+  isEncryptionEnabled?: boolean;
 }) {
   const { db } = useFirebase();
   const { theme } = useTheme();
@@ -155,7 +166,7 @@ export default function MessageInput({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => imageInputRef?.current?.click()}>
-              <Image className="mr-2 h-4 w-4" />
+              <ImageIcon className="mr-2 h-4 w-4" />
               <span>Image</span>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => videoInputRef?.current?.click()}>
@@ -249,7 +260,6 @@ export default function MessageInput({
           disabled={isBlocked}
         />
 
-        {/* Send / Mic */}
         {message.trim() ? (
           <Button
             type="submit"

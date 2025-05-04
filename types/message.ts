@@ -2,7 +2,6 @@ export interface Message {
   isSeen: boolean;
   id: string;
   chatId: string;
-  text: string;
   senderId: string;
   receiverId: string;
   timestamp: string;
@@ -22,4 +21,10 @@ export interface Message {
     text: string;
     senderId: string;
   } | null;
+  isEncrypted: boolean;
+  encryptedText: string;
+  encryptedKey: string;
+  encryptedKeyForSelf?: string;
+  iv: string;
+  text?: string;
 }

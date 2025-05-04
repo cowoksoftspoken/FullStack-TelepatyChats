@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   FileText,
   Globe,
+  Lock,
   Loader2,
   MapPin,
   MoreVertical,
@@ -48,8 +49,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/lib/firebase-provider";
+import { useEncryption } from "@/hooks/use-encryption";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
 import { AudioMessage } from "./audio-message";
@@ -77,6 +85,10 @@ export function ChatArea({
 }: ChatAreaProps) {
   const { db, storage } = useFirebase();
   const [messages, setMessages] = useState<Message[]>([]);
+  const [decryptedMessages, setDecryptedMessages] = useState<
+    Record<string, string>
+  >({});
+  const [expanded, setExpanded] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -95,6 +107,8 @@ export function ChatArea({
   const [isBlocked, setIsBlocked] = useState(false);
   const { toast } = useToast();
   const [accuracy, setAccuracy] = useState(0);
+  const { isInitialized, encryptMessageForContact, decryptMessageFromContact } =
+    useEncryption(currentUser);
 
   const [previewFile, setPreviewFile] = useState<{
     file: File;
@@ -196,6 +210,61 @@ export function ChatArea({
     return () => unsubscribe();
   }, [currentUser, contact, db]);
 
+  useEffect(() => {
+    if (!isInitialized || messages.length === 0) return;
+
+    const decryptMessages = async () => {
+      const newDecryptedMessages: Record<string, string> = {
+        ...decryptedMessages,
+      };
+      let hasNewDecryptions = false;
+
+      for (const msg of messages) {
+        if (
+          newDecryptedMessages[msg.id] ||
+          !msg.isEncrypted ||
+          !msg.encryptedText ||
+          !msg.encryptedKey ||
+          !msg.iv
+        ) {
+          continue;
+        }
+
+        try {
+          const isSender = msg.senderId === currentUser.uid;
+
+          const decryptedText = await decryptMessageFromContact(
+            msg.encryptedText,
+            msg.encryptedKey,
+            msg.encryptedKeyForSelf,
+            msg.iv,
+            isSender
+          );
+
+          newDecryptedMessages[msg.id] = decryptedText;
+          hasNewDecryptions = true;
+        } catch (error) {
+          console.error(`Error decrypting message ${msg.id}:`, error);
+          newDecryptedMessages[msg.id] =
+            "[Encrypted message - unable to decrypt]";
+          hasNewDecryptions = true;
+        }
+      }
+
+      if (hasNewDecryptions) {
+        setDecryptedMessages(newDecryptedMessages);
+      }
+    };
+
+    decryptMessages();
+  }, [
+    messages,
+    isInitialized,
+    currentUser,
+    decryptedMessages,
+    decryptMessageFromContact,
+  ]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -275,10 +344,10 @@ export function ChatArea({
 
     try {
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
+      const locationText = caption || "📍 Location";
 
-      await addDoc(collection(db, "messages"), {
+      let messageData: any = {
         chatId,
-        text: caption || "📍 Location",
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -296,7 +365,33 @@ export function ChatArea({
               senderId: replyTo.senderId,
             }
           : null,
-      });
+      };
+
+      if (isInitialized) {
+        const encryptedData = await encryptMessageForContact(
+          locationText,
+          contact.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          messageData = {
+            ...messageData,
+            isEncrypted: true,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+          };
+        } else {
+          messageData.isEncrypted = false;
+          messageData.text = locationText;
+        }
+      } else {
+        messageData.isEncrypted = false;
+        messageData.text = locationText;
+      }
+
+      await addDoc(collection(db, "messages"), messageData);
 
       setIsLocationDialogOpen(false);
       setLocation(null);
@@ -335,10 +430,10 @@ export function ChatArea({
       await uploadBytes(fileRef, blob);
 
       const downloadURL = await getDownloadURL(fileRef);
+      const captionText = caption || "Photo";
 
-      await addDoc(collection(db, "messages"), {
+      let messageData: any = {
         chatId,
-        text: caption || "Photo",
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -354,7 +449,33 @@ export function ChatArea({
               senderId: replyTo.senderId,
             }
           : null,
-      });
+      };
+
+      if (isInitialized) {
+        const encryptedData = await encryptMessageForContact(
+          captionText,
+          contact.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          messageData = {
+            ...messageData,
+            isEncrypted: true,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+          };
+        } else {
+          messageData.isEncrypted = false;
+          messageData.text = captionText;
+        }
+      } else {
+        messageData.isEncrypted = false;
+        messageData.text = captionText;
+      }
+
+      await addDoc(collection(db, "messages"), messageData);
       setReplyTo(null);
     } catch (error) {
       console.error("Error sending camera image:", error);
@@ -382,11 +503,11 @@ export function ChatArea({
     }
 
     const chatId = [currentUser.uid, contact.uid].sort().join("_");
+    const messageText = message.trim() || (replyTo ? "" : "👍");
 
     try {
-      await addDoc(collection(db, "messages"), {
+      let messageData: any = {
         chatId,
-        text: message.trim() || (replyTo ? "" : "👍"),
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -399,7 +520,33 @@ export function ChatArea({
             }
           : null,
         type: "text",
-      });
+      };
+
+      if (isInitialized) {
+        const encryptedData = await encryptMessageForContact(
+          messageText,
+          contact.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          messageData = {
+            ...messageData,
+            isEncrypted: true,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+          };
+        } else {
+          messageData.isEncrypted = false;
+          messageData.text = messageText;
+        }
+      } else {
+        messageData.isEncrypted = false;
+        messageData.text = messageText;
+      }
+
+      await addDoc(collection(db, "messages"), messageData);
 
       if (contactIsTyping) {
         setContactIsTyping(false);
@@ -424,7 +571,6 @@ export function ChatArea({
     if (!file) return;
     if (file.size > 50 * 1024 * 1024) return;
 
-    // Create preview
     if (type === "image") {
       const reader = new FileReader();
       reader.onload = () => {
@@ -445,7 +591,6 @@ export function ChatArea({
     } else if (type === "audio") {
       const url = URL.createObjectURL(file);
 
-      // Get audio duration
       const audio = new Audio(url);
       audio.onloadedmetadata = () => {
         setAudioPreviewDuration(Math.round(audio.duration));
@@ -494,10 +639,10 @@ export function ChatArea({
       await uploadBytes(fileRef, previewFile.file);
 
       const downloadURL = await getDownloadURL(fileRef);
+      const captionText = caption || previewFile.file.name;
 
-      await addDoc(collection(db, "messages"), {
+      let messageData: any = {
         chatId,
-        text: caption || previewFile.file.name,
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -516,7 +661,33 @@ export function ChatArea({
               senderId: replyTo.senderId,
             }
           : null,
-      });
+      };
+
+      if (isInitialized) {
+        const encryptedData = await encryptMessageForContact(
+          captionText,
+          contact.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          messageData = {
+            ...messageData,
+            isEncrypted: true,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+          };
+        } else {
+          messageData.isEncrypted = false;
+          messageData.text = captionText;
+        }
+      } else {
+        messageData.isEncrypted = false;
+        messageData.text = captionText;
+      }
+
+      await addDoc(collection(db, "messages"), messageData);
 
       setPreviewFile(null);
       setCaption("");
@@ -532,7 +703,6 @@ export function ChatArea({
     } finally {
       setIsUploading(false);
 
-      // Clear the inputs
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (imageInputRef.current) imageInputRef.current.value = "";
       if (videoInputRef.current) videoInputRef.current.value = "";
@@ -647,16 +817,13 @@ export function ChatArea({
       const chatId = [currentUser.uid, contact.uid].sort().join("_");
       const fileRef = ref(storage, `chats/${chatId}/audio_${Date.now()}.webm`);
 
-      // Upload audio
       await uploadBytes(fileRef, audioBlob);
 
-      // Get download URL
       const downloadURL = await getDownloadURL(fileRef);
+      const captionText = "Audio message";
 
-      // Add message to Firestore
-      await addDoc(collection(db, "messages"), {
+      let messageData: any = {
         chatId,
-        text: "Audio message",
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
@@ -672,7 +839,33 @@ export function ChatArea({
               senderId: replyTo.senderId,
             }
           : null,
-      });
+      };
+
+      if (isInitialized) {
+        const encryptedData = await encryptMessageForContact(
+          captionText,
+          contact.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          messageData = {
+            ...messageData,
+            isEncrypted: true,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+          };
+        } else {
+          messageData.isEncrypted = false;
+          messageData.text = captionText;
+        }
+      } else {
+        messageData.isEncrypted = false;
+        messageData.text = captionText;
+      }
+
+      await addDoc(collection(db, "messages"), messageData);
 
       setReplyTo(null);
     } catch (error) {
@@ -688,14 +881,12 @@ export function ChatArea({
   useEffect(() => {
     if (!currentUser || !contact || messages.length === 0) return;
 
-    // Tandai pesan yang diterima sebagai telah dibaca
     const markMessagesAsSeen = async () => {
       try {
         const unreadMessages = messages.filter(
           (msg) => msg.senderId === contact.uid && !msg.isSeen
         );
 
-        // Update semua pesan yang belum dibaca
         const updatePromises = unreadMessages.map((msg) =>
           updateDoc(doc(db, "messages", msg.id), { isSeen: true })
         );
@@ -720,7 +911,6 @@ export function ChatArea({
         aria-live="assertive"
         role="status"
       >
-        {/* Indikator centang dua */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -772,6 +962,11 @@ export function ChatArea({
   };
 
   const renderMessageContent = (msg: Message) => {
+    const messageText =
+      msg.isEncrypted && decryptedMessages[msg.id]
+        ? decryptedMessages[msg.id]
+        : msg.text || "";
+
     switch (msg.type) {
       case "image":
         return (
@@ -782,22 +977,27 @@ export function ChatArea({
               className="w-full rounded-md max-h-60 object-cover"
               onClick={() => window.open(msg.fileURL, "_blank")}
             />
-            {msg.text !== msg.fileName && (
-              <p className="mt-1 text-sm">{msg.text}</p>
+            {messageText !== msg.fileName && (
+              <div className="mt-1 text-sm flex items-center gap-1">
+                {msg.isEncrypted && (
+                  <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                )}
+                <p>{messageText}</p>
+              </div>
             )}
           </div>
         );
       case "video":
         return (
           <div className="mt-1 w-full">
-            {/* <video
-              src={msg.fileURL}
-              controls
-              className="max-w-full rounded-md h-full object-cover"
-            /> */}
             <VideoPlayer fileURL={msg.fileURL || ""} />
-            {msg.text !== msg.fileName && (
-              <p className="mt-1 text-sm">{msg.text}</p>
+            {messageText !== msg.fileName && (
+              <div className="mt-1 text-sm flex items-center gap-1">
+                {msg.isEncrypted && (
+                  <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                )}
+                <p>{messageText}</p>
+              </div>
             )}
           </div>
         );
@@ -816,12 +1016,19 @@ export function ChatArea({
               </a>
               {msg.accuracy && (
                 <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
-                  <MapPin className="h-4 w-4  mr-2" />
+                  <MapPin className="h-4 w-4 mr-2" />
                   Accuracy {msg.accuracy}m
                 </p>
               )}
             </div>
-            {msg.text && <p className="mt-4 text-sm">{msg.text}</p>}
+            {messageText && (
+              <div className="mt-4 text-sm flex items-center gap-1">
+                {msg.isEncrypted && (
+                  <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                )}
+                <p>{messageText}</p>
+              </div>
+            )}
           </div>
         );
       case "audio":
@@ -834,16 +1041,22 @@ export function ChatArea({
               isDark={theme === "dark" ? false : true}
               className="w-full"
             />
-            {msg.text !== "Audio message" && msg.text !== msg.fileName && (
-              <p className="mt-1 text-sm w-full">{msg.text}</p>
-            )}
+            {messageText !== "Audio message" &&
+              messageText !== msg.fileName && (
+                <div className="mt-1 text-sm w-full flex items-center gap-1">
+                  {msg.isEncrypted && (
+                    <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                  )}
+                  <p>{messageText}</p>
+                </div>
+              )}
           </div>
         );
       case "file":
         return (
           <div className="mt-1 block gap-2">
             <div className="flex items-center gap-2 bg-muted rounded-md p-2">
-              <FileText className="h- w-5" />
+              <FileText className="h-5 w-5" />
               <div className="block">
                 <a
                   href={msg.fileURL}
@@ -861,22 +1074,29 @@ export function ChatArea({
                 </p>
               </div>
             </div>
-            {msg.text !== msg.fileName && (
-              <p className="mt-2 text-base">{msg.text}</p>
+            {messageText !== msg.fileName && (
+              <div className="mt-2 text-base flex items-center gap-1">
+                {msg.isEncrypted && (
+                  <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+                )}
+                <p>{messageText}</p>
+              </div>
             )}
           </div>
         );
       default:
-        const youtubeId = extractYouTubeId(msg.text);
+        const youtubeId = extractYouTubeId(messageText);
         return (
           <>
             {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
-            <p
-              className="w-full text-sm md:text-base break-words"
-              dangerouslySetInnerHTML={{
-                __html: checkingMessage(msg.text),
-              }}
-            />
+            <div className="flex items-center gap-1">
+              <p
+                className="w-full text-sm md:text-base break-words"
+                dangerouslySetInnerHTML={{
+                  __html: checkingMessage(messageText),
+                }}
+              />
+            </div>
           </>
         );
     }
@@ -914,20 +1134,25 @@ export function ChatArea({
                 </svg>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {/* {isBlocked
-                ? "You cannot interact with this user"
-                : contactIsTyping && !isBlocked && contact.online
-                ? "Typing..."
-                : contact.online
-                ? "Online"
-                : "Offline"} */}
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {isInitialized && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Lock className="h-3 w-3 text-green-500" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>End-to-end encryption enabled</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <ContactStatus
                 isBlocked={isBlocked}
                 contact={contact}
                 contactIsTyping={contactIsTyping}
               />
-            </p>
+            </div>
           </div>
         </div>
         <div className="flex md:gap-2 gap-1">
@@ -973,6 +1198,32 @@ export function ChatArea({
           }")`,
         }}
       >
+        <div className="mb-3">
+          <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 rounded-md text-center">
+            <p className="md:text-sm text-[11px] leading-4 text-yellow-800 dark:text-yellow-200">
+              This conversation is protected by end-to-end encryption. Do not
+              clear cookies or website data, or you will lose access to your
+              messages.
+              {expanded && (
+                <>
+                  {" "}
+                  If you send a message and there is an error saying "Unable to
+                  decrypt message", please log in again. Also, if you switch
+                  browsers, you will lose access to your previous messages.
+                  Please understand that I try to keep your data as safe as
+                  possible.
+                </>
+              )}{" "}
+              <span
+                className="underline cursor-pointer"
+                onClick={() => setExpanded(!expanded)}
+              >
+                {expanded ? "Read less" : "Read more"}
+              </span>
+            </p>
+          </div>
+        </div>
+
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -1120,6 +1371,7 @@ export function ChatArea({
         videoInputRef={videoInputRef}
         audioInputRef={audioInputRef}
         fileInputRef={fileInputRef}
+        isEncryptionEnabled={isInitialized}
       />
 
       {/* Media preview dialog */}
@@ -1157,44 +1409,18 @@ export function ChatArea({
 
             {previewFile?.type === "video" && (
               <div className="flex justify-center">
-                {/* <video
-                  src={previewFile.preview}
-                  controls
-                  className="max-h-60 max-w-full rounded-md"
-                /> */}
                 <VideoPlayer fileURL={previewFile.preview} />
               </div>
             )}
 
             {previewFile?.type === "audio" && (
               <div className="flex justify-center flex-col items-center gap-2 p-4 rounded-md">
-                {/* <Music className="h-8 w-8 text-muted-foreground" /> */}
                 <AudioMessage
                   src={previewFile.preview}
                   duration={previewFile.duration}
                   fileName={previewFile.file.name}
                   className="w-full h-full"
                 />
-                {/* <div className="text-center">
-                  <p className="font-medium">{previewFile.file.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {previewFile.file.size < 1024 * 1024
-                      ? `${(previewFile.file.size / 1024).toFixed(2)} KB`
-                      : `${(previewFile.file.size / (1024 * 1024)).toFixed(
-                          2
-                        )} MB`}
-                  </p>
-                </div> */}
-                {/* <audio
-                  src={previewFile.preview}
-                  controls
-                  className="w-full mt-2"
-                /> */}
-                {/* {previewFile.duration && (
-                  <p className="text-xs text-muted-foreground">
-                    Duration: {formatTime(previewFile.duration)}
-                  </p>
-                )} */}
               </div>
             )}
 
