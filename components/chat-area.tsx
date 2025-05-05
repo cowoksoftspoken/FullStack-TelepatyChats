@@ -1087,17 +1087,13 @@ export function ChatArea({
         return (
           <>
             {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
-            <div className="flex items-center gap-1">
-              {msg.isEncrypted && (
-                <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
-              )}
-              <p
-                className="w-full text-sm md:text-base break-words"
-                dangerouslySetInnerHTML={{
-                  __html: checkingMessage(messageText),
-                }}
-              />
-            </div>
+
+            <p
+              className="w-full text-sm md:text-base break-words"
+              dangerouslySetInnerHTML={{
+                __html: checkingMessage(messageText),
+              }}
+            />
           </>
         );
     }
@@ -1136,7 +1132,6 @@ export function ChatArea({
               )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {isInitialized && <Lock className="h-3 w-3 text-green-500" />}
               <ContactStatus
                 isBlocked={isBlocked}
                 contact={contact}
