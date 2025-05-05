@@ -730,9 +730,7 @@ export default function SettingsPage() {
                 checked={
                   theme === "dark" ||
                   (typeof window !== "undefined" &&
-                    localStorage.getItem("zerochats-theme") === "dark") ||
-                  (typeof window !== "undefined" &&
-                    window.matchMedia("(prefers-color-scheme: dark)").matches)
+                    localStorage.getItem("zerochats-theme") === "dark")
                 }
                 onCheckedChange={(checked) =>
                   setTheme(checked ? "dark" : "light")

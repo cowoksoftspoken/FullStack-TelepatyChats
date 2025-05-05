@@ -128,7 +128,6 @@ export async function decryptMessage(
   return decoder.decode(decrypted);
 }
 
-// Encrypt symmetric key with recipient's public key
 export async function encryptKey(
   messageKey: CryptoKey,
   publicKey: CryptoKey
@@ -145,7 +144,6 @@ export async function encryptKey(
   return arrayBufferToBase64(encrypted);
 }
 
-// Decrypt symmetric key with recipient's private key
 export async function decryptKey(
   encryptedKey: string,
   privateKey: CryptoKey
@@ -171,7 +169,6 @@ export async function decryptKey(
   );
 }
 
-// Helper function to convert ArrayBuffer to Base64 string
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -181,7 +178,6 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return window.btoa(binary);
 }
 
-// Helper function to convert Base64 string to ArrayBuffer
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
   const binaryString = window.atob(base64);
   const bytes = new Uint8Array(binaryString.length);

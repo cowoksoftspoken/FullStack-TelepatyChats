@@ -49,12 +49,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/lib/firebase-provider";
 import { useEncryption } from "@/hooks/use-encryption";
@@ -506,19 +500,24 @@ export function ChatArea({
     const messageText = message.trim() || (replyTo ? "" : "👍");
 
     try {
+      const replyToData = replyTo
+        ? {
+            id: replyTo.id,
+            text:
+              decryptedMessages[replyTo.id] ||
+              replyTo.text ||
+              "[Encrypted message]",
+            senderId: replyTo.senderId,
+          }
+        : null;
+
       let messageData: any = {
         chatId,
         senderId: currentUser.uid,
         receiverId: contact.uid,
         timestamp: new Date().toISOString(),
         isSeen: false,
-        replyTo: replyTo
-          ? {
-              id: replyTo.id,
-              text: replyTo.text,
-              senderId: replyTo.senderId,
-            }
-          : null,
+        replyTo: replyToData,
         type: "text",
       };
 
@@ -609,7 +608,6 @@ export function ChatArea({
       });
     }
 
-    // Reset caption
     setCaption("");
   };
 
@@ -1090,6 +1088,9 @@ export function ChatArea({
           <>
             {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
             <div className="flex items-center gap-1">
+              {msg.isEncrypted && (
+                <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
+              )}
               <p
                 className="w-full text-sm md:text-base break-words"
                 dangerouslySetInnerHTML={{
@@ -1135,6 +1136,7 @@ export function ChatArea({
               )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              {isInitialized && <Lock className="h-3 w-3 text-green-500" />}
               <ContactStatus
                 isBlocked={isBlocked}
                 contact={contact}
@@ -1194,6 +1196,7 @@ export function ChatArea({
                 href="https://en.wikipedia.org/wiki/End-to-end_encryption"
                 className="underline"
                 target="_blank"
+                rel="noreferrer"
               >
                 end-to-end
               </a>{" "}
@@ -1250,7 +1253,9 @@ export function ChatArea({
                       : contact.displayName}
                   </div>
                   <div className="break-words text-ellipsis">
-                    {msg.replyTo.text}
+                    {msg.replyTo.id && decryptedMessages[msg.replyTo.id]
+                      ? decryptedMessages[msg.replyTo.id]
+                      : msg.replyTo.text}
                   </div>
                 </a>
               )}
@@ -1322,7 +1327,9 @@ export function ChatArea({
                   : contact.displayName}
               </span>
               <p className="text-xs truncate max-w-[200px] md:max-w-md">
-                {replyTo.text}
+                {replyTo && decryptedMessages[replyTo.id]
+                  ? decryptedMessages[replyTo.id]
+                  : replyTo?.text || "[Encrypted message]"}
               </p>
             </div>
           </div>
