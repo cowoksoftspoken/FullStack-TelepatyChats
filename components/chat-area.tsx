@@ -1135,18 +1135,6 @@ export function ChatArea({
               )}
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              {isInitialized && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Lock className="h-3 w-3 text-green-500" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>End-to-end encryption enabled</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
               <ContactStatus
                 isBlocked={isBlocked}
                 contact={contact}
@@ -1201,9 +1189,16 @@ export function ChatArea({
         <div className="mb-3">
           <div className="bg-yellow-100 dark:bg-yellow-900/20 p-2 rounded-md text-center">
             <p className="md:text-sm text-[11px] leading-4 text-yellow-800 dark:text-yellow-200">
-              This conversation is protected by end-to-end encryption. Do not
-              clear cookies or website data, or you will lose access to your
-              messages.
+              This conversation is protected by{" "}
+              <a
+                href="https://en.wikipedia.org/wiki/End-to-end_encryption"
+                className="underline"
+                target="_blank"
+              >
+                end-to-end
+              </a>{" "}
+              encryption. Do not clear cookies or website data, or you will lose
+              access to your messages.
               {expanded && (
                 <>
                   {" "}

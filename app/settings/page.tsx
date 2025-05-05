@@ -88,6 +88,10 @@ export default function SettingsPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [userData, setUserData] = useState<DocumentData | null>(null);
+  const [currentPrivateKey, setCurrentPrivateKey] = useState<string | null>(
+    null
+  );
+  const [oldPrivateKey, setOldPrivateKey] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -108,6 +112,39 @@ export default function SettingsPage() {
 
     checkUser();
   }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const localPrivateKey = localStorage.getItem(
+      `encryption_private_key_${currentUser.uid}`
+    );
+
+    if (localPrivateKey) {
+      setCurrentPrivateKey(localPrivateKey);
+    }
+
+    return () => {
+      if (currentPrivateKey) {
+        localStorage.setItem(
+          `encryption_private_key_${currentUser.uid}`,
+          currentPrivateKey
+        );
+      }
+    };
+  }, [currentUser]);
+
+  const handleChangePrivateKey = () => {
+    const value = oldPrivateKey;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        `encryption_private_key_${currentUser.uid}`,
+        value as string
+      );
+      setCurrentPrivateKey(value);
+      setOldPrivateKey("");
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -600,6 +637,80 @@ export default function SettingsPage() {
           </Card>
         )}
 
+        {/* Encryption Key Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Encryption Key</CardTitle>
+            <CardDescription>
+              import or export your end-to-end encryption key for secure access
+              across devices. This is intended so that old chats can be viewed
+              again without losing access.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col space-y-2">
+              <Label
+                htmlFor="current-encrypt-key"
+                className="flex items-center space-x-2"
+              >
+                <KeyRound className="h-5 w-5" />
+                <span>Current Private Key</span>
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="current-encrypt-key"
+                  value={
+                    currentPrivateKey
+                      ? `${currentPrivateKey.slice(0, 8)}${".".repeat(
+                          40
+                        )}${currentPrivateKey.slice(-3)}`
+                      : "No key available"
+                  }
+                  readOnly
+                  disabled
+                  className="w-full disabled:cursor-not-allowed"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (currentPrivateKey) {
+                      navigator.clipboard.writeText(currentPrivateKey);
+                    }
+                    toast({
+                      title: "Copied",
+                      description:
+                        "Private key copied to clipboard, now you can use it to paste in the another device",
+                    });
+                  }}
+                  disabled={!currentPrivateKey}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="replace-key">Paste Old Private Key</Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id="replace-key"
+                  placeholder="Paste your old private key here..."
+                  value={oldPrivateKey ?? ""}
+                  onChange={(e) => setOldPrivateKey(e.target.value)}
+                  className="w-full"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleChangePrivateKey}
+                  disabled={!oldPrivateKey}
+                >
+                  Replace
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Appearance Settings */}
         <Card>
           <CardHeader>
@@ -619,7 +730,9 @@ export default function SettingsPage() {
                 checked={
                   theme === "dark" ||
                   (typeof window !== "undefined" &&
-                    localStorage.getItem("zerochats-theme") === "dark")
+                    localStorage.getItem("zerochats-theme") === "dark") ||
+                  (typeof window !== "undefined" &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches)
                 }
                 onCheckedChange={(checked) =>
                   setTheme(checked ? "dark" : "light")
@@ -629,7 +742,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
-      <p className="text-sm text-muted-foreground mt-8 text-center break-words">
+      <p className="text-sm text-muted-foreground mt-8 p-2 text-center break-words">
         By using this service, you agree to our{" "}
         <Link href="/privacy-policy" className="text-indigo-500 underline">
           Privacy Policy
