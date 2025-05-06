@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+"use client";
+
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Play,
   Pause,
@@ -10,7 +13,12 @@ import {
   PictureInPicture,
 } from "lucide-react";
 
-export default function VideoPlayer({ fileURL }: { fileURL: string }) {
+interface VideoPlayerProps {
+  fileURL: string;
+  onLoad?: (videoElement: HTMLVideoElement | null) => void;
+}
+
+export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -23,7 +31,7 @@ export default function VideoPlayer({ fileURL }: { fileURL: string }) {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const playIconTimeoutRef = useRef<number>(null);
+  const playIconTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -44,6 +52,13 @@ export default function VideoPlayer({ fileURL }: { fileURL: string }) {
       document.removeEventListener("leavepictureinpicture", handlePiPChange);
     };
   }, []);
+
+  // Call onLoad prop with the video element when component mounts
+  useEffect(() => {
+    if (videoRef.current && onLoad) {
+      onLoad(videoRef.current);
+    }
+  }, [onLoad]);
 
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
@@ -176,7 +191,7 @@ export default function VideoPlayer({ fileURL }: { fileURL: string }) {
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
             preload="metadata"
-            poster="https://zerochats.vercel.app/logo/8b2dd08b-d439-4116-b798-89421c394982.png"
+            poster="/placeholder.svg?height=400&width=600"
             src={fileURL}
             onCanPlayThrough={() => setIsLoading(false)}
             controls={false}
@@ -188,28 +203,26 @@ export default function VideoPlayer({ fileURL }: { fileURL: string }) {
             Your browser does not support the video tag.
           </video>
 
-          <style jsx>
-            {`
-              @keyframes fade-out {
-                0% {
-                  opacity: 1;
-                  transform: scale(1);
-                }
-                50% {
-                  opacity: 0.5;
-                  transform: scale(1.2);
-                }
-                100% {
-                  opacity: 0;
-                  transform: scale(1.5);
-                }
+          <style jsx>{`
+            @keyframes fade-out {
+              0% {
+                opacity: 1;
+                transform: scale(1);
               }
+              50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+              }
+              100% {
+                opacity: 0;
+                transform: scale(1.5);
+              }
+            }
 
-              .animate-fade-out {
-                animation: fade-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-              }
-            `}
-          </style>
+            .animate-fade-out {
+              animation: fade-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            }
+          `}</style>
 
           {showPlayIcon && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface AudioMessageProps {
   src: string;
@@ -11,6 +10,7 @@ interface AudioMessageProps {
   fileName?: string;
   className?: string;
   isDark?: boolean;
+  onLoad?: (audioElement: HTMLAudioElement | null) => void;
 }
 
 export function AudioMessage({
@@ -19,6 +19,7 @@ export function AudioMessage({
   fileName,
   className = "",
   isDark = false,
+  onLoad,
 }: AudioMessageProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -30,6 +31,12 @@ export function AudioMessage({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
+
+  useEffect(() => {
+    if (audioRef.current && onLoad) {
+      onLoad(audioRef.current);
+    }
+  }, [onLoad]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -250,4 +257,24 @@ export function AudioMessage({
       )}
     </div>
   );
+}
+
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    setMatches(mediaQuery.matches);
+
+    const handler = (event: MediaQueryListEvent) => {
+      setMatches(event.matches);
+    };
+
+    mediaQuery.addEventListener("change", handler);
+    return () => {
+      mediaQuery.removeEventListener("change", handler);
+    };
+  }, [query]);
+
+  return matches;
 }

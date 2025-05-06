@@ -175,9 +175,92 @@ export function useEncryption(currentUser: any) {
     }
   };
 
+  const encryptFile = async (
+    file: File,
+    contactId: string
+  ): Promise<{
+    encryptedFile: Blob;
+    encryptedKey: string;
+    encryptedKeyForSelf: string;
+    iv: string;
+    isEncrypted: boolean;
+  }> => {
+    if (!isInitialized || !publicKey) {
+      return {
+        encryptedFile: file,
+        encryptedKey: "",
+        encryptedKeyForSelf: "",
+        iv: "",
+        isEncrypted: false,
+      };
+    }
+
+    try {
+      const contactPublicKey = await fetchContactPublicKey(contactId);
+
+      if (!contactPublicKey) {
+        throw new Error("Contact public key not found");
+      }
+
+      const fileBuffer = await file.arrayBuffer();
+
+      const messageKey = await generateMessageKey();
+
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const ivString = arrayBufferToBase64(iv.buffer);
+
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv,
+        },
+        messageKey,
+        fileBuffer
+      );
+
+      const encryptedBlob = new Blob([encryptedBuffer], {
+        type: "application/octet-stream",
+      });
+
+      const encryptedKeyForContact = await encryptKey(
+        messageKey,
+        contactPublicKey
+      );
+
+      const encryptedKeyForSelf = await encryptKey(messageKey, publicKey);
+
+      return {
+        encryptedFile: encryptedBlob,
+        encryptedKey: encryptedKeyForContact,
+        encryptedKeyForSelf: encryptedKeyForSelf,
+        iv: ivString,
+        isEncrypted: true,
+      };
+    } catch (error) {
+      console.error("Error encrypting file:", error);
+      return {
+        encryptedFile: file,
+        encryptedKey: "",
+        encryptedKeyForSelf: "",
+        iv: "",
+        isEncrypted: false,
+      };
+    }
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  };
+
   return {
     isInitialized,
     encryptMessageForContact,
     decryptMessageFromContact,
+    encryptFile,
   };
 }
