@@ -191,7 +191,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
             preload="metadata"
-            poster="/placeholder.svg?height=400&width=600"
+            poster="https://zerochats.vercel.app/logo/8b2dd08b-d439-4116-b798-89421c394982.png"
             src={fileURL}
             onCanPlayThrough={() => setIsLoading(false)}
             controls={false}
