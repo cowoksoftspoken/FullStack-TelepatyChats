@@ -1445,9 +1445,6 @@ export function ChatArea({
                       : contact.displayName}
                   </div>
                   <div className="break-words text-ellipsis flex items-center gap-1">
-                    {msg.replyTo.isEncrypted && (
-                      <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
-                    )}
                     {msg.replyTo.id && decryptedMessages[msg.replyTo.id]
                       ? decryptedMessages[msg.replyTo.id]
                       : msg.replyTo.isEncrypted
