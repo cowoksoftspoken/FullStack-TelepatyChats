@@ -17,7 +17,6 @@ import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   ArrowLeft,
   FileText,
-  Globe,
   Loader2,
   Lock,
   MapPin,
@@ -29,7 +28,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -54,100 +53,14 @@ import { useToast } from "@/hooks/use-toast";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
-import {
-  base64ToArrayBuffer,
-  decryptKey,
-  importPrivateKey,
-} from "@/utils/encryption";
 import { AudioMessage } from "./audio-message";
 import { CameraDialog } from "./camera-dialog";
 import ContactStatus from "./contact-status";
-import MapPreview from "./map-preview";
 import MessageInput from "./message-input";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
-import { YoutubeEmbed } from "./yt-embed";
-
-async function decryptAndCreateBlobUrl(
-  fileURL: string,
-  fileIsEncrypted: boolean,
-  fileEncryptedKey: string,
-  fileEncryptedKeyForSelf: string,
-  fileIv: string,
-  fileType: string,
-  isSender: boolean,
-  currentUserId: string
-) {
-  if (!fileIsEncrypted) {
-    return fileURL;
-  }
-
-  try {
-    const encryptedBlob = await fetch(fileURL).then((response) =>
-      response.blob()
-    );
-
-    const keyData = isSender ? fileEncryptedKeyForSelf : fileEncryptedKey;
-    const iv = fileIv;
-
-    if (!keyData || !iv) {
-      console.error("Missing encryption data for media");
-      return fileURL;
-    }
-
-    const privKeyString = localStorage.getItem(
-      `encryption_private_key_${currentUserId}`
-    );
-    if (!privKeyString) {
-      console.error("Private key not found in localStorage");
-      return fileURL;
-    }
-
-    const privateKey = await importPrivateKey(privKeyString);
-
-    const messageKey = await decryptKey(keyData, privateKey);
-
-    const ivArrayBuffer = base64ToArrayBuffer(iv);
-
-    const encryptedBuffer = await encryptedBlob.arrayBuffer();
-    const decryptedBuffer = await window.crypto.subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: new Uint8Array(ivArrayBuffer),
-      },
-      messageKey,
-      encryptedBuffer
-    );
-
-    const decryptedBlob = new Blob([decryptedBuffer], {
-      type: fileType || "application/octet-stream",
-    });
-
-    return URL.createObjectURL(decryptedBlob);
-  } catch (error) {
-    console.error("Error decrypting media:", error);
-    return fileURL;
-  }
-}
-
-// type EncryptedReply = {
-//   id: string;
-//   senderId: string;
-//   isEncrypted: true;
-//   encryptedText: string;
-//   encryptedKey: string;
-//   encryptedKeyForSelf?: string;
-//   iv: string;
-//   text?: string;
-// };
-
-// type PlaintextReply = {
-//   id: string;
-//   text: string;
-//   senderId: string;
-//   isEncrypted: false;
-// };
+import { MessageContent } from "./message-content";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -594,9 +507,9 @@ export function ChatArea({
           if (encryptedFileData.isEncrypted) {
             fileToUpload = new File(
               [encryptedFileData.encryptedFile],
-              previewFile?.file.name as string,
+              imageFile.name,
               {
-                type: previewFile?.file.type,
+                type: imageFile.type,
                 lastModified: Date.now(),
               }
             );
@@ -919,9 +832,9 @@ export function ChatArea({
           if (encryptedFileData.isEncrypted) {
             fileToUpload = new File(
               [encryptedFileData.encryptedFile],
-              previewFile?.file.name as string,
+              previewFile.file.name,
               {
-                type: previewFile?.file.type,
+                type: previewFile.file.type,
                 lastModified: Date.now(),
               }
             );
@@ -1100,6 +1013,13 @@ export function ChatArea({
         stream.getTracks().forEach((track) => track.stop());
       };
 
+      recorder.onerror = () => {
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+      };
+
       setMediaRecorder(recorder);
       setAudioChunks([]);
       recorder.start();
@@ -1185,9 +1105,9 @@ export function ChatArea({
           if (encryptedFileData.isEncrypted) {
             fileToUpload = new File(
               [encryptedFileData.encryptedFile],
-              previewFile?.file.name || "encrypted_file",
+              audioFile.name,
               {
-                type: previewFile?.file.type,
+                type: audioFile.type,
                 lastModified: Date.now(),
               }
             );
@@ -1367,390 +1287,14 @@ export function ChatArea({
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
-  function extractYouTubeId(text: string): string | null {
-    const regex =
-      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-    const match = text.match(regex);
-    return match ? match[1] : null;
-  }
-
-  const checkingMessage = (text: string) => {
-    const urlPattern =
-      /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
-    const youtubeRegex =
-      /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-
-    if (urlPattern.test(text)) {
-      return text.replace(urlPattern, (url) => {
-        if (youtubeRegex.test(url)) {
-          return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
-        } else {
-          return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
-        }
-      });
-    } else {
-      return text;
-    }
-  };
-
-  const renderMessageContent = (msg: Message) => {
-    const messageText =
-      msg.isEncrypted && decryptedMessages[msg.id]
+  const getMessageText = useCallback(
+    (msg: Message) => {
+      return msg.isEncrypted && decryptedMessages[msg.id]
         ? decryptedMessages[msg.id]
         : msg.text || "";
-
-    switch (msg.type) {
-      case "image":
-        return (
-          <div className="mt-1">
-            <div className="relative">
-              {msg.fileIsEncrypted ? (
-                <img
-                  src="/placeholder.svg"
-                  alt={msg.fileName}
-                  className="w-full rounded-md max-h-60 object-cover"
-                  onLoad={async (e) => {
-                    const target = e.currentTarget as HTMLImageElement;
-                    try {
-                      const decryptedUrl = await decryptAndCreateBlobUrl(
-                        msg.fileURL || "",
-                        msg.fileIsEncrypted || false,
-                        msg.fileEncryptedKey as string,
-                        msg.fileEncryptedKeyForSelf as string,
-                        msg.fileIv as string,
-                        msg.fileType || "image/jpeg",
-                        msg.senderId === currentUser.uid,
-                        currentUser.uid
-                      );
-
-                      if (target) {
-                        target.src = decryptedUrl;
-                      } else {
-                        console.warn(
-                          "Target hilang sebelum bisa diubah src-nya 🫠"
-                        );
-                      }
-                    } catch (error) {
-                      console.error("Error loading encrypted image:", error);
-                    }
-                  }}
-                  onClick={() => {
-                    if (msg.fileIsEncrypted) {
-                      toast({
-                        title: "Encrypted Image",
-                        description:
-                          "This image is encrypted and can only be viewed in the chat.",
-                      });
-                    } else {
-                      window.open(msg.fileURL, "_blank");
-                    }
-                  }}
-                />
-              ) : (
-                <img
-                  src={msg.fileURL || "/placeholder.svg"}
-                  alt={msg.fileName}
-                  className="w-full rounded-md max-h-60 object-cover"
-                  onClick={() => window.open(msg.fileURL, "_blank")}
-                />
-              )}
-              {msg.fileIsEncrypted && (
-                <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-                  <Lock className="h-3 w-3 text-green-500" />
-                </div>
-              )}
-            </div>
-            {messageText !== msg.fileName && (
-              <div className="mt-1 text-sm flex items-center gap-1">
-                <p>{messageText}</p>
-              </div>
-            )}
-          </div>
-        );
-      case "video":
-        return (
-          <div className="mt-1 w-full">
-            <div className="relative">
-              {msg.fileIsEncrypted ? (
-                <VideoPlayer
-                  fileURL={msg.fileURL as string}
-                  onLoad={async (videoElement) => {
-                    try {
-                      const decryptedUrl = await decryptAndCreateBlobUrl(
-                        msg.fileURL || "",
-                        msg.fileIsEncrypted || false,
-                        msg.fileEncryptedKey as string,
-                        msg.fileEncryptedKeyForSelf as string,
-                        msg.fileIv as string,
-                        msg.fileType || "video/mp4",
-                        msg.senderId === currentUser.uid,
-                        currentUser.uid
-                      );
-                      if (videoElement) {
-                        videoElement.src = decryptedUrl;
-                        videoElement.load();
-                      }
-                    } catch (error) {
-                      console.error("Error loading encrypted video:", error);
-                    }
-                  }}
-                />
-              ) : (
-                <VideoPlayer fileURL={msg.fileURL || ""} />
-              )}
-              {msg.fileIsEncrypted && (
-                <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-                  <Lock className="h-3 w-3 text-green-500" />
-                </div>
-              )}
-            </div>
-            {messageText !== msg.fileName && (
-              <div className="mt-1 text-sm flex items-center gap-1">
-                <p>{messageText}</p>
-              </div>
-            )}
-          </div>
-        );
-      case "location":
-        return (
-          <div className="mt-1 w-full">
-            <div className="rounded-xl w-full p-2 dark:bg-muted-foreground/20 bg-muted">
-              <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
-              <a
-                href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-500 text-sm hover:underline mt-2 flex items-center"
-              >
-                <Globe className="mr-2 h-4 w-4" /> Location Details
-              </a>
-              {msg.accuracy && (
-                <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Accuracy {msg.accuracy}m
-                </p>
-              )}
-            </div>
-            {messageText && (
-              <div className="mt-4 text-sm flex items-center gap-1">
-                <p>{messageText}</p>
-              </div>
-            )}
-          </div>
-        );
-      case "audio":
-        return (
-          <div className="mt-1 w-full">
-            <div className="relative">
-              {msg.fileIsEncrypted ? (
-                <AudioMessage
-                  src={msg.fileURL as string}
-                  duration={msg.duration}
-                  fileName={msg.fileName}
-                  isDark={theme === "dark" ? false : true}
-                  className="w-full"
-                  onLoad={async (audioElement) => {
-                    try {
-                      const decryptedUrl = await decryptAndCreateBlobUrl(
-                        msg.fileURL || "",
-                        msg.fileIsEncrypted || false,
-                        msg.fileEncryptedKey as string,
-                        msg.fileEncryptedKeyForSelf as string,
-                        msg.fileIv as string,
-                        msg.fileType || "audio/webm",
-                        msg.senderId === currentUser.uid,
-                        currentUser.uid
-                      );
-                      if (audioElement) {
-                        audioElement.src = decryptedUrl;
-                        audioElement.load();
-                      }
-                    } catch (error) {
-                      console.error("Error loading encrypted audio:", error);
-                    }
-                  }}
-                />
-              ) : (
-                <AudioMessage
-                  src={msg.fileURL || ""}
-                  duration={msg.duration}
-                  fileName={msg.fileName}
-                  isDark={theme === "dark" ? false : true}
-                  className="w-full"
-                />
-              )}
-            </div>
-            {messageText !== "Audio message" &&
-              messageText !== msg.fileName && (
-                <div className="mt-1 text-sm w-full flex items-center gap-1">
-                  <p>{messageText}</p>
-                </div>
-              )}
-          </div>
-        );
-      case "file":
-        return (
-          <div className="mt-1 block gap-2">
-            <div className="flex items-center gap-2 bg-muted rounded-md p-2 relative">
-              <FileText className="h-5 w-5" />
-              <div className="block flex-1">
-                <a
-                  href={msg.fileURL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 text-sm hover:underline"
-                  data-type={msg.fileType}
-                >
-                  {msg.fileName}
-                </a>
-                <p className="text-xs text-muted-foreground">
-                  {(msg?.size ?? 0) < 1024 * 1024
-                    ? `${((msg?.size ?? 0) / 1024).toFixed(2)} KB`
-                    : `${((msg?.size ?? 0) / (1024 * 1024)).toFixed(2)} MB`}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 rounded-full"
-                onClick={async (e) => {
-                  e.stopPropagation();
-
-                  toast({
-                    title: "Preparing download...",
-                    description: "Decrypting file before download",
-                  });
-
-                  try {
-                    if (msg.fileIsEncrypted) {
-                      const encryptedBlob = await fetch(
-                        msg?.fileURL ?? ""
-                      ).then((response) => response.blob());
-
-                      const isSender = msg.senderId === currentUser.uid;
-
-                      const keyData = isSender
-                        ? msg.fileEncryptedKeyForSelf
-                        : msg.fileEncryptedKey;
-                      const iv = msg.fileIv;
-
-                      if (!keyData || !iv) {
-                        throw new Error("Missing encryption data");
-                      }
-
-                      const ivArrayBuffer = base64ToArrayBuffer(iv);
-
-                      const privKeyString = localStorage.getItem(
-                        `encryption_private_key_${currentUser.uid}`
-                      );
-
-                      if (!privKeyString) {
-                        throw new Error(
-                          "Private key not found in localStorage"
-                        );
-                      }
-
-                      const privateKey = await importPrivateKey(privKeyString);
-
-                      const messageKey = await decryptKey(keyData, privateKey);
-
-                      const encryptedBuffer = await encryptedBlob.arrayBuffer();
-                      const decryptedBuffer =
-                        await window.crypto.subtle.decrypt(
-                          {
-                            name: "AES-GCM",
-                            iv: new Uint8Array(ivArrayBuffer),
-                          },
-                          messageKey,
-                          encryptedBuffer
-                        );
-
-                      const decryptedBlob = new Blob([decryptedBuffer], {
-                        type: msg.fileType || "application/octet-stream",
-                      });
-
-                      const url = URL.createObjectURL(decryptedBlob);
-                      const downloadLink = document.createElement("a");
-                      downloadLink.href = url;
-                      downloadLink.download = msg.fileName as string;
-                      document.body.appendChild(downloadLink);
-                      downloadLink.click();
-                      document.body.removeChild(downloadLink);
-
-                      setTimeout(() => URL.revokeObjectURL(url), 100);
-
-                      toast({
-                        title: "Download ready",
-                        description: "File has been decrypted and downloaded",
-                        variant: "default",
-                      });
-                    } else {
-                      const downloadLink = document.createElement("a");
-                      downloadLink.href = msg.fileURL!;
-                      downloadLink.download = msg.fileName!;
-                      downloadLink.target = "_blank";
-                      document.body.appendChild(downloadLink);
-                      downloadLink.click();
-                      document.body.removeChild(downloadLink);
-                    }
-                  } catch (error) {
-                    console.error("Error downloading file:", error);
-                    toast({
-                      title: "Download failed",
-                      description: `Could not decrypt and download the file: ${
-                        (error as Error).message
-                      }`,
-                      variant: "destructive",
-                    });
-                  }
-                }}
-                title="Download file"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-blue-500"
-                >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-              </Button>
-            </div>
-            {messageText !== msg.fileName && (
-              <div className="mt-2 text-base flex items-center gap-1">
-                {msg.isEncrypted && (
-                  <Lock className="h-3 w-3 text-green-500 flex-shrink-0" />
-                )}
-                <p>{messageText}</p>
-              </div>
-            )}
-          </div>
-        );
-      default:
-        const youtubeId = extractYouTubeId(messageText);
-        return (
-          <>
-            {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
-            <div className="flex items-center gap-1">
-              <p
-                className="w-full text-sm md:text-base break-words"
-                dangerouslySetInnerHTML={{
-                  __html: checkingMessage(messageText),
-                }}
-              />
-            </div>
-          </>
-        );
-    }
-  };
+    },
+    [decryptedMessages]
+  );
 
   return (
     <div className="flex flex-1 flex-col h-full">
@@ -1915,7 +1459,13 @@ export function ChatArea({
                 </a>
               )}
 
-              {renderMessageContent(msg)}
+              <MessageContent
+                msg={msg}
+                messageText={getMessageText(msg)}
+                currentUserId={currentUser.uid}
+                theme={theme}
+                onImageClick={(url) => window.open(url, "_blank")}
+              />
 
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
                 <div className="flex items-center">
@@ -2031,7 +1581,6 @@ export function ChatArea({
         isEncryptionEnabled={isInitialized}
       />
 
-      {/* Media preview dialog */}
       <Dialog
         open={!!previewFile}
         onOpenChange={(open) => !open && setPreviewFile(null)}
@@ -2053,7 +1602,6 @@ export function ChatArea({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Preview content */}
             {previewFile?.type === "image" && (
               <div className="flex justify-center">
                 <img
@@ -2097,7 +1645,6 @@ export function ChatArea({
               </div>
             )}
 
-            {/* Caption input */}
             <div className="space-y-2">
               <Label htmlFor="caption">Caption (optional)</Label>
               <Textarea
