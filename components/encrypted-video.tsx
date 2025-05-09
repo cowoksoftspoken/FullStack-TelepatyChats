@@ -42,7 +42,6 @@ export function EncryptedVideo({
       hasAttemptedDecryption.current = true;
 
       try {
-        console.log(`Decrypting video for message ${messageId}`);
         const url = await decryptAndCreateBlobUrl(
           messageId,
           fileURL,
@@ -55,7 +54,6 @@ export function EncryptedVideo({
           currentUserId
         );
 
-        console.log(`Setting video URL to ${url}`);
         setVideoUrl(url);
       } catch (err) {
         console.error("Error in decryptVideo:", err);
