@@ -12,6 +12,7 @@ import {
   SkipForward,
   PictureInPicture,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface VideoPlayerProps {
   fileURL: string;
@@ -32,6 +33,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const playIconTimeoutRef = useRef<number | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -53,7 +55,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     };
   }, []);
 
-  // Call onLoad prop with the video element when component mounts
   useEffect(() => {
     if (videoRef.current && onLoad) {
       onLoad(videoRef.current);
@@ -64,7 +65,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
-      // Load the first frame
       videoRef.current.currentTime = 0.1;
     }
   };
@@ -117,17 +117,78 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     }
   };
 
+  useEffect(() => {
+    const videoElement = videoRef.current;
+    if (!videoElement) return;
+
+    const handleDoubleClick = (e: MouseEvent) => {
+      const rect = videoElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const width = rect.width;
+
+      if (x < width / 2) {
+        videoElement.currentTime = Math.max(videoElement.currentTime - 10, 0);
+      } else {
+        videoElement.currentTime = Math.min(
+          videoElement.currentTime + 10,
+          videoElement.duration
+        );
+      }
+    };
+
+    videoElement.addEventListener("dblclick", handleDoubleClick);
+
+    return () => {
+      videoElement.removeEventListener("dblclick", handleDoubleClick);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!videoRef.current) return;
+
+      if (e.key === "ArrowLeft") {
+        videoRef.current.currentTime = Math.max(
+          videoRef.current.currentTime - 10,
+          0
+        );
+      } else if (e.key === "ArrowRight") {
+        videoRef.current.currentTime = Math.min(
+          videoRef.current.currentTime + 10,
+          videoRef.current.duration
+        );
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
   };
 
-  const handleFullscreen = () => {
+  const handleFullscreen = async () => {
     if (!isFullscreen) {
-      videoContainerRef.current?.requestFullscreen();
+      await videoContainerRef.current?.requestFullscreen();
+
+      if (screen.orientation && (screen.orientation as any).lock) {
+        try {
+          await (screen.orientation as any).lock("landscape");
+        } catch (err) {
+          console.warn("Orientation lock failed:", err);
+        }
+      }
     } else {
-      document.exitFullscreen();
+      await document.exitFullscreen();
+      if (screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
     }
   };
 
@@ -257,40 +318,47 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={skipBackward}
-                  className="text-white hover:text-purple-400 transition"
-                >
-                  <SkipBack className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
-                </button>
+              <div className="flex items-center space-x-1 md:space-x-4 gap-2 md:gap-0">
+                {(isFullscreen || !isMobile) && (
+                  <button
+                    onClick={skipBackward}
+                    className={`text-white hover:text-purple-400 transition`}
+                  >
+                    <SkipBack className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                )}
+
                 <button
                   onClick={togglePlay}
                   className="text-white hover:text-purple-400 transition p-2 bg-purple-500/30 rounded-full"
                 >
                   {isPlaying ? (
-                    <Pause className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                    <Pause className="w-4 h-4 md:w-5 md:h-5" />
                   ) : (
-                    <Play className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                    <Play className="w-4 h-4 md:w-5 md:h-5" />
                   )}
                 </button>
-                <button
-                  onClick={skipForward}
-                  className="text-white hover:text-purple-400 transition"
-                >
-                  <SkipForward className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
-                </button>
+
+                {(isFullscreen || !isMobile) && (
+                  <button
+                    onClick={skipForward}
+                    className="text-white hover:text-purple-400 transition"
+                  >
+                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                )}
+
                 <button
                   onClick={toggleMute}
                   className="text-white hover:text-purple-400 transition"
                 >
                   {isMuted ? (
-                    <VolumeX className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                    <VolumeX className="w-4 h-4 md:w-5 md:h-5" />
                   ) : (
-                    <Volume2 className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                    <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
                   )}
                 </button>
-                <span className="text-white text-xs sm:text-sm md:text-sm">
+                <span className="text-white text-xs md:text-sm">
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>
@@ -302,13 +370,13 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                   }`}
                   title="Picture-in-Picture"
                 >
-                  <PictureInPicture className="w-5 h-5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                  <PictureInPicture className="w-4 h-4 md:w-5 md:h-5" />
                 </button>
                 <button
                   onClick={handleFullscreen}
                   className="text-white hover:text-purple-400 transition"
                 >
-                  <Maximize className="w-5 h-5 sm:w-6 sm:h-6 md:w-5 md:h-5" />
+                  <Maximize className="w-4 h-4  md:w-5 md:h-5" />
                 </button>
               </div>
             </div>
