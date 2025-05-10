@@ -79,6 +79,29 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  if (typeof window !== "undefined") {
+    const styleTitle =
+      "color: red; font-size: 32px; font-weight: bold; text-shadow: 1px 1px black;";
+    const styleBody =
+      "color: white; background-color: red; font-size: 14px; padding: 10px; font-family: monospace;";
+    const styleHighlight =
+      "color: yellow; background-color: black; font-size: 16px; padding: 8px; font-weight: bold; font-family: monospace;";
+
+    console.log("%c⚠️ WARNING! ⚠️", styleTitle);
+    console.log(
+      "%cThis is a browser feature intended for developers. If someone told you to copy and paste something here, it is a scam and will give them access to your messages, private keys, or account.",
+      styleBody
+    );
+    console.log(
+      "%cThis console is not a playground.\nIf someone told you to paste something here, they are trying to scam you. Pasting code here can give attackers FULL access to your account, private messages, and identity.",
+      styleBody
+    );
+    console.log(
+      "%cDO NOT paste code here if you don’t fully understand what it does.",
+      styleHighlight
+    );
+  }
+
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
