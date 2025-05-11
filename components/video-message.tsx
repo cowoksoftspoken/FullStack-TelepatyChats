@@ -263,7 +263,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
         ref={videoContainerRef}
         className={`w-full bg-black overflow-hidden transition-all duration-300 ${
           isFullscreen
-            ? "h-screen w-screen rounded-none"
+            ? "h-full rounded-none"
             : "max-w-4xl rounded-xl shadow-2xl"
         }`}
       >
@@ -384,7 +384,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
 
           <video
             ref={videoRef}
-            className="w-full aspect-video cursor-pointer"
+            className={`w-full h-full ${isFullscreen ? "" : "aspect-video"} cursor-pointer object-contain`}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
