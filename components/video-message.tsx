@@ -11,6 +11,8 @@ import {
   SkipBack,
   SkipForward,
   PictureInPicture,
+  Settings,
+  X,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -29,11 +31,22 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isPiPActive, setIsPiPActive] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const playIconTimeoutRef = useRef<number | null>(null);
+  const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
+  const lastClickTime = useRef<number>(0);
   const isMobile = useIsMobile();
+
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+
+  const toggleSettingsMenu = () => {
+    setShowSettingsMenu((prev) => !prev);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -80,19 +93,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     }
   };
 
-  const handleVideoClick = () => {
-    togglePlay();
-    setShowPlayIcon(true);
-
-    if (playIconTimeoutRef.current) {
-      window.clearTimeout(playIconTimeoutRef.current);
-    }
-
-    playIconTimeoutRef.current = window.setTimeout(() => {
-      setShowPlayIcon(false);
-    }, 500);
-  };
-
   const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
@@ -115,6 +115,27 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
       const pos = (e.clientX - rect.left) / rect.width;
       videoRef.current.currentTime = pos * videoRef.current.duration;
     }
+  };
+
+  const showVideoControls = () => {
+    setShowControls(true);
+    setShowPlayIcon(true);
+    if (hideControlsTimeout.current) {
+      clearTimeout(hideControlsTimeout.current);
+    }
+    hideControlsTimeout.current = setTimeout(() => {
+      setShowControls(false);
+      setShowPlayIcon(false);
+    }, 3000);
+  };
+
+  const handleVideoClick = () => {
+    const now = Date.now();
+    if (now - lastClickTime.current < 300) {
+      return;
+    }
+    lastClickTime.current = now;
+    showVideoControls();
   };
 
   useEffect(() => {
@@ -167,6 +188,14 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (hideControlsTimeout.current) {
+        clearTimeout(hideControlsTimeout.current);
+      }
+    };
+  }, []);
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
@@ -204,6 +233,12 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     }
   };
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
   const skipBackward = () => {
     if (videoRef.current) {
       videoRef.current.currentTime -= 10;
@@ -215,20 +250,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
       videoRef.current.currentTime += 10;
     }
   };
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && videoRef.current) {
-        setIsPlaying(!videoRef.current.paused);
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, []);
 
   return (
     <div
@@ -253,16 +274,124 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             </div>
           )}
 
+          <div
+            className={`absolute top-2 right-2 z-10 ${
+              showControls ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <button
+              onClick={toggleSettingsMenu}
+              className="text-white hover:text-purple-400 transition"
+            >
+              <Settings className="w-4 h-4 md:w-5 md:h-5" />
+            </button>
+          </div>
+          {showSettingsMenu && (
+            <div
+              className={`mt-2 bg-black/80 text-white p-4 rounded shadow-lg space-y-2 text-sm    ${
+                isMobile
+                  ? "w-full h-full text-[60%]"
+                  : "top-4 absolute right-4 z-10"
+              }`}
+            >
+              <div>
+                <div className="flex justify-between items-center py-1">
+                  <label className="block mb-2">Speed</label>
+                  {!isMobile && (
+                    <button>
+                      <X
+                        className="w-4 h-4 md:w-5 md:h-5"
+                        onClick={toggleSettingsMenu}
+                      />
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={playbackRate}
+                  onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
+                  className="bg-gray-800 text-white px-2 py-1 rounded w-full"
+                >
+                  {[0.25, 0.5, 1, 1.25, 1.5, 2].map((rate) => (
+                    <option key={rate} value={rate}>
+                      {rate}x
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {!isMobile && (
+                <div className="border-t border-white/10 pt-2 text-xs space-y-1 font-mono text-gray-300">
+                  <p>
+                    <span className="text-purple-400">Resolution:</span>{" "}
+                    {videoRef.current?.videoWidth}x
+                    {videoRef.current?.videoHeight}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Time:</span>{" "}
+                    {videoRef.current?.currentTime.toFixed(1)} /{" "}
+                    {videoRef.current?.duration.toFixed(1)}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Bitrate:</span>{" "}
+                    {(videoRef.current as any)?.webkitVideoDecodedByteCount &&
+                    videoRef.current?.buffered.length
+                      ? Math.round(
+                          ((videoRef.current as any)
+                            .webkitVideoDecodedByteCount *
+                            8) /
+                            videoRef.current.buffered.end(0)
+                        )
+                      : 0}{" "}
+                    kbps
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Dropped:</span>{" "}
+                    {(videoRef.current as any)?.webkitDroppedFrameCount}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Total:</span>{" "}
+                    {(videoRef.current as any)?.webkitDecodedFrameCount}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Buffered:</span>{" "}
+                    {(() => {
+                      const b = videoRef.current?.buffered;
+                      if (!b) return "0";
+                      const ranges = [];
+                      for (let i = 0; i < b.length; i++) {
+                        ranges.push(
+                          `${b.start(i).toFixed(2)}–${b.end(i).toFixed(2)}`
+                        );
+                      }
+                      return ranges.join(", ");
+                    })()}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Speed:</span>{" "}
+                    {videoRef.current?.playbackRate}x
+                  </p>
+                  <p>
+                    <span className="text-purple-400">ReadyState:</span>{" "}
+                    {videoRef.current?.readyState}
+                  </p>
+                  <p>
+                    <span className="text-purple-400">Network:</span>{" "}
+                    {videoRef.current?.networkState}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           <video
             ref={videoRef}
             className="w-full aspect-video cursor-pointer"
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
+            onMouseMove={showVideoControls}
             preload="metadata"
             poster="https://zerochats.vercel.app/logo/8b2dd08b-d439-4116-b798-89421c394982.png"
             src={fileURL}
-            onCanPlayThrough={() => setIsLoading(false)}
             controls={false}
             muted={isMuted}
             onEnded={() => setIsPlaying(false)}
@@ -272,34 +401,16 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             Your browser does not support the video tag.
           </video>
 
-          <style jsx>{`
-            @keyframes fade-out {
-              0% {
-                opacity: 1;
-                transform: scale(1);
-              }
-              50% {
-                opacity: 0.5;
-                transform: scale(1.2);
-              }
-              100% {
-                opacity: 0;
-                transform: scale(1.5);
-              }
-            }
-
-            .animate-fade-out {
-              animation: fade-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            }
-          `}</style>
-
           {showPlayIcon && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div className="bg-black/50 rounded-full p-4 animate-fade-out">
+            <div
+              className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
+              onClick={togglePlay}
+            >
+              <div className="bg-purple-400/50 hover:bg-purple-500/50 rounded-full p-4">
                 {isPlaying ? (
-                  <Pause className="text-white w-8 h-8 sm:w-10 sm:h-10 md:w-10 md:h-10" />
+                  <Pause className="text-white w-8 h-8" fill="currentColor" />
                 ) : (
-                  <Play className="text-white w-8 h-8 sm:w-10 sm:h-10 md:w-10 md:h-10" />
+                  <Play className="text-white w-8 h-8" fill="currentColor" />
                 )}
               </div>
             </div>
@@ -307,19 +418,15 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
 
           <div
             className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-4 transform transition-all duration-300 ${
-              isFullscreen
-                ? "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0"
-                : "opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0"
+              showControls
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-1"
             }`}
           >
             <div
               ref={progressBarRef}
               className="w-full h-1 bg-gray-600 rounded-full mb-4 cursor-pointer"
               onClick={handleProgressBarClick}
-              role="slider"
-              aria-valuenow={currentTime}
-              aria-valuemin={0}
-              aria-valuemax={duration}
             >
               <div
                 className="h-full bg-purple-500 rounded-full relative"
@@ -334,40 +441,37 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                 {(isFullscreen || !isMobile) && (
                   <button
                     onClick={skipBackward}
-                    className={`text-white hover:text-purple-400 transition`}
+                    className="text-white hover:text-purple-400"
                   >
-                    <SkipBack className="w-4 h-4 md:w-5 md:h-5" />
+                    <SkipBack className="w-5 h-5" />
                   </button>
                 )}
-
                 <button
                   onClick={togglePlay}
-                  className="text-white hover:text-purple-400 transition p-2 bg-purple-500/30 rounded-full"
+                  className="text-white hover:text-purple-400 p-2 backdrop-blur-md bg-purple-500/30 rounded-full"
                 >
                   {isPlaying ? (
-                    <Pause className="w-4 h-4 md:w-5 md:h-5" />
+                    <Pause className="w-5 h-5" fill="currentColor" />
                   ) : (
-                    <Play className="w-4 h-4 md:w-5 md:h-5" />
+                    <Play className="w-5 h-5" fill="currentColor" />
                   )}
                 </button>
-
                 {(isFullscreen || !isMobile) && (
                   <button
                     onClick={skipForward}
-                    className="text-white hover:text-purple-400 transition"
+                    className="text-white hover:text-purple-400"
                   >
-                    <SkipForward className="w-4 h-4 md:w-5 md:h-5" />
+                    <SkipForward className="w-5 h-5" />
                   </button>
                 )}
-
                 <button
                   onClick={toggleMute}
-                  className="text-white hover:text-purple-400 transition"
+                  className="text-white hover:text-purple-400"
                 >
                   {isMuted ? (
-                    <VolumeX className="w-4 h-4 md:w-5 md:h-5" />
+                    <VolumeX className="w-5 h-5" />
                   ) : (
-                    <Volume2 className="w-4 h-4 md:w-5 md:h-5" />
+                    <Volume2 className="w-5 h-5" />
                   )}
                 </button>
                 <span className="text-white text-xs md:text-sm">
@@ -382,17 +486,37 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                   }`}
                   title="Picture-in-Picture"
                 >
-                  <PictureInPicture className="w-4 h-4 md:w-5 md:h-5" />
+                  <PictureInPicture className="w-5 h-5" />
                 </button>
                 <button
                   onClick={handleFullscreen}
-                  className="text-white hover:text-purple-400 transition"
+                  className="text-white hover:text-purple-400"
                 >
-                  <Maximize className="w-4 h-4  md:w-5 md:h-5" />
+                  <Maximize className="w-5 h-5" />
                 </button>
               </div>
             </div>
           </div>
+
+          {/* <style jsx>{`
+            @keyframes fade-out {
+              0% {
+                opacity: 1;
+                transform: scale(1);
+              }
+              50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+              }
+              100% {
+                opacity: 0;
+                transform: scale(1.5);
+              }
+            }
+            .animate-fade-out {
+              animation: fade-out 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            }
+          `}</style> */}
         </div>
       </div>
     </div>
