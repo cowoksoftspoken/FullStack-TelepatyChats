@@ -255,7 +255,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
 
           <video
             ref={videoRef}
-            className="w-full aspect-video cursor-pointer"
+            className={`w-full h-auto ${isFullscreen ? "" : "aspect-video} cursor-pointer object-contain`}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
