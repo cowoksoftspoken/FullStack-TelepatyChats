@@ -310,6 +310,10 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
               ref={progressBarRef}
               className="w-full h-1 bg-gray-600 rounded-full mb-4 cursor-pointer"
               onClick={handleProgressBarClick}
+              role="slider"
+              aria-valuenow={currentTime}
+              aria-valuemin={0}
+              aria-valuemax={duration}
             >
               <div
                 className="h-full bg-purple-500 rounded-full relative"
