@@ -234,8 +234,10 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     <div className="max-w-full h-full rounded-xl object-cover bg-gray-900 flex items-center justify-center">
       <div
         ref={videoContainerRef}
-        className={`max-w-4xl w-full bg-black rounded-xl overflow-hidden shadow-2xl ${
-          isFullscreen ? "rounded-none" : ""
+        className={`w-full bg-black overflow-hidden transition-all duration-300 ${
+          isFullscreen
+            ? "h-screen w-screen rounded-none"
+            : "max-w-4xl rounded-xl shadow-2xl"
         }`}
       >
         <div className="relative group">
