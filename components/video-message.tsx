@@ -231,7 +231,13 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   }, []);
 
   return (
-    <div className="max-w-full h-full rounded-xl object-cover bg-gray-900 flex items-center justify-center">
+    <div
+      className={`${
+        isFullscreen
+          ? "fixed inset-0 z-50 w-screen h-screen bg-black"
+          : "max-w-full h-full bg-gray-900 rounded-xl"
+      } flex items-center justify-center`}
+    >
       <div
         ref={videoContainerRef}
         className={`w-full bg-black overflow-hidden transition-all duration-300 ${
