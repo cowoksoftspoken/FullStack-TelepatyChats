@@ -38,7 +38,7 @@ export function useDecryptedMedia() {
       return fileURL;
     }
 
-    if (decryptedUrls[messageId]) {
+    if (decryptedUrls[messageId] && decryptedUrls[messageId] === fileURL) {
       return decryptedUrls[messageId];
     }
 
@@ -70,9 +70,10 @@ export function useDecryptedMedia() {
           return fileURL;
         }
 
-        const privKeyString = localStorage.getItem(
-          `encryption_private_key_${currentUserId}`
-        );
+        const privKeyString =
+          typeof window !== "undefined"
+            ? localStorage.getItem(`encryption_private_key_${currentUserId}`)
+            : null;
         if (!privKeyString) {
           console.error("Private key not found in localStorage");
           return fileURL;

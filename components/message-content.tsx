@@ -57,8 +57,8 @@ export function MessageContent({
   }, [msg.type, messageText]);
 
   const handleImageClick = () => {
-    if (onImageClick && msg.fileURL && !msg.fileIsEncrypted) {
-      onImageClick(msg.fileURL);
+    if (onImageClick) {
+      onImageClick(msg.id);
     }
   };
 

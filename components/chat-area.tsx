@@ -28,7 +28,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,7 @@ import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { MessageContent } from "./message-content";
+import { ImageViewer } from "./image-viewer";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -128,6 +129,21 @@ export function ChatArea({
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
+  const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [currentViewingImage, setCurrentViewingImage] = useState<{
+    url: string;
+    messageId: string;
+    fileName?: string;
+    isEncrypted: boolean;
+    encryptedKey?: string;
+    encryptedKeyForSelf?: string;
+    iv?: string;
+    fileType?: string;
+    isSender: boolean;
+    currentUserId: string;
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -1281,6 +1297,33 @@ export function ChatArea({
     );
   };
 
+  const imageMessages = useMemo(() => {
+    return messages.filter((msg) => msg.type === "image");
+  }, [messages]);
+
+  const handleOpenImageViewer = (messageId: string) => {
+    const messageIndex = imageMessages.findIndex((msg) => msg.id === messageId);
+    if (messageIndex === -1) return;
+
+    const message = imageMessages[messageIndex];
+
+    setCurrentImageIndex(messageIndex);
+    setCurrentViewingImage({
+      url: message.fileURL || "",
+      messageId: message.id,
+      fileName: message.fileName,
+      isEncrypted: message.fileIsEncrypted || false,
+      encryptedKey: message.fileEncryptedKey || "",
+      encryptedKeyForSelf: message.fileEncryptedKeyForSelf || "",
+      iv: message.fileIv || "",
+      fileType: message.fileType || "image/jpeg",
+      isSender: message.senderId === currentUser.uid,
+      currentUserId: currentUser.uid,
+      text: message.text || message.fileName || "",
+    });
+    setIsImageViewerOpen(true);
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -1461,7 +1504,7 @@ export function ChatArea({
                 messageText={getMessageText(msg)}
                 currentUserId={currentUser.uid}
                 theme={theme}
-                onImageClick={(url) => window.open(url, "_blank")}
+                onImageClick={(messageId) => handleOpenImageViewer(messageId)}
               />
 
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
@@ -1736,6 +1779,20 @@ export function ChatArea({
         open={isUserProfileOpen}
         onClose={() => setIsUserProfileOpen(false)}
       />
+
+      {isImageViewerOpen && currentViewingImage && (
+        <ImageViewer
+          key={currentViewingImage.messageId}
+          isOpen={isImageViewerOpen}
+          onClose={() => setIsImageViewerOpen(false)}
+          currentImage={currentViewingImage}
+          images={imageMessages}
+          currentIndex={currentImageIndex}
+          setCurrentIndex={setCurrentImageIndex}
+          setCurrentViewingImage={setCurrentViewingImage}
+          currentUser={currentUser}
+        />
+      )}
     </div>
   );
 }

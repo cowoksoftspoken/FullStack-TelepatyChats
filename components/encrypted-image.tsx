@@ -121,7 +121,7 @@ export function EncryptedImage({
       <img
         src={imageUrl || "/placeholder.svg"}
         alt={fileName || "Image"}
-        className="w-full rounded-md max-h-60 object-cover"
+        className="w-full rounded-md max-h-60 object-cover cursor-pointer"
         onClick={handleClick}
         onLoad={handleImageLoad}
         onError={handleImageError}
