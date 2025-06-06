@@ -274,6 +274,8 @@ export const createPeer = (
   // Handle signaling data
   peer.on("signal", async (data) => {
     try {
+      // cache signaling
+      peer._localSignalCache = data;
       // Create a unique call ID
       const callId = [userId, remotePeerId].sort().join("_");
 
@@ -395,14 +397,25 @@ export const initiateCall = async (
     }
 
     // Notify the recipient about the incoming call
-    await updateDoc(doc(db, "users", recipientId), {
-      incomingCall: {
-        from: userId,
-        isVideo,
-        signalData,
-        timestamp: new Date().toISOString(),
-      },
-    });
+     peer.on("signal", async (data) => {
+  await updateDoc(doc(db, "users", recipientId), {
+    incomingCall: {
+      from: userId,
+      isVideo,
+      signalData: JSON.stringify(data),
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+   // await updateDoc(doc(db, "users", recipientId), {
+     // incomingCall: {
+       // from: userId,
+        // isVideo,
+       // signalData,
+       // timestamp: new Date().toISOString(),
+      // },
+   // });
 
     // Listen for answer
     const callId = [userId, recipientId].sort().join("_");
