@@ -337,8 +337,8 @@ export const acceptCall = async (
     }) as ExtendedPeer;
 
     // Signal the peer with the received signal data
-    peer.signal(JSON.parse(callData.signalData));
-
+    setTimeout(() => {  peer.signal(JSON.parse(callData.signalData));
+}, 100);
     // Handle signaling data
     peer.on("signal", async (data) => {
       try {
