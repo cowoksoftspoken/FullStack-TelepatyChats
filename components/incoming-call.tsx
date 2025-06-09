@@ -45,6 +45,7 @@ export function IncomingCall({
                 <AvatarImage
                   src={caller.photoURL || ""}
                   alt={caller.displayName}
+                  className="object-cover"
                 />
                 <AvatarFallback className="text-3xl">
                   {caller.displayName.charAt(0)}
