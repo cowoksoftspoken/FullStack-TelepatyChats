@@ -379,50 +379,47 @@ export const initiateCall = async (
   isVideo: boolean
 ) => {
   try {
-    // Create a peer connection as initiator
-    const peer = createPeer(
-      db,
-      true,
-      localStream,
-      userId,
-      recipientId
-    ) as ExtendedPeer;
+    // Create peer TANPA signal handler di dalam createPeer
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream: localStream,
+      config: {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:global.stun.twilio.com:3478" },
+        ],
+      },
+    }) as ExtendedPeer;
 
-    // Create a variable to store signal data
-    let signalData = "{}";
+    // Ini yang bener buat ngirim sinyal pertama kali ke lawan bicara
+    peer.on("signal", async (data) => {
+      const callId = [userId, recipientId].sort().join("_");
 
-    // If _localSignalCache exists, use it, otherwise use an empty object
-    if (peer._localSignalCache) {
-      signalData = JSON.stringify(peer._localSignalCache);
-    }
+      // Simpan signal offer di calls (buat reference answer nanti)
+      await setDoc(doc(db, "calls", callId), {
+        signalData: JSON.stringify(data),
+        from: userId,
+        to: recipientId,
+        timestamp: new Date().toISOString(),
+      });
 
-    // Notify the recipient about the incoming call
-     peer.on("signal", async (data) => {
-  await updateDoc(doc(db, "users", recipientId), {
-    incomingCall: {
-      from: userId,
-      isVideo,
-      signalData: JSON.stringify(data),
-      timestamp: new Date().toISOString(),
-    },
-  });
-});
+      // Kasih tahu user yang ditelpon
+      await updateDoc(doc(db, "users", recipientId), {
+        incomingCall: {
+          from: userId,
+          isVideo,
+          signalData: JSON.stringify(data),
+          timestamp: new Date().toISOString(),
+        },
+      });
+    });
 
-   // await updateDoc(doc(db, "users", recipientId), {
-     // incomingCall: {
-       // from: userId,
-        // isVideo,
-       // signalData,
-       // timestamp: new Date().toISOString(),
-      // },
-   // });
-
-    // Listen for answer
+    // Dengerin kalau dia nerima (answerSignal muncul)
     const callId = [userId, recipientId].sort().join("_");
     const unsubscribe = onSnapshot(doc(db, "calls", callId), (snapshot) => {
       const callData = snapshot.data();
       if (callData?.answered && callData?.answerSignal) {
-        // Signal the peer with the answer
         peer.signal(JSON.parse(callData.answerSignal));
         unsubscribe();
       }
