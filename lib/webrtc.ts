@@ -236,6 +236,223 @@
 //   }
 // };
 
+// import Peer from "simple-peer";
+// import {
+//   doc,
+//   setDoc,
+//   onSnapshot,
+//   updateDoc,
+//   deleteDoc,
+//   type Firestore,
+// } from "firebase/firestore";
+
+// // Extend the Peer type to include the _localSignalCache property
+// interface ExtendedPeer extends Peer.Instance {
+//   _localSignalCache?: any;
+// }
+
+// // Function to create a WebRTC peer connection
+// export const createPeer = (
+//   db: Firestore,
+//   initiator: boolean,
+//   stream: MediaStream,
+//   userId: string,
+//   remotePeerId: string
+// ) => {
+//   const peer = new Peer({
+//     initiator,
+//     trickle: false,
+//     stream,
+//     config: {
+//       iceServers: [
+//         { urls: "stun:stun.l.google.com:19302" },
+//         { urls: "stun:global.stun.twilio.com:3478" },
+//       ],
+//     },
+//   }) as ExtendedPeer;
+
+//   // Handle signaling data
+//   peer.on("signal", async (data) => {
+//     try {
+//       // cache signaling
+//       peer._localSignalCache = data;
+//       // Create a unique call ID
+//       const callId = [userId, remotePeerId].sort().join("_");
+
+//       // Store the signaling data in Firestore
+//       await setDoc(doc(db, "calls", callId), {
+//         signalData: JSON.stringify(data),
+//         from: userId,
+//         to: remotePeerId,
+//         timestamp: new Date().toISOString(),
+//       });
+//     } catch (error) {
+//       console.error("Error sending signal data:", error);
+//     }
+//   });
+
+//   // Log errors
+//   peer.on("error", (err) => {
+//     console.error("Peer connection error:", err);
+//   });
+
+//   return peer;
+// };
+
+// // Function to listen for incoming calls
+// export const listenForCalls = (
+//   db: Firestore,
+//   userId: string,
+//   callback: (callData: any) => void
+// ) => {
+//   // Listen for calls where the current user is the recipient
+//   const unsubscribe = onSnapshot(doc(db, "users", userId), (snapshot) => {
+//     const userData = snapshot.data();
+//     if (userData?.incomingCall) {
+//       callback(userData.incomingCall);
+//     }
+//   });
+
+//   return unsubscribe;
+// };
+
+// // Function to accept an incoming call
+// export const acceptCall = async (
+//   db: Firestore,
+//   callData: any,
+//   localStream: MediaStream,
+//   userId: string
+// ) => {
+//   try {
+//     const peer = new Peer({
+//       initiator: false,
+//       trickle: false,
+//       stream: localStream,
+//       config: {
+//         iceServers: [
+//           { urls: "stun:stun.l.google.com:19302" },
+//           { urls: "stun:global.stun.twilio.com:3478" },
+//         ],
+//       },
+//     }) as ExtendedPeer;
+
+//     // Signal the peer with the received signal data
+//     setTimeout(() => {  peer.signal(JSON.parse(callData.signalData));
+// }, 100);
+//     // Handle signaling data
+//     peer.on("signal", async (data) => {
+//       try {
+//         // Update the call document with answer signal
+//         const callId = [userId, callData.from].sort().join("_");
+//         await updateDoc(doc(db, "calls", callId), {
+//           answerSignal: JSON.stringify(data),
+//           answered: true,
+//         });
+//       } catch (error) {
+//         console.error("Error sending answer signal:", error);
+//       }
+//     });
+
+//     // Log errors
+//     peer.on("error", (err) => {
+//       console.error("Peer connection error:", err);
+//     });
+
+//     // Clear the incoming call notification
+//     await updateDoc(doc(db, "users", userId), {
+//       incomingCall: null,
+//     });
+
+//     return peer;
+//   } catch (error) {
+//     console.error("Error accepting call:", error);
+//     throw error;
+//   }
+// };
+
+// // Function to initiate a call
+// export const initiateCall = async (
+//   db: Firestore,
+//   localStream: MediaStream,
+//   userId: string,
+//   recipientId: string,
+//   isVideo: boolean
+// ) => {
+//   try {
+//     // Create peer TANPA signal handler di dalam createPeer
+//     const peer = new Peer({
+//       initiator: true,
+//       trickle: false,
+//       stream: localStream,
+//       config: {
+//         iceServers: [
+//           { urls: "stun:stun.l.google.com:19302" },
+//           { urls: "stun:global.stun.twilio.com:3478" },
+//         ],
+//       },
+//     }) as ExtendedPeer;
+
+//     // Ini yang bener buat ngirim sinyal pertama kali ke lawan bicara
+//     peer.on("signal", async (data) => {
+//       const callId = [userId, recipientId].sort().join("_");
+
+//       // Simpan signal offer di calls (buat reference answer nanti)
+//       await setDoc(doc(db, "calls", callId), {
+//         signalData: JSON.stringify(data),
+//         from: userId,
+//         to: recipientId,
+//         timestamp: new Date().toISOString(),
+//       });
+
+//       // Kasih tahu user yang ditelpon
+//       await updateDoc(doc(db, "users", recipientId), {
+//         incomingCall: {
+//           from: userId,
+//           isVideo,
+//           signalData: JSON.stringify(data),
+//           timestamp: new Date().toISOString(),
+//         },
+//       });
+//     });
+
+//     // Dengerin kalau dia nerima (answerSignal muncul)
+//     const callId = [userId, recipientId].sort().join("_");
+//     const unsubscribe = onSnapshot(doc(db, "calls", callId), (snapshot) => {
+//       const callData = snapshot.data();
+//       if (callData?.answered && callData?.answerSignal) {
+//         peer.signal(JSON.parse(callData.answerSignal));
+//         unsubscribe();
+//       }
+//     });
+
+//     return peer;
+//   } catch (error) {
+//     console.error("Error initiating call:", error);
+//     throw error;
+//   }
+// };
+
+// // Function to end a call
+// export const endCall = async (
+//   db: Firestore,
+//   userId: string,
+//   peerId: string
+// ) => {
+//   try {
+//     const callId = [userId, peerId].sort().join("_");
+
+//     // Delete the call document
+//     await deleteDoc(doc(db, "calls", callId));
+
+//     // Clear any incoming call notifications
+//     await updateDoc(doc(db, "users", peerId), {
+//       incomingCall: null,
+//     });
+//   } catch (error) {
+//     console.error("Error ending call:", error);
+//   }
+// };
+
 import Peer from "simple-peer";
 import {
   doc,
@@ -246,12 +463,10 @@ import {
   type Firestore,
 } from "firebase/firestore";
 
-// Extend the Peer type to include the _localSignalCache property
 interface ExtendedPeer extends Peer.Instance {
   _localSignalCache?: any;
 }
 
-// Function to create a WebRTC peer connection
 export const createPeer = (
   db: Firestore,
   initiator: boolean,
@@ -271,15 +486,11 @@ export const createPeer = (
     },
   }) as ExtendedPeer;
 
-  // Handle signaling data
   peer.on("signal", async (data) => {
     try {
-      // cache signaling
       peer._localSignalCache = data;
-      // Create a unique call ID
       const callId = [userId, remotePeerId].sort().join("_");
 
-      // Store the signaling data in Firestore
       await setDoc(doc(db, "calls", callId), {
         signalData: JSON.stringify(data),
         from: userId,
@@ -291,7 +502,6 @@ export const createPeer = (
     }
   });
 
-  // Log errors
   peer.on("error", (err) => {
     console.error("Peer connection error:", err);
   });
@@ -299,13 +509,11 @@ export const createPeer = (
   return peer;
 };
 
-// Function to listen for incoming calls
 export const listenForCalls = (
   db: Firestore,
   userId: string,
   callback: (callData: any) => void
 ) => {
-  // Listen for calls where the current user is the recipient
   const unsubscribe = onSnapshot(doc(db, "users", userId), (snapshot) => {
     const userData = snapshot.data();
     if (userData?.incomingCall) {
@@ -316,7 +524,6 @@ export const listenForCalls = (
   return unsubscribe;
 };
 
-// Function to accept an incoming call
 export const acceptCall = async (
   db: Firestore,
   callData: any,
@@ -336,13 +543,10 @@ export const acceptCall = async (
       },
     }) as ExtendedPeer;
 
-    // Signal the peer with the received signal data
-    setTimeout(() => {  peer.signal(JSON.parse(callData.signalData));
-}, 100);
-    // Handle signaling data
+    peer.signal(JSON.parse(callData.signalData));
+
     peer.on("signal", async (data) => {
       try {
-        // Update the call document with answer signal
         const callId = [userId, callData.from].sort().join("_");
         await updateDoc(doc(db, "calls", callId), {
           answerSignal: JSON.stringify(data),
@@ -353,12 +557,10 @@ export const acceptCall = async (
       }
     });
 
-    // Log errors
     peer.on("error", (err) => {
       console.error("Peer connection error:", err);
     });
 
-    // Clear the incoming call notification
     await updateDoc(doc(db, "users", userId), {
       incomingCall: null,
     });
@@ -370,7 +572,6 @@ export const acceptCall = async (
   }
 };
 
-// Function to initiate a call
 export const initiateCall = async (
   db: Firestore,
   localStream: MediaStream,
@@ -379,43 +580,40 @@ export const initiateCall = async (
   isVideo: boolean
 ) => {
   try {
-    // Create peer TANPA signal handler di dalam createPeer
-    const peer = new Peer({
-      initiator: true,
-      trickle: false,
-      stream: localStream,
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:global.stun.twilio.com:3478" },
-        ],
-      },
-    }) as ExtendedPeer;
+    const peer = createPeer(
+      db,
+      true,
+      localStream,
+      userId,
+      recipientId
+    ) as ExtendedPeer;
 
-    // Ini yang bener buat ngirim sinyal pertama kali ke lawan bicara
-    peer.on("signal", async (data) => {
-      const callId = [userId, recipientId].sort().join("_");
+    let signalData = "{}";
 
-      // Simpan signal offer di calls (buat reference answer nanti)
-      await setDoc(doc(db, "calls", callId), {
-        signalData: JSON.stringify(data),
-        from: userId,
-        to: recipientId,
-        timestamp: new Date().toISOString(),
-      });
+    if (peer._localSignalCache) {
+      signalData = JSON.stringify(peer._localSignalCache);
+    }
 
-      // Kasih tahu user yang ditelpon
-      await updateDoc(doc(db, "users", recipientId), {
-        incomingCall: {
-          from: userId,
-          isVideo,
-          signalData: JSON.stringify(data),
-          timestamp: new Date().toISOString(),
-        },
-      });
-    });
+     peer.on("signal", async (data) => {
+  await updateDoc(doc(db, "users", recipientId), {
+    incomingCall: {
+      from: userId,
+      isVideo,
+      signalData: JSON.stringify(data),
+      timestamp: new Date().toISOString(),
+    },
+  });
+});
 
-    // Dengerin kalau dia nerima (answerSignal muncul)
+   // await updateDoc(doc(db, "users", recipientId), {
+     // incomingCall: {
+       // from: userId,
+        // isVideo,
+       // signalData,
+       // timestamp: new Date().toISOString(),
+      // },
+   // });
+
     const callId = [userId, recipientId].sort().join("_");
     const unsubscribe = onSnapshot(doc(db, "calls", callId), (snapshot) => {
       const callData = snapshot.data();
@@ -432,7 +630,6 @@ export const initiateCall = async (
   }
 };
 
-// Function to end a call
 export const endCall = async (
   db: Firestore,
   userId: string,
@@ -441,10 +638,8 @@ export const endCall = async (
   try {
     const callId = [userId, peerId].sort().join("_");
 
-    // Delete the call document
     await deleteDoc(doc(db, "calls", callId));
 
-    // Clear any incoming call notifications
     await updateDoc(doc(db, "users", peerId), {
       incomingCall: null,
     });
@@ -452,3 +647,4 @@ export const endCall = async (
     console.error("Error ending call:", error);
   }
 };
+

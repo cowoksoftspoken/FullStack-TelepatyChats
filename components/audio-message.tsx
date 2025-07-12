@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, memo  } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
