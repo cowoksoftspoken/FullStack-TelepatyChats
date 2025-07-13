@@ -27,6 +27,9 @@ import { useFirebase } from "@/lib/firebase-provider";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
+const MAX_RETRIES = 5;
+const LOCKOUT_TIME_MS = 5 * 60 * 1000; 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
