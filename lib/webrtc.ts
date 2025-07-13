@@ -453,198 +453,302 @@
 //   }
 // };
 
-import Peer from "simple-peer";
-import {
-  doc,
-  setDoc,
-  onSnapshot,
-  updateDoc,
-  deleteDoc,
-  type Firestore,
-} from "firebase/firestore";
+// import Peer from "simple-peer";
+// import {
+//   doc,
+//   setDoc,
+//   onSnapshot,
+//   updateDoc,
+//   deleteDoc,
+//   type Firestore,
+// } from "firebase/firestore";
 
-interface ExtendedPeer extends Peer.Instance {
-  _localSignalCache?: any;
+// interface ExtendedPeer extends Peer.Instance {
+//   _localSignalCache?: any;
+// }
+
+// export const createPeer = (
+//   db: Firestore,
+//   initiator: boolean,
+//   stream: MediaStream,
+//   userId: string,
+//   remotePeerId: string
+// ) => {
+//   const peer = new Peer({
+//     initiator,
+//     trickle: false,
+//     stream,
+//     config: {
+//       iceServers: [
+//         { urls: "stun:stun.l.google.com:19302" },
+//         { urls: "stun:global.stun.twilio.com:3478" },
+//       ],
+//     },
+//   }) as ExtendedPeer;
+
+//   peer.on("signal", async (data) => {
+//     try {
+//       peer._localSignalCache = data;
+//       const callId = [userId, remotePeerId].sort().join("_");
+
+//       await setDoc(doc(db, "calls", callId), {
+//         signalData: JSON.stringify(data),
+//         from: userId,
+//         to: remotePeerId,
+//         timestamp: new Date().toISOString(),
+//       });
+//     } catch (error) {
+//       console.error("Error sending signal data:", error);
+//     }
+//   });
+
+//   peer.on("error", (err) => {
+//     console.error("Peer connection error:", err);
+//   });
+
+//   return peer;
+// };
+
+// export const listenForCalls = (
+//   db: Firestore,
+//   userId: string,
+//   callback: (callData: any) => void
+// ) => {
+//   const unsubscribe = onSnapshot(doc(db, "users", userId), (snapshot) => {
+//     const userData = snapshot.data();
+//     if (userData?.incomingCall) {
+//       callback(userData.incomingCall);
+//     }
+//   });
+
+//   return unsubscribe;
+// };
+
+// export const acceptCall = async (
+//   db: Firestore,
+//   callData: any,
+//   localStream: MediaStream,
+//   userId: string
+// ) => {
+//   try {
+//     const peer = new Peer({
+//       initiator: false,
+//       trickle: false,
+//       stream: localStream,
+//       config: {
+//         iceServers: [
+//           { urls: "stun:stun.l.google.com:19302" },
+//           { urls: "stun:global.stun.twilio.com:3478" },
+//         ],
+//       },
+//     }) as ExtendedPeer;
+
+//     peer.signal(JSON.parse(callData.signalData));
+
+//     peer.on("signal", async (data) => {
+//       try {
+//         const callId = [userId, callData.from].sort().join("_");
+//         await updateDoc(doc(db, "calls", callId), {
+//           answerSignal: JSON.stringify(data),
+//           answered: true,
+//         });
+//       } catch (error) {
+//         console.error("Error sending answer signal:", error);
+//       }
+//     });
+
+//     peer.on("error", (err) => {
+//       console.error("Peer connection error:", err);
+//     });
+
+//     await updateDoc(doc(db, "users", userId), {
+//       incomingCall: null,
+//     });
+
+//     return peer;
+//   } catch (error) {
+//     console.error("Error accepting call:", error);
+//     throw error;
+//   }
+// };
+
+// export const initiateCall = async (
+//   db: Firestore,
+//   localStream: MediaStream,
+//   userId: string,
+//   recipientId: string,
+//   isVideo: boolean
+// ) => {
+//   try {
+//     const peer = createPeer(
+//       db,
+//       true,
+//       localStream,
+//       userId,
+//       recipientId
+//     ) as ExtendedPeer;
+
+//     let signalData = "{}";
+
+//     if (peer._localSignalCache) {
+//       signalData = JSON.stringify(peer._localSignalCache);
+//     }
+
+//      peer.on("signal", async (data) => {
+//   await updateDoc(doc(db, "users", recipientId), {
+//     incomingCall: {
+//       from: userId,
+//       isVideo,
+//       signalData: JSON.stringify(data),
+//       timestamp: new Date().toISOString(),
+//     },
+//   });
+// });
+
+//    // await updateDoc(doc(db, "users", recipientId), {
+//      // incomingCall: {
+//        // from: userId,
+//         // isVideo,
+//        // signalData,
+//        // timestamp: new Date().toISOString(),
+//       // },
+//    // });
+
+//     const callId = [userId, recipientId].sort().join("_");
+//     const unsubscribe = onSnapshot(doc(db, "calls", callId), (snapshot) => {
+//       const callData = snapshot.data();
+//       if (callData?.answered && callData?.answerSignal) {
+//         peer.signal(JSON.parse(callData.answerSignal));
+//         unsubscribe();
+//       }
+//     });
+
+//     return peer;
+//   } catch (error) {
+//     console.error("Error initiating call:", error);
+//     throw error;
+//   }
+// };
+
+// export const endCall = async (
+//   db: Firestore,
+//   userId: string,
+//   peerId: string
+// ) => {
+//   try {
+//     const callId = [userId, peerId].sort().join("_");
+
+//     await deleteDoc(doc(db, "calls", callId));
+
+//     await updateDoc(doc(db, "users", peerId), {
+//       incomingCall: null,
+//     });
+//   } catch (error) {
+//     console.error("Error ending call:", error);
+//   }
+// };
+
+"use client"
+
+// Legacy compatibility layer for existing code
+// This file provides backward compatibility while using the new WebRTC implementation
+
+import { initializeWebRTC, getWebRTCManager, type Firestore } from "./webrtc-native"
+
+// Initialize WebRTC manager for legacy compatibility
+let isInitialized = false
+
+const ensureInitialized = (db: Firestore, userId: string) => {
+  if (!isInitialized) {
+    initializeWebRTC(db, userId)
+    isInitialized = true
+  }
 }
 
-export const createPeer = (
+// Legacy function: Listen for calls
+export const listenForCalls = (db: Firestore, userId: string, callback: (callData: any) => void) => {
+  ensureInitialized(db, userId)
+  const manager = getWebRTCManager()
+
+  if (manager) {
+    return manager.listenForIncomingCalls(callback)
+  }
+
+  return () => {} // Empty unsubscribe function
+}
+
+// Legacy function: Initiate call
+export const initiateCall = async (
   db: Firestore,
-  initiator: boolean,
-  stream: MediaStream,
+  localStream: MediaStream, // This parameter is ignored in new implementation
   userId: string,
-  remotePeerId: string
+  recipientId: string,
+  isVideo: boolean,
 ) => {
-  const peer = new Peer({
-    initiator,
-    trickle: false,
-    stream,
-    config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:global.stun.twilio.com:3478" },
-      ],
+  ensureInitialized(db, userId)
+  const manager = getWebRTCManager()
+
+  if (!manager) {
+    throw new Error("WebRTC manager not initialized")
+  }
+
+  const callId = await manager.initiateCall(recipientId, isVideo)
+
+  // Return a mock peer object for compatibility
+  return {
+    on: (event: string, callback: Function) => {
+      if (event === "stream") {
+        window.addEventListener("webrtc-remotestream", (e: any) => {
+          callback(e.detail.stream)
+        })
+      }
     },
-  }) as ExtendedPeer;
+    destroy: () => manager.endCall(),
+    streams: [], // Mock streams array
+  }
+}
 
-  peer.on("signal", async (data) => {
-    try {
-      peer._localSignalCache = data;
-      const callId = [userId, remotePeerId].sort().join("_");
-
-      await setDoc(doc(db, "calls", callId), {
-        signalData: JSON.stringify(data),
-        from: userId,
-        to: remotePeerId,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Error sending signal data:", error);
-    }
-  });
-
-  peer.on("error", (err) => {
-    console.error("Peer connection error:", err);
-  });
-
-  return peer;
-};
-
-export const listenForCalls = (
-  db: Firestore,
-  userId: string,
-  callback: (callData: any) => void
-) => {
-  const unsubscribe = onSnapshot(doc(db, "users", userId), (snapshot) => {
-    const userData = snapshot.data();
-    if (userData?.incomingCall) {
-      callback(userData.incomingCall);
-    }
-  });
-
-  return unsubscribe;
-};
-
+// Legacy function: Accept call
 export const acceptCall = async (
   db: Firestore,
   callData: any,
-  localStream: MediaStream,
-  userId: string
-) => {
-  try {
-    const peer = new Peer({
-      initiator: false,
-      trickle: false,
-      stream: localStream,
-      config: {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          { urls: "stun:global.stun.twilio.com:3478" },
-        ],
-      },
-    }) as ExtendedPeer;
-
-    peer.signal(JSON.parse(callData.signalData));
-
-    peer.on("signal", async (data) => {
-      try {
-        const callId = [userId, callData.from].sort().join("_");
-        await updateDoc(doc(db, "calls", callId), {
-          answerSignal: JSON.stringify(data),
-          answered: true,
-        });
-      } catch (error) {
-        console.error("Error sending answer signal:", error);
-      }
-    });
-
-    peer.on("error", (err) => {
-      console.error("Peer connection error:", err);
-    });
-
-    await updateDoc(doc(db, "users", userId), {
-      incomingCall: null,
-    });
-
-    return peer;
-  } catch (error) {
-    console.error("Error accepting call:", error);
-    throw error;
-  }
-};
-
-export const initiateCall = async (
-  db: Firestore,
-  localStream: MediaStream,
+  localStream: MediaStream, // This parameter is ignored in new implementation
   userId: string,
-  recipientId: string,
-  isVideo: boolean
 ) => {
-  try {
-    const peer = createPeer(
-      db,
-      true,
-      localStream,
-      userId,
-      recipientId
-    ) as ExtendedPeer;
+  ensureInitialized(db, userId)
+  const manager = getWebRTCManager()
 
-    let signalData = "{}";
+  if (!manager) {
+    throw new Error("WebRTC manager not initialized")
+  }
 
-    if (peer._localSignalCache) {
-      signalData = JSON.stringify(peer._localSignalCache);
-    }
+  // Extract callId from callData
+  const callId = callData.callId || `${callData.from}_${userId}_${Date.now()}`
 
-     peer.on("signal", async (data) => {
-  await updateDoc(doc(db, "users", recipientId), {
-    incomingCall: {
-      from: userId,
-      isVideo,
-      signalData: JSON.stringify(data),
-      timestamp: new Date().toISOString(),
+  await manager.answerCall(callId)
+
+  // Return a mock peer object for compatibility
+  return {
+    on: (event: string, callback: Function) => {
+      if (event === "stream") {
+        window.addEventListener("webrtc-remotestream", (e: any) => {
+          callback(e.detail.stream)
+        })
+      }
     },
-  });
-});
-
-   // await updateDoc(doc(db, "users", recipientId), {
-     // incomingCall: {
-       // from: userId,
-        // isVideo,
-       // signalData,
-       // timestamp: new Date().toISOString(),
-      // },
-   // });
-
-    const callId = [userId, recipientId].sort().join("_");
-    const unsubscribe = onSnapshot(doc(db, "calls", callId), (snapshot) => {
-      const callData = snapshot.data();
-      if (callData?.answered && callData?.answerSignal) {
-        peer.signal(JSON.parse(callData.answerSignal));
-        unsubscribe();
-      }
-    });
-
-    return peer;
-  } catch (error) {
-    console.error("Error initiating call:", error);
-    throw error;
+    destroy: () => manager.endCall(),
+    streams: [], // Mock streams array
   }
-};
+}
 
-export const endCall = async (
-  db: Firestore,
-  userId: string,
-  peerId: string
-) => {
-  try {
-    const callId = [userId, peerId].sort().join("_");
+// Legacy function: End call
+export const endCall = async (db: Firestore, userId: string, peerId: string) => {
+  const manager = getWebRTCManager()
 
-    await deleteDoc(doc(db, "calls", callId));
-
-    await updateDoc(doc(db, "users", peerId), {
-      incomingCall: null,
-    });
-  } catch (error) {
-    console.error("Error ending call:", error);
+  if (manager) {
+    await manager.endCall()
   }
-};
+}
 
+// Export new implementation for direct use
+export * from "./webrtc-native"

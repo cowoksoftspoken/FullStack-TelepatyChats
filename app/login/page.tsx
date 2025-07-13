@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import {
   AuthProvider,
   GithubAuthProvider,
@@ -28,13 +27,31 @@ import { useFirebase } from "@/lib/firebase-provider";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
+const MAX_RETRIES = 5;
+const LOCKOUT_TIME_MS = 5 * 60 * 1000; 
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
+  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+
   const router = useRouter();
   const { auth, currentUser, loading } = useFirebase();
+
+
+  useEffect(() => {
+    const storedRetries = parseInt(localStorage.getItem("login_retries") || "0", 10);
+    const storedLockedUntil = parseInt(localStorage.getItem("login_locked_until") || "0", 10);
+
+    setRetryCount(storedRetries);
+
+    if (storedLockedUntil && storedLockedUntil > Date.now()) {
+      setLockedUntil(storedLockedUntil);
+    }
+  }, []);
 
   useEffect(() => {
     if (!loading && currentUser) {
@@ -47,6 +64,12 @@ export default function LoginPage() {
 
     if (loading || !auth) {
       setError("Authentication service is initializing. Please try again.");
+      return;
+    }
+
+    if (lockedUntil && lockedUntil > Date.now()) {
+      const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`Too many failed attempts. Try again in ${secondsLeft} seconds.`);
       return;
     }
 
@@ -74,10 +97,25 @@ export default function LoginPage() {
         });
       }
 
+      localStorage.removeItem("login_retries");
+      localStorage.removeItem("login_locked_until");
+      setRetryCount(0);
+      setLockedUntil(null);
+
       router.push("/dashboard");
     } catch (err: any) {
       console.error(err);
-      if (err.code === "auth/invalid-credential") {
+
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
+      localStorage.setItem("login_retries", newRetryCount.toString());
+
+      if (newRetryCount >= MAX_RETRIES) {
+        const lockUntil = Date.now() + LOCKOUT_TIME_MS;
+        setLockedUntil(lockUntil);
+        localStorage.setItem("login_locked_until", lockUntil.toString());
+        setError("Too many failed attempts. Please try again later.");
+      } else if (err.code === "auth/invalid-credential") {
         setError("Invalid email or password");
       } else if (err.code === "auth/too-many-requests") {
         setError("Too many failed login attempts. Please try again later.");
@@ -91,6 +129,12 @@ export default function LoginPage() {
 
   const handleLoginWithProvider = async (providerName: "google" | "github") => {
     if (!auth) return;
+
+    if (lockedUntil && lockedUntil > Date.now()) {
+      const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
+      setError(`Too many failed attempts. Try again in ${secondsLeft} seconds.`);
+      return;
+    }
 
     let provider: AuthProvider | null = null;
     if (providerName === "google") {
@@ -121,7 +165,11 @@ export default function LoginPage() {
           provider: providerName,
           createdAt: serverTimestamp(),
         });
-      }
+    }
+      localStorage.removeItem("login_retries");
+      localStorage.removeItem("login_locked_until");
+      setRetryCount(0);
+      setLockedUntil(null);
 
       router.push("/dashboard");
     } catch (err: any) {
@@ -191,7 +239,11 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={formLoading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={formLoading || (lockedUntil && lockedUntil > Date.now())}
+            >
               {formLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
@@ -214,12 +266,12 @@ export default function LoginPage() {
           <hr className="flex-grow border-t border-gray-300 dark:border-gray-700" />
         </div>
 
-        {/* Social Login Buttons */}
         <div className="flex flex-col gap-3 px-6 pb-6">
           <Button
             variant="outline"
             className="w-full"
             onClick={() => handleLoginWithProvider("google")}
+            disabled={lockedUntil && lockedUntil > Date.now()}
           >
             <img
               src="/assets/Google_logo.svg"
@@ -232,6 +284,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => handleLoginWithProvider("github")}
+            disabled={lockedUntil && lockedUntil > Date.now()}
           >
             <svg
               className="mr-2 h-5 w-5"
