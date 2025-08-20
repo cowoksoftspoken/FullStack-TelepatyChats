@@ -155,14 +155,12 @@ export function Sidebar({
 
     const fetchBlockedUsers = async () => {
       try {
-        // Get current user's data to see who they've blocked
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setBlockedContacts(userData.blockedUsers || []);
         }
 
-        // Check which contacts have blocked the current user
         const blockedByList: string[] = [];
 
         for (const contactId of userContacts) {
