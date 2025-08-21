@@ -28,7 +28,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { Loader2 } from "lucide-react";
 
 const MAX_RETRIES = 5;
-const LOCKOUT_TIME_MS = 5 * 60 * 1000; 
+const LOCKOUT_TIME_MS = 5 * 60 * 1000;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -41,10 +41,15 @@ export default function LoginPage() {
   const router = useRouter();
   const { auth, currentUser, loading } = useFirebase();
 
-
   useEffect(() => {
-    const storedRetries = parseInt(localStorage.getItem("login_retries") || "0", 10);
-    const storedLockedUntil = parseInt(localStorage.getItem("login_locked_until") || "0", 10);
+    const storedRetries = parseInt(
+      localStorage.getItem("login_retries") || "0",
+      10
+    );
+    const storedLockedUntil = parseInt(
+      localStorage.getItem("login_locked_until") || "0",
+      10
+    );
 
     setRetryCount(storedRetries);
 
@@ -69,7 +74,9 @@ export default function LoginPage() {
 
     if (lockedUntil && lockedUntil > Date.now()) {
       const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
-      setError(`Too many failed attempts. Try again in ${secondsLeft} seconds.`);
+      setError(
+        `Too many failed attempts. Try again in ${secondsLeft} seconds.`
+      );
       return;
     }
 
@@ -132,7 +139,9 @@ export default function LoginPage() {
 
     if (lockedUntil && lockedUntil > Date.now()) {
       const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
-      setError(`Too many failed attempts. Try again in ${secondsLeft} seconds.`);
+      setError(
+        `Too many failed attempts. Try again in ${secondsLeft} seconds.`
+      );
       return;
     }
 
@@ -165,7 +174,7 @@ export default function LoginPage() {
           provider: providerName,
           createdAt: serverTimestamp(),
         });
-    }
+      }
       localStorage.removeItem("login_retries");
       localStorage.removeItem("login_locked_until");
       setRetryCount(0);
@@ -202,9 +211,7 @@ export default function LoginPage() {
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="text-sm font-medium text-destructive">
-                {error}
-              </div>
+              <div className="text-sm font-medium text-red-500">{error}</div>
             )}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
@@ -242,7 +249,10 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={formLoading || (lockedUntil && lockedUntil > Date.now())}
+              disabled={
+                formLoading ||
+                ((lockedUntil && lockedUntil > Date.now()) as boolean)
+              }
             >
               {formLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -271,7 +281,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => handleLoginWithProvider("google")}
-            disabled={lockedUntil && lockedUntil > Date.now()}
+            disabled={!!(lockedUntil && lockedUntil > Date.now())}
           >
             <img
               src="/assets/Google_logo.svg"
@@ -284,7 +294,7 @@ export default function LoginPage() {
             variant="outline"
             className="w-full"
             onClick={() => handleLoginWithProvider("github")}
-            disabled={lockedUntil && lockedUntil > Date.now()}
+            disabled={!!(lockedUntil && lockedUntil > Date.now())}
           >
             <svg
               className="mr-2 h-5 w-5"

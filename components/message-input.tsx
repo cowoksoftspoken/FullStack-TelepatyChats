@@ -31,12 +31,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import data from "@emoji-mart/data";
 import Picker from "@emoji-mart/react";
 import { useEffect, useRef, useState } from "react";
@@ -56,7 +50,6 @@ export default function MessageInput({
   videoInputRef,
   audioInputRef,
   fileInputRef,
-  isEncryptionEnabled = false,
 }: {
   currentUser: User;
   contact: User;
@@ -197,7 +190,7 @@ export default function MessageInput({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Hidden file inputs */}
+        {/* file inputs */}
         <input
           type="file"
           ref={imageInputRef}

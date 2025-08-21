@@ -145,9 +145,7 @@ export default function RegisterPage() {
         <form onSubmit={handleRegister}>
           <CardContent className="space-y-4">
             {error && (
-              <div className="text-sm font-medium text-destructive">
-                {error}
-              </div>
+              <div className="text-sm font-medium text-red-500">{error}</div>
             )}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">

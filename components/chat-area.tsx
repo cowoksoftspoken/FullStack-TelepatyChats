@@ -1385,6 +1385,7 @@ export function ChatArea({
             variant="ghost"
             size="icon"
             disabled={isBlocked}
+            title="Start voice call"
             onClick={() => initiateCall(false)}
           >
             <Phone className="h-5 w-5" />
@@ -1392,6 +1393,7 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
+            title="Start video call"
             disabled={isBlocked}
             onClick={() => initiateCall(true)}
           >
@@ -1400,6 +1402,7 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
+            title="Open user profile"
             onClick={() => setIsUserProfileOpen(true)}
           >
             <MoreVertical className="h-5 w-5" />
@@ -1440,11 +1443,9 @@ export function ChatArea({
               {expanded && (
                 <>
                   {" "}
-                  If you send a message and there is an error saying "Unable to
-                  decrypt message", please log in again. Also, if you switch
-                  browsers, you will lose access to your previous messages.
-                  Please understand that I try to keep your data as safe as
-                  possible.
+                  If you switch browsers, you will lose access to your previous
+                  messages. Please understand that I try to keep your data as
+                  safe as possible.
                 </>
               )}{" "}
               <span
@@ -1740,7 +1741,8 @@ export function ChatArea({
             )}
           </div>
           <p className="w-full break-words space-y-1 text-indigo-400 text-base flex items-center">
-            <MapPin className="mr-2 h-5 w-5" /> {`Accuracy ${accuracy} meters`}
+            <MapPin className="mr-2 h-5 w-5" />{" "}
+            {`Distance ${Math.floor(accuracy)} meters`}
           </p>
 
           <div className="space-y-2">

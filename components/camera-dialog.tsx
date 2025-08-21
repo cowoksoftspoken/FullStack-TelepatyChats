@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Camera, RefreshCw, X, Image as ImageIcon } from "lucide-react";
+import { Camera, RefreshCw, Image as ImageIcon } from "lucide-react";
 
 interface CameraDialogProps {
   open: boolean;

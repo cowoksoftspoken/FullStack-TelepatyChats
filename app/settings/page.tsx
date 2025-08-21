@@ -93,7 +93,6 @@ export default function SettingsPage() {
   );
   const [oldPrivateKey, setOldPrivateKey] = useState<string | null>(null);
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push("/login");
@@ -162,20 +161,16 @@ export default function SettingsPage() {
     setDeleteError("");
 
     try {
-      // Re-authenticate user
       const credential = EmailAuthProvider.credential(
         currentUser.email,
         password
       );
       await reauthenticateWithCredential(currentUser, credential);
 
-      // Delete user data from Firestore
       await deleteDoc(doc(db, "users", currentUser.uid));
 
-      // Delete user account
       await deleteUser(currentUser);
 
-      // Redirect to login
       router.push("/login");
     } catch (error: any) {
       console.error("Error deleting account:", error);
@@ -200,22 +195,18 @@ export default function SettingsPage() {
     setAvatarUploading(true);
 
     try {
-      // Upload to Firebase Storage
       const storageRef = ref(
         storage,
         `avatars/${currentUser.uid}/${Date.now()}_${file.name}`
       );
       await uploadBytes(storageRef, file);
 
-      // Get download URL
       const downloadURL = await getDownloadURL(storageRef);
 
-      // Update user profile
       await updateProfile(currentUser, {
         photoURL: downloadURL,
       });
 
-      // Update user document in Firestore
       await updateDoc(doc(db, "users", currentUser.uid), {
         photoURL: downloadURL,
       });
@@ -234,7 +225,6 @@ export default function SettingsPage() {
       });
     } finally {
       setAvatarUploading(false);
-      // Clear the input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -286,7 +276,7 @@ export default function SettingsPage() {
 
     try {
       await sendEmailVerification(currentUser, {
-        url: "https://zerochats.vercel.app/handle-action",
+        url: "https://zerochats.vercel.app/dashboard",
         handleCodeInApp: true,
       });
       setVerificationSent(true);
@@ -311,7 +301,7 @@ export default function SettingsPage() {
 
     try {
       await sendPasswordResetEmail(auth, currentUser.email, {
-        url: "https://zerochats.vercel.app/handle-action",
+        url: "https://zerochats.vercel.app/login",
         handleCodeInApp: true,
       });
       setResetPasswordSent(true);
@@ -353,7 +343,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
-        {/* Profile Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Profile</CardTitle>
@@ -394,7 +383,6 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            {/* Display Name */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="name">Display Name</Label>
@@ -447,7 +435,6 @@ export default function SettingsPage() {
               )}
             </div>
 
-            {/* Email with verification status */}
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 Email
@@ -477,7 +464,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Email verification alert */}
             {!currentUser.emailVerified && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -497,7 +483,6 @@ export default function SettingsPage() {
               </Alert>
             )}
 
-            {/* Password reset button */}
             <div className="space-y-2">
               <Label>Password</Label>
               <div>
@@ -525,7 +510,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Account Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Account</CardTitle>
@@ -637,7 +621,6 @@ export default function SettingsPage() {
           </Card>
         )}
 
-        {/* Encryption Key Management */}
         <Card>
           <CardHeader>
             <CardTitle>Encryption Key</CardTitle>
@@ -711,7 +694,6 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Appearance Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Appearance</CardTitle>
