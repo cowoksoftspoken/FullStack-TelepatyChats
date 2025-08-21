@@ -168,7 +168,7 @@ export function ImageViewer({
 
     const link = document.createElement("a");
     link.href = imageUrl;
-    link.download = currentImage.fileName || `image-${Date.now()}.jpg`;
+    link.download = currentImage.fileName || `${currentImage.messageId}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

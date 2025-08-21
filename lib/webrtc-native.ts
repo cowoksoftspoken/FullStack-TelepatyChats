@@ -49,6 +49,20 @@ class WebRTCManager {
     { urls: "stun:stun2.l.google.com:19302" },
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
+    { urls: ["stun:ss-turn2.xirsys.com"] },
+    {
+      username:
+        "q7QA74tSlCuTrWC7oSQt0uf-E7ApShwd0-rIYKhGFW0zdsi4V4CxTZ5RqPtc6Cl8AAAAAGinGD1DaGxvZQ==",
+      credential: "b407755c-7e8e-11f0-b44f-0242ac140004",
+      urls: [
+        "turn:ss-turn2.xirsys.com:80?transport=udp",
+        "turn:ss-turn2.xirsys.com:3478?transport=udp",
+        "turn:ss-turn2.xirsys.com:80?transport=tcp",
+        "turn:ss-turn2.xirsys.com:3478?transport=tcp",
+        "turns:ss-turn2.xirsys.com:443?transport=tcp",
+        "turns:ss-turn2.xirsys.com:5349?transport=tcp",
+      ],
+    },
   ];
 
   constructor(db: Firestore, userId: string) {
@@ -485,15 +499,13 @@ class WebRTCManager {
             await Promise.all(deletePromises);
           }, 1000);
         } else {
-          console.log("⚠️ Call doc has been delete, skip update/delete");
+          console.log("Call doc has been delete, skip update/delete");
         }
       }
 
       this.currentCallId = null;
       this.hasRemoteDescription = false;
       this.iceCandidatesQueue = [];
-
-      this.dispatchStreamEvent("callended", null);
 
       console.log("✅ Call ended successfully");
     } catch (error) {
