@@ -84,6 +84,7 @@ class WebRTCManager {
 
       if (state === "connected") {
         console.log("✅ WebRTC connection established!");
+        this.adjustVideoQuality();
       } else if (
         state === "failed" ||
         state === "disconnected" ||
@@ -183,6 +184,59 @@ class WebRTCManager {
         "Could not access camera/microphone. Please check permissions."
       );
     }
+  }
+
+  private async getActiveCandidateType(): Promise<string | null> {
+    if (!this.peerConnection) return null;
+    let activeCandidateType: string | null = null;
+
+    const stats = await this.peerConnection.getStats();
+    stats.forEach((report) => {
+      if (report.type === "candidate-pair" && report.state === "succeeded") {
+        activeCandidateType = report.remoteCandidateId;
+      }
+    });
+
+    if (!activeCandidateType) {
+      console.warn("No active candidate type found");
+    }
+
+    if (activeCandidateType) {
+      let type: string | null = null;
+      stats.forEach((report) => {
+        if (report.id === activeCandidateType && report.candidateType) {
+          type = report.candidateType;
+        }
+      });
+      return type;
+    }
+    return null;
+  }
+
+  private async adjustVideoQuality() {
+    if (!this.peerConnection) return;
+    const type = await this.getActiveCandidateType();
+    const sender = this.peerConnection
+      .getSenders()
+      .find((s) => s.track && s.track.kind === "video");
+    if (!sender) return;
+    const params = sender.getParameters();
+    if (!params.encodings) {
+      params.encodings = [{}];
+    }
+
+    if (type === "relay") {
+      params.encodings[0].maxBitrate = 300 * 1000;
+      console.log("Using TURN server, adjusting video bitrate to 300kbps");
+    } else {
+      params.encodings[0].maxBitrate = 1500 * 1000;
+      console.log(
+        "Using direct connection, adjusting video bitrate to 1.5Mbps"
+      );
+    }
+
+    await sender.setParameters(params);
+    console.log("✅ Video quality adjusted based on connection type");
   }
 
   private addLocalStreamToPeerConnection(
