@@ -193,7 +193,7 @@ export function EnhancedCallInterface({
                 </Card>
 
                 {!remoteStream && (
-                  <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
                     <div className="text-center text-white">
                       <div className="w-24 h-24 mx-auto mb-4">
                         <UserAvatar user={contact} size="lg" />
@@ -218,6 +218,18 @@ export function EnhancedCallInterface({
                       : status.text}
                   </p>
                 </div>
+                {remoteStream && (
+                  <audio
+                    autoPlay
+                    playsInline
+                    ref={(el) => {
+                      if (el) el.srcObject = remoteStream;
+                    }}
+                    muted={!isRemoteAudioEnabled}
+                    onError={(e) => console.error("❌ Remote audio error:", e)}
+                    className="hidden"
+                  ></audio>
+                )}
               </div>
             )}
           </div>
