@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     siteName: "ZeroChats",
     images: [
       {
-        url: "/logo/8b2dd08b-d439-4116-b798-89421c394982.png",
+        url: "/logo/android-chrome-192x192.png",
         width: 1200,
         height: 630,
         alt: "ZeroChats Logo",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: "ZeroChats - Real-time messaging app",
     description:
       "ZeroChats is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    images: ["/logo/8b2dd08b-d439-4116-b798-89421c394982.png"],
+    images: ["/logo/android-chrome-192x192.png"],
   },
   icons: {
     icon: [
@@ -79,7 +79,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body className={`${inter.className} antialiased`}>
