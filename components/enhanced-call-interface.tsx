@@ -206,7 +206,7 @@ export function EnhancedCallInterface({
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="w-32 h-32 mx-auto mb-6">
+                  <div className="w-32 h-32 mx-auto px-4 mb-2">
                     <UserAvatar user={contact} size="lg" />
                   </div>
                   <h2 className="text-2xl font-semibold text-white mb-2">
@@ -218,23 +218,6 @@ export function EnhancedCallInterface({
                       : status.text}
                   </p>
                 </div>
-              </div>
-            )}
-
-            {!isConnected && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                <Card className="p-6 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-4"></div>
-                  <p className="text-white">{status.text}</p>
-                  <div className="text-xs text-white/70 mt-2">
-                    <div>Connection State: {connectionState}</div>
-                    <div>ICE State: {iceConnectionState}</div>
-                    <div>
-                      Streams: L:{localStream ? "✅" : "❌"} R:
-                      {remoteStream ? "✅" : "❌"}
-                    </div>
-                  </div>
-                </Card>
               </div>
             )}
           </div>
