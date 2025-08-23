@@ -1,555 +1,53 @@
-// "use client";
-
-// import {
-//   collection,
-//   doc,
-//   getDoc,
-//   onSnapshot,
-//   query,
-//   serverTimestamp,
-//   updateDoc,
-//   where,
-// } from "firebase/firestore";
-// import { useRouter } from "next/navigation";
-// import { useCallback, useEffect, useState } from "react";
-
-// import { CallInterface } from "@/components/call-interface";
-// import { ChatArea } from "@/components/chat-area";
-// import { IncomingCall } from "@/components/incoming-call";
-// import { Sidebar } from "@/components/sidebar";
-// import { useTheme } from "@/components/theme-provider";
-// import { useFirebase } from "@/lib/firebase-provider";
-// import {
-//   acceptCall,
-//   endCall,
-//   initiateCall,
-//   listenForCalls,
-// } from "@/lib/webrtc";
-// import type { User } from "@/types/user";
-// import { ArrowLeft, Loader2 } from "lucide-react";
-// import { ChatProvider } from "@/components/chat-context";
-// import { NotificationProvider } from "@/components/notification-provider";
-
-// export default function DashboardPage() {
-//   const { currentUser, db, loading: authLoading } = useFirebase();
-//   const [contacts, setContacts] = useState<User[]>([]);
-//   const [selectedContact, setSelectedContact] = useState<User | null>(null);
-//   const [callState, setCallState] = useState<{
-//     isActive: boolean;
-//     isIncoming: boolean;
-//     isVideo: boolean;
-//     peer: any;
-//     remoteStream: MediaStream | null;
-//     localStream: MediaStream | null;
-//     caller: User | null;
-//   }>({
-//     isActive: false,
-//     isIncoming: false,
-//     isVideo: false,
-//     peer: null,
-//     remoteStream: null,
-//     localStream: null,
-//     caller: null,
-//   });
-//   const [incomingCall, setIncomingCall] = useState<{
-//     caller: User | null;
-//     isVideo: boolean;
-//   } | null>(null);
-//   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-//   const [active, setIsChatActive] = useState(false);
-//   const { theme } = useTheme();
-
-//   const router = useRouter();
-
-//   useEffect(() => {
-//     if (!authLoading && !currentUser) {
-//       router.push("/login");
-//     }
-//   }, [authLoading, currentUser, router]);
-
-//   // useEffect(() => {
-//   //   if (!currentUser) return;
-
-//   //   const updateOnlineStatus = async () => {
-//   //     try {
-//   //       await updateDoc(doc(db, "users", currentUser.uid), {
-//   //         online: true,
-//   //       });
-//   //     } catch (error) {
-//   //       console.error("Error updating online status:", error);
-//   //     }
-//   //   };
-
-//   //   updateOnlineStatus();
-
-//   //   const handleBeforeUnload = async () => {
-//   //     try {
-//   //       await updateDoc(doc(db, "users", currentUser.uid), {
-//   //         online: false,
-//   //         lastSeen: serverTimestamp(),
-//   //       });
-//   //     } catch (error) {
-//   //       console.error("Error updating offline status:", error);
-//   //     }
-//   //   };
-
-//   //   window.addEventListener("beforeunload", handleBeforeUnload);
-
-//   //   return () => {
-//   //     window.removeEventListener("beforeunload", handleBeforeUnload);
-//   //     handleBeforeUnload();
-//   //   };
-//   // }, [currentUser, db]);
-
-//   useEffect(() => {
-//     if (!currentUser) return;
-
-//     const userRef = doc(db, "users", currentUser.uid);
-
-//     const setOnline = async () => {
-//       try {
-//         await updateDoc(userRef, {
-//           online: true,
-//         });
-//       } catch (error) {
-//         console.error("Error setting online:", error);
-//       }
-//     };
-
-//     const setOffline = async () => {
-//       try {
-//         await updateDoc(userRef, {
-//           online: false,
-//           lastSeen: serverTimestamp(),
-//         });
-//       } catch (error) {
-//         console.error("Error setting offline:", error);
-//       }
-//     };
-
-//     const handleBeforeUnload = () => {
-//       setOffline();
-//     };
-
-//     const handleBlur = () => {
-//       setOffline();
-//     };
-
-//     const handleFocus = () => {
-//       setOnline();
-//     };
-
-//     const handleOffline = () => {
-//       setOffline();
-//     };
-
-//     const handleOnline = () => {
-//       setOnline();
-//     };
-
-//     setOnline();
-
-//     window.addEventListener("beforeunload", handleBeforeUnload);
-//     window.addEventListener("blur", handleBlur);
-//     window.addEventListener("focus", handleFocus);
-//     window.addEventListener("offline", handleOffline);
-//     window.addEventListener("online", handleOnline);
-
-//     return () => {
-//       window.removeEventListener("beforeunload", handleBeforeUnload);
-//       window.removeEventListener("blur", handleBlur);
-//       window.removeEventListener("focus", handleFocus);
-//       window.removeEventListener("offline", handleOffline);
-//       window.removeEventListener("online", handleOnline);
-//       setOffline();
-//     };
-//   }, [currentUser, db]);
-
-//   useEffect(() => {
-//     if (!currentUser) return;
-
-//     const q = query(
-//       collection(db, "users"),
-//       where("uid", "!=", currentUser.uid)
-//     );
-
-//     const unsubscribe = onSnapshot(q, (snapshot) => {
-//       const contactsList: User[] = [];
-//       snapshot.forEach((doc) => {
-//         contactsList.push(doc.data() as User);
-//       });
-//       setContacts(contactsList);
-//     });
-
-//     return () => unsubscribe();
-//   }, [currentUser, db]);
-
-//   useEffect(() => {
-//     if (!sessionStorage.getItem("warningShown")) {
-//       const styleTitle =
-//         "color: red; font-size: 32px; font-weight: bold; text-shadow: 1px 1px black;";
-//       const styleBody =
-//         "color: white; background-color: red; font-size: 14px; padding: 10px; font-family: monospace;";
-//       const styleHighlight =
-//         "color: yellow; background-color: black; font-size: 16px; padding: 8px; font-weight: bold; font-family: monospace;";
-
-//       console.log("%c⚠️ WARNING! ⚠️", styleTitle);
-//       console.log(
-//         "%cThis is a browser feature intended for developers. If someone told you to copy and paste something here, it is a scam and will give them access to your messages, private keys, or account.",
-//         styleBody
-//       );
-//       console.log(
-//         "%cThis console is not a playground.\nIf someone told you to paste something here, they are trying to scam you. Pasting code here can give attackers FULL access to your account, private messages, and identity.",
-//         styleBody
-//       );
-//       console.log(
-//         "%cDO NOT paste code here if you don’t fully understand what it does.",
-//         styleHighlight
-//       );
-
-//       sessionStorage.setItem("warningShown", "true");
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     if (!currentUser || !db) return;
-
-//     const unsubscribe = listenForCalls(
-//       db,
-//       currentUser.uid,
-//       async (callData) => {
-//         if (callData) {
-//           try {
-//             const callerDoc = await getDoc(doc(db, "users", callData.from));
-//             if (callerDoc.exists()) {
-//               const callerData = callerDoc.data() as User;
-//               setIncomingCall({
-//                 caller: callerData,
-//                 isVideo: callData.isVideo,
-//               });
-//             }
-//           } catch (error) {
-//             console.error("Error fetching caller data:", error);
-//           }
-//         }
-//       }
-//     );
-
-//     return () => unsubscribe();
-//   }, [currentUser, db]);
-
-//   const handleStartCall = useCallback(
-//     async (contact: User, isVideo: boolean) => {
-//       if (!currentUser || !db) return;
-
-//       try {
-//         const constraints = {
-//           audio: true,
-//           video: isVideo,
-//         };
-
-//         const localStream = await navigator.mediaDevices.getUserMedia(
-//           constraints
-//         );
-
-//         const peer = await initiateCall(
-//           db,
-//           localStream,
-//           currentUser.uid,
-//           contact.uid,
-//           isVideo
-//         );
-
-//         peer.on("stream", (remoteStream: MediaStream) => {
-//           setCallState((prev) => ({
-//             ...prev,
-//             remoteStream,
-//           }));
-//         });
-
-//         setCallState({
-//           isActive: true,
-//           isIncoming: false,
-//           isVideo,
-//           peer,
-//           localStream,
-//           remoteStream: null,
-//           caller: null,
-//         });
-//       } catch (error) {
-//         console.error("Error starting call:", error);
-//         alert(
-//           "Could not start call. Please check your camera and microphone permissions."
-//         );
-//       }
-//     },
-//     [currentUser, db]
-//   );
-
-//   const handleAcceptCall = useCallback(async () => {
-//     if (!incomingCall || !incomingCall.caller || !currentUser || !db) {
-//       console.error(
-//         "❌ Error: incomingCall, caller, currentUser, atau db tidak tersedia."
-//       );
-//       return;
-//     }
-
-//     try {
-//       const constraints = {
-//         audio: true,
-//         video: incomingCall.isVideo,
-//       };
-
-//       const localStream = await navigator.mediaDevices.getUserMedia(
-//         constraints
-//       );
-//       console.log("🎤 Local media stream obtained:", localStream);
-
-//       const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-//       const userData = userDoc.data();
-
-//       const callerId = incomingCall.caller.uid;
-//       const receiverId = userData?.uid;
-//       const callId = `${receiverId}_${callerId}`;
-//       const callDoc = await getDoc(doc(db, "calls", callId));
-//       const callData = callDoc.data();
-
-//       if (userData?.incomingCall) {
-//         const peer = await acceptCall(
-//           db,
-//           callData,
-//           localStream,
-//           currentUser.uid
-//         );
-//         console.log("✅ Peer connection established:", peer);
-//         console.log(peer.streams);
-
-//         peer.on("stream", (remoteStream: MediaStream) => {
-//           console.log("📡 Remote stream received:", remoteStream);
-//           setCallState((prev) => ({
-//             ...prev,
-//             remoteStream,
-//           }));
-//         });
-
-//         setCallState({
-//           isActive: true,
-//           isIncoming: true,
-//           isVideo: incomingCall.isVideo,
-//           peer,
-//           localStream,
-//           remoteStream: null,
-//           caller: incomingCall.caller,
-//         });
-
-//         setIncomingCall(null);
-//         console.log("✅ Call accepted and state updated.");
-//       } else {
-//         console.warn("⚠ No incoming call data found in user document.");
-//       }
-//     } catch (error) {
-//       console.error("❌ Error accepting call:", error);
-//       alert(
-//         "Could not accept call. Please check your camera and microphone permissions."
-//       );
-//     }
-//   }, [incomingCall, currentUser, db]);
-
-//   const handleRejectCall = useCallback(async () => {
-//     if (!incomingCall || !incomingCall.caller || !currentUser || !db) return;
-
-//     try {
-//       await endCall(db, currentUser.uid, incomingCall.caller.uid);
-
-//       setIncomingCall(null);
-//     } catch (error) {
-//       console.error("Error rejecting call:", error);
-//     }
-//   }, [incomingCall, currentUser, db]);
-
-//   const handleEndCall = useCallback(async () => {
-//     if (!currentUser || !db) return;
-
-//     try {
-//       if (callState.localStream) {
-//         callState.localStream.getTracks().forEach((track) => track.stop());
-//       }
-
-//       if (callState.peer) {
-//         callState.peer.destroy();
-//       }
-
-//       if (callState.isIncoming && callState.caller) {
-//         await endCall(db, currentUser.uid, callState.caller.uid);
-//       } else if (selectedContact) {
-//         await endCall(db, currentUser.uid, selectedContact.uid);
-//       }
-
-//       setCallState({
-//         isActive: false,
-//         isIncoming: false,
-//         isVideo: false,
-//         peer: null,
-//         remoteStream: null,
-//         localStream: null,
-//         caller: null,
-//       });
-//     } catch (error) {
-//       console.error("Error ending call:", error);
-//     }
-//   }, [callState, selectedContact, currentUser, db]);
-
-//   const handleToggleMute = useCallback(() => {
-//     if (callState.localStream) {
-//       const audioTracks = callState.localStream.getAudioTracks();
-//       audioTracks.forEach((track) => {
-//         track.enabled = !track.enabled;
-//       });
-//     }
-//   }, [callState]);
-
-//   const handleToggleVideo = useCallback(() => {
-//     if (callState.localStream) {
-//       const videoTracks = callState.localStream.getVideoTracks();
-//       videoTracks.forEach((track) => {
-//         track.enabled = !track.enabled;
-//       });
-//     }
-//   }, [callState]);
-
-//   if (authLoading || !currentUser) {
-//     return (
-//       <div className="flex h-screen w-full items-center justify-center">
-//         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <ChatProvider>
-//       <NotificationProvider
-//         currentUserId={currentUser.uid}
-//         contacts={contacts}
-//         selectedContact={selectedContact}
-//       />
-//       <div
-//         className={`flex h-[100dvh] w-full overflow-hidden ${
-//           theme === "dark" ? "dark" : ""
-//         }`}
-//       >
-//         {!isMobileMenuOpen && !active && (
-//           <button
-//             className="absolute top-4 left-4 z-50 md:hidden"
-//             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-//           >
-//             <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
-//           </button>
-//         )}
-
-//         <div
-//           className={`${
-//             isMobileMenuOpen ? "block" : "hidden"
-//           } md:block md:relative fixed inset-0 z-40 bg-background`}
-//         >
-//           <Sidebar
-//             user={currentUser}
-//             contacts={contacts}
-//             selectedContact={selectedContact}
-//             setSelectedContact={(contact) => {
-//               setSelectedContact(contact);
-//               setIsMobileMenuOpen(false);
-//             }}
-//             setIsChatActive={setIsChatActive}
-//             setIsMobileMenuOpen={setIsMobileMenuOpen}
-//             initiateCall={handleStartCall}
-//           />
-//         </div>
-
-//         <div className="flex-1 md:block">
-//           {selectedContact ? (
-//             <ChatArea
-//               currentUser={currentUser}
-//               contact={selectedContact}
-//               initiateCall={(isVideo) =>
-//                 handleStartCall(selectedContact, isVideo)
-//               }
-//               setIsMobileMenuOpen={setIsMobileMenuOpen}
-//             />
-//           ) : (
-//             <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background md:pt-0 pt-14">
-//               <p className="text-muted-foreground">
-//                 Select a contact to start chatting
-//               </p>
-//             </div>
-//           )}
-//         </div>
-
-//         {callState.isActive && (
-//           <CallInterface
-//             isVideo={callState.isVideo}
-//             remoteStream={callState.remoteStream}
-//             localStream={callState.localStream}
-//             contact={callState.isIncoming ? callState.caller : selectedContact}
-//             endCall={handleEndCall}
-//             toggleMute={handleToggleMute}
-//             toggleVideo={handleToggleVideo}
-//           />
-//         )}
-
-//         {incomingCall && incomingCall.caller && (
-//           <IncomingCall
-//             caller={incomingCall.caller}
-//             isVideo={incomingCall.isVideo}
-//             onAccept={handleAcceptCall}
-//             onReject={handleRejectCall}
-//           />
-//         )}
-//       </div>
-//     </ChatProvider>
-//   );
-// }
-
-"use client"
-
-import { collection, doc, getDoc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore"
-import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
-
-import { EnhancedCallInterface } from "@/components/enhanced-call-interface"
-import { ChatArea } from "@/components/chat-area"
-import { EnhancedIncomingCall } from "@/components/enhanced-incoming-call"
-import { Sidebar } from "@/components/sidebar"
-import { useTheme } from "@/components/theme-provider"
-import { useFirebase } from "@/lib/firebase-provider"
-import { useWebRTCEnhanced } from "@/hooks/use-webrtc-enhanced"
-import type { User } from "@/types/user"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import { ChatProvider } from "@/components/chat-context"
-import { NotificationProvider } from "@/components/notification-provider"
+"use client";
+
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
+import { EnhancedCallInterface } from "@/components/enhanced-call-interface";
+import { ChatArea } from "@/components/chat-area";
+import { EnhancedIncomingCall } from "@/components/enhanced-incoming-call";
+import { Sidebar } from "@/components/sidebar";
+import { useTheme } from "@/components/theme-provider";
+import { useFirebase } from "@/lib/firebase-provider";
+import { useWebRTCEnhanced } from "@/hooks/use-webrtc-enhanced";
+import type { User } from "@/types/user";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { ChatProvider } from "@/components/chat-context";
+import { NotificationProvider } from "@/components/notification-provider";
 
 interface CallData {
-  callId: string
-  from: string
-  isVideo: boolean
-  timestamp: string
+  callId: string;
+  from: string;
+  isVideo: boolean;
+  timestamp: string;
 }
 
 export default function DashboardPage() {
-  const { currentUser, db, loading: authLoading } = useFirebase()
-  const [contacts, setContacts] = useState<User[]>([])
-  const [selectedContact, setSelectedContact] = useState<User | null>(null)
+  const { currentUser, db, loading: authLoading } = useFirebase();
+  const [contacts, setContacts] = useState<User[]>([]);
+  const [selectedContact, setSelectedContact] = useState<User | null>(null);
   const [incomingCall, setIncomingCall] = useState<{
-    callData: CallData
-    caller: User | null
-  } | null>(null)
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [active, setIsChatActive] = useState(false)
-  const [localStream, setLocalStream] = useState<MediaStream | null>(null)
-  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
-  const [currentCaller, setCurrentCaller] = useState<User | null>(null)
-  const { theme } = useTheme()
+    callData: CallData;
+    caller: User | null;
+  } | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [active, setIsChatActive] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [currentCaller, setCurrentCaller] = useState<User | null>(null);
+  const { theme } = useTheme();
 
-  const router = useRouter()
+  const router = useRouter();
 
   const {
     isCallActive,
@@ -568,214 +66,237 @@ export default function DashboardPage() {
   } = useWebRTCEnhanced({
     currentUser,
     onIncomingCall: async (callData: CallData) => {
-      console.log("📞 Incoming call received:", callData)
+      console.log("📞 Incoming call received:", callData);
 
       try {
-        const callerDoc = await getDoc(doc(db, "users", callData.from))
+        const callerDoc = await getDoc(doc(db, "users", callData.from));
         if (callerDoc.exists()) {
-          const callerData = callerDoc.data() as User
-          setCurrentCaller(callerData)
+          const callerData = callerDoc.data() as User;
+          setCurrentCaller(callerData);
           setIncomingCall({
             callData,
             caller: callerData,
-          })
+          });
         }
       } catch (error) {
-        console.error("Error fetching caller data:", error)
+        console.error("Error fetching caller data:", error);
       }
     },
     onCallEnded: () => {
-      console.log("📞 Call ended")
-      setIncomingCall(null)
-      setCurrentCaller(null)
-      setLocalStream(null)
-      setRemoteStream(null)
+      console.log("📞 Call ended");
+      setIncomingCall(null);
+      setCurrentCaller(null);
+      setLocalStream(null);
+      setRemoteStream(null);
     },
     onRemoteStream: (stream: MediaStream) => {
-      console.log("📺 Remote stream received")
-      setRemoteStream(stream)
+      console.log("📺 Remote stream received");
+      setRemoteStream(stream);
     },
     onLocalStream: (stream: MediaStream) => {
-      console.log("📺 Local stream received")
-      setLocalStream(stream)
+      console.log("📺 Local stream received");
+      setLocalStream(stream);
     },
-  })
+  });
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
-      router.push("/login")
+      router.push("/login");
     }
-  }, [authLoading, currentUser, router])
+  }, [authLoading, currentUser, router]);
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUser) return;
 
-    const userRef = doc(db, "users", currentUser.uid)
+    const userRef = doc(db, "users", currentUser.uid);
 
     const setOnline = async () => {
       try {
         await updateDoc(userRef, {
           online: true,
-        })
+        });
       } catch (error) {
-        console.error("Error setting online:", error)
+        console.error("Error setting online:", error);
       }
-    }
+    };
 
     const setOffline = async () => {
       try {
         await updateDoc(userRef, {
           online: false,
           lastSeen: serverTimestamp(),
-        })
+        });
       } catch (error) {
-        console.error("Error setting offline:", error)
+        console.error("Error setting offline:", error);
       }
-    }
+    };
 
     const handleBeforeUnload = () => {
-      setOffline()
-    }
+      setOffline();
+    };
 
     const handleBlur = () => {
-      setOffline()
-    }
+      setOffline();
+    };
 
     const handleFocus = () => {
-      setOnline()
-    }
+      setOnline();
+    };
 
     const handleOffline = () => {
-      setOffline()
-    }
+      setOffline();
+    };
 
     const handleOnline = () => {
-      setOnline()
-    }
+      setOnline();
+    };
 
-    setOnline()
+    setOnline();
 
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    window.addEventListener("blur", handleBlur)
-    window.addEventListener("focus", handleFocus)
-    window.addEventListener("offline", handleOffline)
-    window.addEventListener("online", handleOnline)
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-      window.removeEventListener("blur", handleBlur)
-      window.removeEventListener("focus", handleFocus)
-      window.removeEventListener("offline", handleOffline)
-      window.removeEventListener("online", handleOnline)
-      setOffline()
-    }
-  }, [currentUser, db])
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("online", handleOnline);
+      setOffline();
+    };
+  }, [currentUser, db]);
 
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUser) return;
 
-    const q = query(collection(db, "users"), where("uid", "!=", currentUser.uid))
+    const q = query(
+      collection(db, "users"),
+      where("uid", "!=", currentUser.uid)
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const contactsList: User[] = []
+      const contactsList: User[] = [];
       snapshot.forEach((doc) => {
-        contactsList.push(doc.data() as User)
-      })
-      setContacts(contactsList)
-    })
+        contactsList.push(doc.data() as User);
+      });
+      setContacts(contactsList);
+    });
 
-    return () => unsubscribe()
-  }, [currentUser, db])
+    return () => unsubscribe();
+  }, [currentUser, db]);
 
   useEffect(() => {
     if (!sessionStorage.getItem("warningShown")) {
-      const styleTitle = "color: red; font-size: 32px; font-weight: bold; text-shadow: 1px 1px black;"
-      const styleBody = "color: white; background-color: red; font-size: 14px; padding: 10px; font-family: monospace;"
+      const styleTitle =
+        "color: red; font-size: 32px; font-weight: bold; text-shadow: 1px 1px black;";
+      const styleBody =
+        "color: white; background-color: red; font-size: 14px; padding: 10px; font-family: monospace;";
       const styleHighlight =
-        "color: yellow; background-color: black; font-size: 16px; padding: 8px; font-weight: bold; font-family: monospace;"
+        "color: yellow; background-color: black; font-size: 16px; padding: 8px; font-weight: bold; font-family: monospace;";
 
-      console.log("%c⚠️ WARNING! ⚠️", styleTitle)
+      console.log("%c⚠️ WARNING! ⚠️", styleTitle);
       console.log(
         "%cThis is a browser feature intended for developers. If someone told you to copy and paste something here, it is a scam and will give them access to your messages, private keys, or account.",
-        styleBody,
-      )
+        styleBody
+      );
       console.log(
         "%cThis console is not a playground.\nIf someone told you to paste something here, they are trying to scam you. Pasting code here can give attackers FULL access to your account, private messages, and identity.",
-        styleBody,
-      )
-      console.log("%cDO NOT paste code here if you don't fully understand what it does.", styleHighlight)
+        styleBody
+      );
+      console.log(
+        "%cDO NOT paste code here if you don't fully understand what it does.",
+        styleHighlight
+      );
 
-      sessionStorage.setItem("warningShown", "true")
+      sessionStorage.setItem("warningShown", "true");
     }
-  }, [])
+  }, []);
 
   const handleStartCall = useCallback(
     async (contact: User, isVideo: boolean) => {
-      if (!currentUser || !db) return
+      if (!currentUser || !db) return;
 
       try {
-        console.log(`📞 Starting ${isVideo ? "video" : "audio"} call with:`, contact.displayName)
-        setCurrentCaller(contact)
-        await initiateCall(contact.uid, isVideo)
+        console.log(
+          `📞 Starting ${isVideo ? "video" : "audio"} call with:`,
+          contact.displayName
+        );
+        setCurrentCaller(contact);
+        await initiateCall(contact.uid, isVideo);
       } catch (error) {
-        console.error("Error starting call:", error)
-        alert("Could not start call. Please check your camera and microphone permissions.")
+        console.error("Error starting call:", error);
+        alert(
+          "Could not start call. Please check your camera and microphone permissions."
+        );
       }
     },
-    [currentUser, db, initiateCall],
-  )
+    [currentUser, db, initiateCall]
+  );
 
   const handleAcceptCall = useCallback(async () => {
     if (!incomingCall || !incomingCall.caller || !currentUser || !db) {
-      console.error("❌ Error: Missing call data or user information")
-      return
+      console.error("❌ Error: Missing call data or user information");
+      return;
     }
 
     try {
-      console.log("📞 Accepting call from:", incomingCall.caller.displayName)
-      await answerCall(incomingCall.callData.callId, incomingCall.callData)
-      setIncomingCall(null)
+      console.log("📞 Accepting call from:", incomingCall.caller.displayName);
+      await answerCall(incomingCall.callData.callId, incomingCall.callData);
+      setIncomingCall(null);
     } catch (error) {
-      console.error("❌ Error accepting call:", error)
-      alert("Could not accept call. Please check your camera and microphone permissions.")
+      console.error("❌ Error accepting call:", error);
+      alert(
+        "Could not accept call. Please check your camera and microphone permissions."
+      );
     }
-  }, [incomingCall, currentUser, db, answerCall])
+  }, [incomingCall, currentUser, db, answerCall]);
 
   const handleRejectCall = useCallback(async () => {
-    if (!incomingCall || !incomingCall.caller || !currentUser || !db) return
+    if (!incomingCall || !incomingCall.caller || !currentUser || !db) return;
 
     try {
-      console.log("📞 Rejecting call from:", incomingCall.caller.displayName)
-      await rejectCall(incomingCall.callData.callId)
-      setIncomingCall(null)
-      setCurrentCaller(null)
+      console.log("📞 Rejecting call from:", incomingCall.caller.displayName);
+      await rejectCall(incomingCall.callData.callId);
+      setIncomingCall(null);
+      setCurrentCaller(null);
     } catch (error) {
-      console.error("Error rejecting call:", error)
+      console.error("Error rejecting call:", error);
     }
-  }, [incomingCall, currentUser, db, rejectCall])
+  }, [incomingCall, currentUser, db, rejectCall]);
 
   const handleEndCall = useCallback(async () => {
     try {
-      console.log("📞 Ending call")
-      await handleCallEnd()
-      setCurrentCaller(null)
+      console.log("📞 Ending call");
+      await handleCallEnd();
+      setCurrentCaller(null);
     } catch (error) {
-      console.error("Error ending call:", error)
+      console.error("Error ending call:", error);
     }
-  }, [handleCallEnd])
+  }, [handleCallEnd]);
 
   if (authLoading || !currentUser) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
-    )
+    );
   }
 
   return (
     <ChatProvider>
-      <NotificationProvider currentUserId={currentUser.uid} contacts={contacts} selectedContact={selectedContact} />
-      <div className={`flex h-[100dvh] w-full overflow-hidden ${theme === "dark" ? "dark" : ""}`}>
+      <NotificationProvider
+        currentUserId={currentUser.uid}
+        contacts={contacts}
+        selectedContact={selectedContact}
+      />
+      <div
+        className={`flex h-[100dvh] w-full overflow-hidden ${
+          theme === "dark" ? "dark" : ""
+        }`}
+      >
         {!isMobileMenuOpen && !active && (
           <button
             className="absolute top-4 left-4 z-50 md:hidden"
@@ -786,15 +307,17 @@ export default function DashboardPage() {
         )}
 
         <div
-          className={`${isMobileMenuOpen ? "block" : "hidden"} md:block md:relative fixed inset-0 z-40 bg-background`}
+          className={`${
+            isMobileMenuOpen ? "block" : "hidden"
+          } md:block md:relative fixed inset-0 z-40 bg-background`}
         >
           <Sidebar
             user={currentUser}
             contacts={contacts}
             selectedContact={selectedContact}
             setSelectedContact={(contact) => {
-              setSelectedContact(contact)
-              setIsMobileMenuOpen(false)
+              setSelectedContact(contact);
+              setIsMobileMenuOpen(false);
             }}
             setIsChatActive={setIsChatActive}
             setIsMobileMenuOpen={setIsMobileMenuOpen}
@@ -807,12 +330,16 @@ export default function DashboardPage() {
             <ChatArea
               currentUser={currentUser}
               contact={selectedContact}
-              initiateCall={(isVideo) => handleStartCall(selectedContact, isVideo)}
+              initiateCall={(isVideo) =>
+                handleStartCall(selectedContact, isVideo)
+              }
               setIsMobileMenuOpen={setIsMobileMenuOpen}
             />
           ) : (
             <div className="flex flex-1 h-full items-center justify-center bg-gray-50 dark:bg-background md:pt-0 pt-14">
-              <p className="text-muted-foreground">Select a contact to start chatting</p>
+              <p className="text-muted-foreground">
+                Select a contact to start chatting
+              </p>
             </div>
           )}
         </div>
@@ -845,6 +372,5 @@ export default function DashboardPage() {
         )}
       </div>
     </ChatProvider>
-  )
+  );
 }
-

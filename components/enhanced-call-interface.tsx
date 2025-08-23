@@ -136,7 +136,7 @@ export function EnhancedCallInterface({
               <UserAvatar user={contact} size="sm" />
               <div>
                 <h3 className="text-white font-medium">
-                  {contact.displayName}
+                  {contact ? contact.displayName : "Unknown User"}
                 </h3>
                 <div className="flex items-center gap-2">
                   <Badge

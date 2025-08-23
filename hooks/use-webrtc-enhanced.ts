@@ -213,7 +213,8 @@ export function useWebRTCEnhanced({
       if (!manager) return;
 
       await manager.endCall();
-
+      setIsCallActive(false);
+      setIsConnected(false);
       toast({
         title: "Call Ended",
         description: "Call has been ended",
