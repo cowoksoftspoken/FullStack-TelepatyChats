@@ -85,6 +85,7 @@ class WebRTCManager {
       if (state === "connected") {
         console.log("✅ WebRTC connection established!");
         this.adjustVideoQuality();
+        this.adjustAudioQuality();
       } else if (
         state === "failed" ||
         state === "disconnected" ||
@@ -213,6 +214,44 @@ class WebRTCManager {
     return null;
   }
 
+  private async adjustAudioQuality() {
+    if (!this.peerConnection) return;
+    const type = await this.getActiveCandidateType();
+    const sender = this.peerConnection
+      .getSenders()
+      .find((s) => s.track && s.track.kind === "audio");
+    if (!sender) return;
+
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings) params.encodings = [{}];
+
+      if (type === "relay") {
+        params.encodings[0].maxBitrate = 32 * 1000;
+        console.log("Using TURN server, adjusting audio bitrate to 32kbps");
+        try {
+          await sender.track?.applyConstraints({ sampleRate: 16000 });
+        } catch (err) {
+          console.warn("Failed to apply audio constraints:", err);
+        }
+      } else {
+        params.encodings[0].maxBitrate = 64 * 1000;
+        console.log(
+          "Using direct connection, adjusting audio bitrate to 64kbps"
+        );
+        try {
+          await sender.track?.applyConstraints({ sampleRate: 44100 });
+        } catch (err) {
+          console.warn("Failed to apply audio constraints:", err);
+        }
+      }
+
+      await sender.setParameters(params);
+    } catch (err) {
+      console.error("Failed to adjust audio quality:", err);
+    }
+  }
+
   private async adjustVideoQuality() {
     if (!this.peerConnection) return;
     const type = await this.getActiveCandidateType();
@@ -220,23 +259,44 @@ class WebRTCManager {
       .getSenders()
       .find((s) => s.track && s.track.kind === "video");
     if (!sender) return;
-    const params = sender.getParameters();
-    if (!params.encodings) {
-      params.encodings = [{}];
-    }
 
-    if (type === "relay") {
-      params.encodings[0].maxBitrate = 300 * 1000;
-      console.log("Using TURN server, adjusting video bitrate to 300kbps");
-    } else {
-      params.encodings[0].maxBitrate = 1500 * 1000;
-      console.log(
-        "Using direct connection, adjusting video bitrate to 1.5Mbps"
-      );
-    }
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings) params.encodings = [{}];
 
-    await sender.setParameters(params);
-    console.log("✅ Video quality adjusted based on connection type");
+      if (type === "relay") {
+        params.encodings[0].maxBitrate = 300 * 1000;
+        console.log("Using TURN server, adjusting video bitrate to 300kbps");
+        try {
+          await sender.track?.applyConstraints({
+            width: 640,
+            height: 480,
+            frameRate: 20,
+          });
+        } catch (err) {
+          console.warn("Failed to apply video constraints:", err);
+        }
+      } else {
+        params.encodings[0].maxBitrate = 1500 * 1000;
+        console.log(
+          "Using direct connection, adjusting video bitrate to 1.5Mbps"
+        );
+        try {
+          await sender.track?.applyConstraints({
+            width: 1280,
+            height: 720,
+            frameRate: { ideal: 30, max: 60 },
+          });
+        } catch (err) {
+          console.warn("Failed to apply video constraints:", err);
+        }
+      }
+
+      await sender.setParameters(params);
+      console.log("✅ Video quality adjusted based on connection type");
+    } catch (err) {
+      console.error("Failed to adjust video quality:", err);
+    }
   }
 
   private addLocalStreamToPeerConnection(
