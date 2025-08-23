@@ -1,23 +1,23 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useRef, useCallback } from "react"
-import { Lock } from "lucide-react"
-import { useDecryptedMedia } from "@/hooks/use-decrypted-media"
-import { AudioMessage } from "./audio-message"
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Lock } from "lucide-react";
+import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+import { AudioMessage } from "./audio-message";
 
 interface EncryptedAudioProps {
-  messageId: string
-  fileURL: string
-  duration?: number
-  fileName?: string
-  fileIsEncrypted: boolean
-  fileEncryptedKey: string
-  fileEncryptedKeyForSelf: string
-  fileIv: string
-  fileType: string
-  isSender: boolean
-  currentUserId: string
-  isDark?: boolean
+  messageId: string;
+  fileURL: string;
+  duration?: number;
+  fileName?: string;
+  fileIsEncrypted: boolean;
+  fileEncryptedKey: string;
+  fileEncryptedKeyForSelf: string;
+  fileIv: string;
+  fileType: string;
+  isSender: boolean;
+  currentUserId: string;
+  isDark?: boolean;
 }
 
 export function EncryptedAudio({
@@ -34,34 +34,34 @@ export function EncryptedAudio({
   currentUserId,
   isDark = false,
 }: EncryptedAudioProps) {
-  const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia()
-  const [isLoading, setIsLoading] = useState(fileIsEncrypted)
-  const [error, setError] = useState<string | null>(null)
-  const [audioUrl, setAudioUrl] = useState<string>("")
-  const hasInitialized = useRef(false)
-  const isDecrypting = useRef(false)
+  const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
+  const [isLoading, setIsLoading] = useState(fileIsEncrypted);
+  const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string>("");
+  const hasInitialized = useRef(false);
+  const isDecrypting = useRef(false);
 
   const initializeAudio = useCallback(async () => {
-    if (hasInitialized.current || isDecrypting.current) return
+    if (hasInitialized.current || isDecrypting.current) return;
 
     if (!fileIsEncrypted) {
-      setAudioUrl(fileURL)
-      setIsLoading(false)
-      hasInitialized.current = true
-      return
+      setAudioUrl(fileURL);
+      setIsLoading(false);
+      hasInitialized.current = true;
+      return;
     }
 
     // cek jika sudah di decrypt
-    const cachedUrl = decryptedUrls[messageId]
+    const cachedUrl = decryptedUrls[messageId];
     if (cachedUrl) {
-      setAudioUrl(cachedUrl)
-      setIsLoading(false)
-      hasInitialized.current = true
-      return
+      setAudioUrl(cachedUrl);
+      setIsLoading(false);
+      hasInitialized.current = true;
+      return;
     }
 
-    isDecrypting.current = true
-    setIsLoading(true)
+    isDecrypting.current = true;
+    setIsLoading(true);
 
     try {
       const url = await decryptAndCreateBlobUrl(
@@ -73,18 +73,18 @@ export function EncryptedAudio({
         fileIv,
         fileType || "audio/webm",
         isSender,
-        currentUserId,
-      )
-      setAudioUrl(url)
-      setError(null)
+        currentUserId
+      );
+      setAudioUrl(url);
+      setError(null);
     } catch (err) {
-      console.error("Error decrypting audio:", err)
-      setError("Failed to decrypt audio")
-      setAudioUrl(fileURL) 
+      console.error("Error decrypting audio:", err);
+      setError("Failed to decrypt audio");
+      setAudioUrl(fileURL);
     } finally {
-      setIsLoading(false)
-      isDecrypting.current = false
-      hasInitialized.current = true
+      setIsLoading(false);
+      isDecrypting.current = false;
+      hasInitialized.current = true;
     }
   }, [
     messageId,
@@ -98,11 +98,11 @@ export function EncryptedAudio({
     currentUserId,
     decryptAndCreateBlobUrl,
     decryptedUrls,
-  ])
+  ]);
 
   useEffect(() => {
-    initializeAudio()
-  }, [initializeAudio])
+    initializeAudio();
+  }, [initializeAudio]);
 
   if (isLoading || !audioUrl) {
     return (
@@ -121,7 +121,7 @@ export function EncryptedAudio({
           </div>
         )}
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -129,8 +129,12 @@ export function EncryptedAudio({
       <div className="relative">
         <div className="flex items-center justify-center p-4 bg-red-100 dark:bg-red-900/20 rounded-md min-h-[80px]">
           <div className="text-center">
-            <div className="text-red-600 dark:text-red-400 text-sm font-medium">Audio Error</div>
-            <div className="text-red-500 dark:text-red-300 text-xs">{error}</div>
+            <div className="text-red-600 dark:text-red-400 text-sm font-medium">
+              Audio Error
+            </div>
+            <div className="text-red-500 dark:text-red-300 text-xs">
+              {error}
+            </div>
           </div>
         </div>
         {fileIsEncrypted && (
@@ -139,17 +143,18 @@ export function EncryptedAudio({
           </div>
         )}
       </div>
-    )
+    );
   }
 
   return (
     <div className="relative">
-      <AudioMessage src={audioUrl} duration={duration} fileName={fileName} isDark={isDark} className="w-full" />
-      {fileIsEncrypted && (
-        <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-          <Lock className="h-3 w-3 text-green-500" />
-        </div>
-      )}
+      <AudioMessage
+        src={audioUrl}
+        duration={duration}
+        fileName={fileName}
+        isDark={isDark}
+        className="w-full"
+      />
     </div>
-  )
+  );
 }

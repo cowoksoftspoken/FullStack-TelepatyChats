@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, memo  } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -27,113 +27,132 @@ export function AudioMessage({
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
+
   const audioRef = useRef<HTMLAudioElement>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyzerRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
+  const rafRef = useRef<number>(0);
   const isMobile = useMediaQuery("(max-width: 640px)");
   const isSmallScreen = useMediaQuery("(max-width: 480px)");
 
   useEffect(() => {
-    if (audioRef.current && onLoad) {
-      onLoad(audioRef.current);
-    }
+    if (audioRef.current && onLoad) onLoad(audioRef.current);
   }, [onLoad]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-
-    const handleLoadedMetadata = () => {
-      setAudioDuration(audio.duration);
-    };
-
+    const handleLoadedMetadata = () => setAudioDuration(audio.duration);
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
-
-    return () => {
+    return () =>
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
-    };
+  }, []);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || audioCtxRef.current) return;
+
+    const ctx = new AudioContext();
+    const analyzer = ctx.createAnalyser();
+    analyzer.fftSize = 64;
+    analyzer.smoothingTimeConstant = 0.8;
+
+    const source = ctx.createMediaElementSource(audio);
+    source.connect(analyzer);
+    analyzer.connect(ctx.destination);
+
+    const bufferLength = analyzer.frequencyBinCount;
+    dataArrayRef.current = new Uint8Array(bufferLength);
+
+    audioCtxRef.current = ctx;
+    analyzerRef.current = analyzer;
   }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isPlaying) {
-      audio.play().catch((error) => {
-        console.error("Error playing audio:", error);
-        setIsPlaying(false);
-      });
-
-      intervalRef.current = setInterval(() => {
+    const tick = () => {
+      if (isPlaying && audio) {
         setCurrentTime(audio.currentTime);
+
+        if (analyzerRef.current && dataArrayRef.current) {
+          analyzerRef.current.getByteFrequencyData(
+            dataArrayRef.current as Uint8Array<ArrayBuffer>
+          );
+          const normalizedData = Array.from(dataArrayRef.current).map(
+            (v, i) => {
+              const target = (v / 255) * 34;
+              const prev = waveformData[i] || 0;
+              const alpha = 0.4;
+              return prev + (target - prev) * alpha;
+            }
+          );
+          setWaveformData(normalizedData);
+        }
+
         if (audio.currentTime >= audioDuration) {
           setIsPlaying(false);
           setCurrentTime(0);
           audio.currentTime = 0;
         }
-      }, 100);
-    } else {
-      audio.pause();
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
       }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      audio.pause();
+      rafRef.current = requestAnimationFrame(tick);
     };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying, audioDuration]);
 
-  // Handle volume change
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.volume = isMuted ? 0 : volume;
+    if (audioRef.current) {
+      audioRef.current.volume = isMuted ? 0 : volume;
+    }
   }, [volume, isMuted]);
 
-  const togglePlayPause = () => {
-    setIsPlaying(!isPlaying);
-  };
+  const togglePlayPause = useCallback(async () => {
+    if (!audioCtxRef.current) return;
+    if (audioCtxRef.current.state === "suspended")
+      await audioCtxRef.current.resume();
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0]);
-    if (value[0] > 0 && isMuted) {
-      setIsMuted(false);
+    if (isPlaying) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    } else {
+      await audioRef.current
+        ?.play()
+        .catch((err) => console.error("play error:", err));
+      setIsPlaying(true);
     }
-  };
+  }, [isPlaying]);
 
-  const handleTimeChange = (value: number[]) => {
-    const newTime = value[0];
+  const toggleMute = () => setIsMuted((m) => !m);
+  const handleVolumeChange = (v: number[]) => {
+    setVolume(v[0]);
+    if (v[0] > 0 && isMuted) setIsMuted(false);
+  };
+  const handleTimeChange = (v: number[]) => {
+    const newTime = v[0];
     setCurrentTime(newTime);
-    if (audioRef.current) {
-      audioRef.current.currentTime = newTime;
-    }
+    if (audioRef.current) audioRef.current.currentTime = newTime;
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
+  const formatTime = (s: number) => {
+    const mins = Math.floor(s / 60);
+    const secs = Math.floor(s % 60);
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   const generateWaveform = () => {
     const bars = isSmallScreen ? 25 : isMobile ? 30 : 35;
-    const waveform = [];
-
-    for (let i = 0; i < bars; i++) {
-      const height =
-        10 + Math.sin((i / (bars / 8)) * Math.PI) * 15 + Math.random() * 10;
-
+    return Array.from({ length: bars }, (_, i) => {
+      const index = Math.floor((i / bars) * waveformData.length);
+      const height = waveformData[index] || 2;
       const isActive = i / bars < currentTime / audioDuration;
 
-      waveform.push(
+      return (
         <div
           key={i}
           className={`w-1 rounded-full ${
@@ -148,9 +167,7 @@ export function AudioMessage({
           style={{ height: `${height}px`, transition: "height 0.1s linear" }}
         />
       );
-    }
-
-    return waveform;
+    });
   };
 
   return (
@@ -175,7 +192,6 @@ export function AudioMessage({
               ? "bg-primary-foreground/20 text-primary-foreground"
               : "bg-primary/10 text-primary"
           }`}
-          aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
             <Pause className={isSmallScreen ? "h-4 w-4" : "h-5 w-5"} />
@@ -202,7 +218,7 @@ export function AudioMessage({
               className="flex-1"
             />
             {!isSmallScreen && (
-              <div className={`text-xs font-mono whitespace-nowrap`}>
+              <div className="text-xs font-mono whitespace-nowrap">
                 {formatTime(currentTime)} / {formatTime(audioDuration)}
               </div>
             )}
@@ -226,7 +242,6 @@ export function AudioMessage({
                   ? "hover:bg-primary-foreground/20"
                   : "hover:bg-primary/10"
               }`}
-              aria-label={isMuted ? "Unmute" : "Mute"}
             >
               {isMuted || volume === 0 ? (
                 <VolumeX className="h-4 w-4" />
@@ -261,20 +276,12 @@ export function AudioMessage({
 
 function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
-
   useEffect(() => {
     const mediaQuery = window.matchMedia(query);
     setMatches(mediaQuery.matches);
-
-    const handler = (event: MediaQueryListEvent) => {
-      setMatches(event.matches);
-    };
-
+    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
     mediaQuery.addEventListener("change", handler);
-    return () => {
-      mediaQuery.removeEventListener("change", handler);
-    };
+    return () => mediaQuery.removeEventListener("change", handler);
   }, [query]);
-
   return matches;
 }
