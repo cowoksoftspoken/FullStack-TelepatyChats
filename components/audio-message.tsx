@@ -149,8 +149,6 @@ export function AudioMessage({
 
   const generateWaveform = () => {
     const bars = isSmallScreen ? 28 : isMobile ? 30 : waveformData.length || 32;
-    console.log(waveformData.length);
-    console.log(bars);
     return Array.from({ length: bars }, (_, i) => {
       const index = Math.round((i / bars) * waveformData.length);
       const height = waveformData[index] || 2;
