@@ -85,7 +85,7 @@ export function AudioMessage({
           const normalizedData = Array.from(dataArrayRef.current).map(
             (v, i) => {
               const target =
-                (v / 255) * (isSmallScreen ? 38 : isMobile ? 40 : 50);
+                (v / 255) * (isSmallScreen ? 38 : isMobile ? 40 : 43);
               const prev = waveformData[i] || 0;
               const alpha = 0.6;
               return prev + (target - prev) * alpha;
@@ -148,12 +148,13 @@ export function AudioMessage({
   };
 
   const generateWaveform = () => {
-    const bars = isSmallScreen ? 28 : isMobile ? 30 : 35;
+    const bars = isSmallScreen ? 28 : isMobile ? 30 : waveformData.length || 32;
+    console.log(waveformData.length);
+    console.log(bars);
     return Array.from({ length: bars }, (_, i) => {
       const index = Math.round((i / bars) * waveformData.length);
       const height = waveformData[index] || 2;
       const isActive = i / bars < currentTime / audioDuration;
-      console.log(height);
       return (
         <div
           key={i}
@@ -234,11 +235,15 @@ export function AudioMessage({
         </div>
 
         {!isSmallScreen && (
-          <div className="relative flex-shrink-0">
+          <div
+            className="relative flex-shrink-0"
+            onMouseEnter={() => setShowVolumeSlider(true)}
+            onMouseLeave={() =>
+              setTimeout(() => setShowVolumeSlider(false), 4000)
+            }
+          >
             <button
               onClick={toggleMute}
-              onMouseEnter={() => setShowVolumeSlider(true)}
-              onMouseLeave={() => setShowVolumeSlider(false)}
               className={`h-8 w-8 rounded-full flex items-center justify-center ${
                 isDark
                   ? "hover:bg-primary-foreground/20"
