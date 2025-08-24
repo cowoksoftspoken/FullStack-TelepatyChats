@@ -24,6 +24,7 @@ import type { User } from "@/types/user";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { ChatProvider } from "@/components/chat-context";
 import { NotificationProvider } from "@/components/notification-provider";
+import { toast } from "sonner";
 
 interface CallData {
   callId: string;
@@ -228,9 +229,7 @@ export default function DashboardPage() {
         await initiateCall(contact.uid, isVideo);
       } catch (error) {
         console.error("Error starting call:", error);
-        alert(
-          "Could not start call. Please check your camera and microphone permissions."
-        );
+        toast.error("Could not start call. Please try again.");
       }
     },
     [currentUser, db, initiateCall]

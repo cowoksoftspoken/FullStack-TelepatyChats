@@ -62,6 +62,7 @@ import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { MessageContent } from "./message-content";
 import { ImageViewer } from "./image-viewer";
+import normalizeName from "@/utils/normalizename";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -1353,7 +1354,9 @@ export function ChatArea({
           <UserAvatar user={contact} isBlocked={isBlocked} />
           <div>
             <div className="flex items-center gap-1">
-              <p className="font-medium">{contact.displayName}</p>
+              <p className="font-medium">
+                {normalizeName(contact.displayName)}
+              </p>
               {contact.isVerified && !isBlocked && (
                 <svg
                   aria-label="Sudah Diverifikasi"

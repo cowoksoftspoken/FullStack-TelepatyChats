@@ -65,6 +65,8 @@ import { ToastAction } from "@/components/ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserAvatar } from "@/components/user-avatar";
 import { VerificationRequest } from "@/components/admin/verification-request";
+import { normalize } from "path";
+import normalizeName from "@/utils/normalizename";
 
 export default function SettingsPage() {
   const {
@@ -234,10 +236,10 @@ export default function SettingsPage() {
   const handleUpdateName = async () => {
     if (!currentUser || !displayName.trim()) return;
 
-    if (displayName.length < 3 || displayName.length > 12) {
+    if (displayName.length < 3 || displayName.length > 14) {
       toast({
         title: "Error",
-        description: "Display name must be between 3 and 12 characters long.",
+        description: "Display name must be between 3 and 14 characters long.",
       });
       return;
     }
@@ -411,7 +413,7 @@ export default function SettingsPage() {
                 <div className="flex gap-2">
                   <Input
                     id="name"
-                    value={displayName}
+                    value={normalizeName(displayName)}
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Enter your display name"
                   />
@@ -429,7 +431,7 @@ export default function SettingsPage() {
               ) : (
                 <Input
                   id="name"
-                  value={currentUser?.displayName || ""}
+                  value={normalizeName(currentUser?.displayName) || ""}
                   disabled
                 />
               )}

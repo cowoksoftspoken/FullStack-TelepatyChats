@@ -49,6 +49,7 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import normalizeName from "@/utils/normalizename";
 
 interface SidebarProps {
   user: any;
@@ -88,7 +89,6 @@ export function Sidebar({
     Record<string, string>
   >({});
 
-  // Fetch user's contacts
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -116,7 +116,6 @@ export function Sidebar({
 
     const fetchLastMessages = async () => {
       try {
-        // Buat listener untuk setiap kontak
         const unsubscribes = userContacts.map((contactId) => {
           const chatId = [user.uid, contactId].sort().join("_");
           const q = query(
@@ -137,7 +136,6 @@ export function Sidebar({
           });
         });
 
-        // Cleanup function
         return () => {
           unsubscribes.forEach((unsubscribe) => unsubscribe());
         };
@@ -149,7 +147,6 @@ export function Sidebar({
     fetchLastMessages();
   }, [user, db, userContacts]);
 
-  // Fetch blocked users and users who blocked the current user
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -184,7 +181,6 @@ export function Sidebar({
     }
   }, [user, db, userContacts]);
 
-  // Check if current user has stories
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -211,14 +207,11 @@ export function Sidebar({
     checkCurrentUserStories();
   }, [user, db]);
 
-  // Fetch contacts with stories
   useEffect(() => {
     if (!user?.uid || contacts.length === 0) return;
 
-    // Get current time
     const now = new Date();
 
-    // Find contacts with active stories
     const fetchContactsWithStories = async () => {
       try {
         const q = query(
@@ -232,8 +225,6 @@ export function Sidebar({
           snapshot.forEach((doc) => {
             const storyData = doc.data();
 
-            // Only include stories that the user has permission to view
-            // and exclude stories from blocked users
             if (
               storyData.userId !== user.uid && // Not the current user's story
               !isContactBlocked(storyData.userId) && // Not a blocked contact
@@ -247,7 +238,6 @@ export function Sidebar({
             }
           });
 
-          // Filter contacts to only include those with stories
           const contactsWithActiveStories = contacts.filter((contact) =>
             storyUserIds.has(contact.uid)
           );
@@ -265,7 +255,6 @@ export function Sidebar({
   }, [user, contacts, db, userContacts, blockedContacts, contactsWhoBlockedMe]);
 
   const handleDeleteContact = async (contactId: string) => {
-    // Open the dialog and set the contact to delete
     setContactToDelete(contactId);
     setDeleteDialogOpen(true);
   };
@@ -415,7 +404,7 @@ export function Sidebar({
           <UserAvatar user={user} />
           <div>
             <div className="flex items-center gap-1">
-              <p className="font-medium">{user?.displayName}</p>
+              <p className="font-medium">{normalizeName(user?.displayName)}</p>
               {userData?.isVerified && (
                 <svg
                   aria-label="Sudah Diverifikasi"
@@ -486,7 +475,6 @@ export function Sidebar({
             )}
           </div>
 
-          {/* Contact stories - filter out blocked contacts */}
           {contactsWithStories.map((contact) => (
             <div key={contact.uid} className="flex flex-col items-center">
               <StoryCircle user={contact} currentUser={user} />
@@ -582,7 +570,9 @@ export function Sidebar({
                       </div>
                       <div>
                         <div className="flex items-center gap-1">
-                          <p className="font-medium">{contact.displayName}</p>
+                          <p className="font-medium">
+                            {normalizeName(contact?.displayName)}
+                          </p>
                           {contact.isVerified && !blocked && (
                             <span className="">
                               <svg
