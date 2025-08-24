@@ -84,9 +84,10 @@ export function AudioMessage({
           );
           const normalizedData = Array.from(dataArrayRef.current).map(
             (v, i) => {
-              const target = (v / 255) * 34;
+              const target =
+                (v / 255) * (isSmallScreen ? 38 : isMobile ? 40 : 50);
               const prev = waveformData[i] || 0;
-              const alpha = 0.4;
+              const alpha = 0.6;
               return prev + (target - prev) * alpha;
             }
           );
@@ -94,6 +95,7 @@ export function AudioMessage({
         }
 
         if (audio.currentTime >= audioDuration) {
+          audio.pause();
           setIsPlaying(false);
           setCurrentTime(0);
           audio.currentTime = 0;
@@ -146,12 +148,12 @@ export function AudioMessage({
   };
 
   const generateWaveform = () => {
-    const bars = isSmallScreen ? 25 : isMobile ? 30 : 35;
+    const bars = isSmallScreen ? 28 : isMobile ? 30 : 35;
     return Array.from({ length: bars }, (_, i) => {
-      const index = Math.floor((i / bars) * waveformData.length);
+      const index = Math.round((i / bars) * waveformData.length);
       const height = waveformData[index] || 2;
       const isActive = i / bars < currentTime / audioDuration;
-
+      console.log(height);
       return (
         <div
           key={i}
@@ -207,7 +209,7 @@ export function AudioMessage({
 
           <div
             className={`flex items-center ${
-              isSmallScreen ? "gap-1 justify-between" : "gap-2"
+              isSmallScreen ? "gap-1 mt-2 justify-between" : "gap-2"
             }`}
           >
             <Slider

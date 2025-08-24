@@ -574,17 +574,17 @@ class WebRTCManager {
     try {
       console.log("📞 Ending call...");
 
-      if (this.peerConnection) {
-        this.peerConnection.close();
-        this.peerConnection = null;
-      }
-
       if (this.localStream) {
         this.localStream.getTracks().forEach((track) => {
           track.stop();
           console.log(`🛑 Stopped ${track.kind} track`);
         });
         this.localStream = null;
+      }
+
+      if (this.peerConnection) {
+        this.peerConnection.close();
+        this.peerConnection = null;
       }
 
       this.remoteStream = null;

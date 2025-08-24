@@ -171,7 +171,7 @@ export function useEncryption(currentUser: any) {
       return decryptedMessage;
     } catch (error) {
       console.error("Error decrypting message:", error);
-      return "[Encrypted message - unable to decrypt]";
+      return "Locked Message 🔒";
     }
   };
 

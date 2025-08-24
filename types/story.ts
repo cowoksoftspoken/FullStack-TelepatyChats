@@ -6,9 +6,9 @@ export interface Story {
   caption?: string;
   createdAt: string;
   expiresAt: string;
-  viewers: string[]; // Array of user IDs who have viewed the story
+  viewers: string[];
   privacy: "public" | "contacts" | "selected";
-  allowedViewers?: string[]; // Array of user IDs allowed to view if privacy is "selected"
+  allowedViewers?: string[];
 }
 
 export interface StoryView {
