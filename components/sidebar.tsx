@@ -389,6 +389,14 @@ export function Sidebar({
     usersData();
   }, [user, db]);
 
+  // useEffect(() => {
+  //   const updated =
+  //     contacts.find((c) => c.uid === selectedContact?.uid) || null;
+  //   if (updated) {
+  //     setSelectedContact(updated);
+  //   }
+  // }, [contacts, selectedContact, setSelectedContact]);
+
   return (
     <div className="flex h-full w-80 relative flex-col border-r dark:bg-[#151516]">
       <Button
@@ -559,11 +567,9 @@ export function Sidebar({
                           isBlocked={blocked}
                           showEnlargeOnClick={false}
                         />
-                        {/* Online status indicator */}
                         {contact.online && !blocked && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background"></span>
                         )}
-                        {/* Blocked status indicator */}
                         {blocked && (
                           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-red-500 ring-2 ring-background"></span>
                         )}
@@ -615,11 +621,17 @@ export function Sidebar({
                               description:
                                 "You cannot call this contact because one of you has blocked the other.",
                             });
+                          } else if (!contact.online) {
+                            toast({
+                              variant: "destructive",
+                              title: "Cannot initiate call",
+                              description: "This contact is currently offline.",
+                            });
                           } else {
                             initiateCall(contact, false);
                           }
                         }}
-                        disabled={blocked}
+                        disabled={blocked || !contact.online}
                       >
                         <Phone className="h-4 w-4" />
                       </Button>
@@ -636,11 +648,17 @@ export function Sidebar({
                               description:
                                 "You cannot call this contact because one of you has blocked the other.",
                             });
+                          } else if (!contact.online) {
+                            toast({
+                              variant: "destructive",
+                              title: "Cannot initiate call",
+                              description: "This contact is currently offline.",
+                            });
                           } else {
                             initiateCall(contact, true);
                           }
                         }}
-                        disabled={blocked}
+                        disabled={blocked || !contact.online}
                       >
                         <Video className="h-4 w-4" />
                       </Button>
@@ -663,7 +681,6 @@ export function Sidebar({
           </div>
         )}
       </div>
-      {/* Delete Contact Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>

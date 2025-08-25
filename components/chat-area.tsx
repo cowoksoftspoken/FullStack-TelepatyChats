@@ -63,6 +63,7 @@ import VideoPlayer from "./video-message";
 import { MessageContent } from "./message-content";
 import { ImageViewer } from "./image-viewer";
 import normalizeName from "@/utils/normalizename";
+import useUserStatus from "@/hooks/use-user-status";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -90,6 +91,7 @@ export function ChatArea({
     null
   );
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const isOnline = useUserStatus(contact.uid);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -120,13 +122,11 @@ export function ChatArea({
   const [audioPreviewDuration, setAudioPreviewDuration] = useState<
     number | null
   >(null);
-  const [isTyping, setIsTyping] = useState(false);
   const [contactIsTyping, setContactIsTyping] = useState(false);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
+  const prevCount = useRef(0);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
@@ -217,7 +217,10 @@ export function ChatArea({
       });
 
       setMessages(messageList);
-      scrollToBottom();
+      if (prevCount.current > messageList.length) {
+        scrollToBottom();
+      }
+      prevCount.current = messageList.length;
     });
 
     return () => unsubscribe();
@@ -258,8 +261,7 @@ export function ChatArea({
           hasNewDecryptions = true;
         } catch (error) {
           console.error(`Error decrypting message ${msg.id}:`, error);
-          newDecryptedMessages[msg.id] =
-            "[Encrypted message - unable to decrypt]";
+          newDecryptedMessages[msg.id] = "Locked message - unable to decrypt";
           hasNewDecryptions = true;
         }
       }
@@ -292,7 +294,7 @@ export function ChatArea({
               error
             );
             newDecryptedMessages[`reply_${msg.id}`] =
-              "[Encrypted reply - unable to decrypt]";
+              "Locked message - unable to decrypt";
             hasNewDecryptions = true;
           }
         }
@@ -1154,9 +1156,7 @@ export function ChatArea({
       let replyToData = null;
       if (replyTo) {
         const replyText =
-          decryptedMessages[replyTo.id] ||
-          replyTo.text ||
-          "[Encrypted message]";
+          decryptedMessages[replyTo.id] || replyTo.text || "Locked Message";
 
         if (isInitialized) {
           try {
@@ -1378,6 +1378,7 @@ export function ChatArea({
               <ContactStatus
                 isBlocked={isBlocked}
                 contact={contact}
+                onlineStatus={isOnline}
                 contactIsTyping={contactIsTyping}
               />
             </div>
@@ -1389,7 +1390,17 @@ export function ChatArea({
             size="icon"
             disabled={isBlocked}
             title="Start voice call"
-            onClick={() => initiateCall(false)}
+            onClick={() => {
+              if (isOnline) {
+                initiateCall(false);
+              } else {
+                toast({
+                  variant: "destructive",
+                  title: "Cannot start call",
+                  description: "User is offline.",
+                });
+              }
+            }}
           >
             <Phone className="h-5 w-5" />
           </Button>
@@ -1398,7 +1409,17 @@ export function ChatArea({
             size="icon"
             title="Start video call"
             disabled={isBlocked}
-            onClick={() => initiateCall(true)}
+            onClick={() => {
+              if (isOnline) {
+                initiateCall(true);
+              } else {
+                toast({
+                  variant: "destructive",
+                  title: "Cannot start call",
+                  description: "User is offline.",
+                });
+              }
+            }}
           >
             <Video className="h-5 w-5" />
           </Button>

@@ -21,6 +21,7 @@ import { UserAvatar } from "./user-avatar";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { User } from "@/types/user";
 import { useToast } from "@/components/ui/use-toast";
+import useUserStatus from "@/hooks/use-user-status";
 
 interface UserProfilePopupProps {
   user: User;
@@ -42,23 +43,17 @@ export function UserProfilePopup({
   const [isBlocking, setIsBlocking] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isUserBlockedByContact, setIsUserBlockedByContact] = useState(false);
+  const isOnline = useUserStatus(user.uid);
 
-  // Check if user is blocked when dialog opens
   useEffect(() => {
     const checkBlockStatus = async () => {
       if (!currentUser || !user) return;
 
       try {
-        // Check if current user has blocked this user
         const [userDoc, contactDoc] = await Promise.all([
           getDoc(doc(db, "users", currentUser.uid)),
           getDoc(doc(db, "users", user.uid)),
         ]);
-
-        // const userDoc = await getDoc(doc(db, "users", currentUser.uid))
-
-        // // Check if this user has blocked current user
-        // const contactDoc = await getDoc(doc(db, "users", user.uid))
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -90,7 +85,6 @@ export function UserProfilePopup({
       const userRef = doc(db, "users", currentUser.uid);
 
       if (isBlocked) {
-        // Unblock user
         await updateDoc(userRef, {
           blockedUsers: arrayRemove(user.uid),
         });
@@ -102,7 +96,6 @@ export function UserProfilePopup({
 
         setIsBlocked(false);
       } else {
-        // Block user
         await updateDoc(userRef, {
           blockedUsers: arrayUnion(user.uid),
         });
@@ -173,8 +166,19 @@ export function UserProfilePopup({
               variant="outline"
               size="icon"
               className="rounded-full h-12 w-12"
-              onClick={() => initiateCall(false)}
-              disabled={isBlocked || isUserBlockedByContact}
+              onClick={() => {
+                if (!isBlocked && !isUserBlockedByContact && isOnline) {
+                  initiateCall(false);
+                } else {
+                  toast({
+                    variant: "destructive",
+                    title: "Cannot initiate call",
+                    description:
+                      "You cannot call this user because one of you has blocked the other or the user is offline.",
+                  });
+                }
+              }}
+              disabled={isBlocked || isUserBlockedByContact || !isOnline}
             >
               <Phone className="h-5 w-5" />
             </Button>
@@ -182,8 +186,19 @@ export function UserProfilePopup({
               variant="outline"
               size="icon"
               className="rounded-full h-12 w-12"
-              onClick={() => initiateCall(true)}
-              disabled={isBlocked || isUserBlockedByContact}
+              onClick={() => {
+                if (!isBlocked && !isUserBlockedByContact && isOnline) {
+                  initiateCall(true);
+                } else {
+                  toast({
+                    variant: "destructive",
+                    title: "Cannot initiate call",
+                    description:
+                      "You cannot call this user because one of you has blocked the other or the user is offline.",
+                  });
+                }
+              }}
+              disabled={isBlocked || isUserBlockedByContact || !isOnline}
             >
               <Video className="h-5 w-5" />
             </Button>

@@ -1,3 +1,4 @@
+import { on } from "events";
 import React from "react";
 
 type Timestamp = {
@@ -13,6 +14,7 @@ type Contact = {
 type Props = {
   isBlocked: boolean;
   contact: Contact;
+  onlineStatus?: boolean;
   contactIsTyping: boolean;
 };
 
@@ -55,17 +57,18 @@ function formatLastSeen(timestamp?: Timestamp): string {
 const ContactStatus: React.FC<Props> = ({
   isBlocked,
   contact,
+  onlineStatus,
   contactIsTyping,
 }) => {
   if (isBlocked) {
     return <span>You cannot interact with this user</span>;
   }
 
-  if (contactIsTyping && contact.online) {
+  if (contactIsTyping && onlineStatus) {
     return <span>Typing...</span>;
   }
 
-  if (contact.online) {
+  if (onlineStatus) {
     return <span>Online</span>;
   }
 
