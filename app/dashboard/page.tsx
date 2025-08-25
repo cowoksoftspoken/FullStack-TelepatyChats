@@ -67,8 +67,6 @@ export default function DashboardPage() {
   } = useWebRTCEnhanced({
     currentUser,
     onIncomingCall: async (callData: CallData) => {
-      console.log("📞 Incoming call received:", callData);
-
       try {
         const callerDoc = await getDoc(doc(db, "users", callData.from));
         if (callerDoc.exists()) {
@@ -222,7 +220,7 @@ export default function DashboardPage() {
 
       try {
         console.log(
-          `📞 Starting ${isVideo ? "video" : "audio"} call with:`,
+          `Starting ${isVideo ? "video" : "audio"} call with:`,
           contact.displayName
         );
         setCurrentCaller(contact);
@@ -247,9 +245,7 @@ export default function DashboardPage() {
       setIncomingCall(null);
     } catch (error) {
       console.error("❌ Error accepting call:", error);
-      alert(
-        "Could not accept call. Please check your camera and microphone permissions."
-      );
+      toast.error("Could not accept call. Please try again.");
     }
   }, [incomingCall, currentUser, db, answerCall]);
 
