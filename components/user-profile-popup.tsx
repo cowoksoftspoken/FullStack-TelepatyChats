@@ -8,6 +8,8 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  writeBatch,
+  setDoc,
 } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,40 +43,43 @@ export function UserProfilePopup({
   const { db } = useFirebase();
   const { toast } = useToast();
   const [isBlocking, setIsBlocking] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
-  const [isUserBlockedByContact, setIsUserBlockedByContact] = useState(false);
-  const isOnline = useUserStatus(user.uid);
+  // const [isBlocked, setIsBlocked] = useState(false);
+  // const [isUserBlockedByContact, setIsUserBlockedByContact] = useState(false);
+  const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
+    user.uid,
+    currentUser?.uid
+  );
 
-  useEffect(() => {
-    const checkBlockStatus = async () => {
-      if (!currentUser || !user) return;
+  // useEffect(() => {
+  //   const checkBlockStatus = async () => {
+  //     if (!currentUser || !user) return;
 
-      try {
-        const [userDoc, contactDoc] = await Promise.all([
-          getDoc(doc(db, "users", currentUser.uid)),
-          getDoc(doc(db, "users", user.uid)),
-        ]);
+  //     try {
+  //       const [userDoc, contactDoc] = await Promise.all([
+  //         getDoc(doc(db, "users", currentUser.uid)),
+  //         getDoc(doc(db, "users", user.uid)),
+  //       ]);
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setIsBlocked(userData.blockedUsers?.includes(user.uid) || false);
-        }
+  //       if (userDoc.exists()) {
+  //         const userData = userDoc.data();
+  //         setIsBlocked(userData.blockedUsers?.includes(user.uid) || false);
+  //       }
 
-        if (contactDoc.exists()) {
-          const contactData = contactDoc.data();
-          setIsUserBlockedByContact(
-            contactData.blockedUsers?.includes(currentUser.uid) || false
-          );
-        }
-      } catch (error) {
-        console.error("Error checking block status:", error);
-      }
-    };
+  //       if (contactDoc.exists()) {
+  //         const contactData = contactDoc.data();
+  //         setIsUserBlockedByContact(
+  //           contactData.blockedUsers?.includes(currentUser.uid) || false
+  //         );
+  //       }
+  //     } catch (error) {
+  //       console.error("Error checking block status:", error);
+  //     }
+  //   };
 
-    if (open) {
-      checkBlockStatus();
-    }
-  }, [open, currentUser, user, db]);
+  //   if (open) {
+  //     checkBlockStatus();
+  //   }
+  // }, [open, currentUser, user, db]);
 
   const handleBlockUser = async () => {
     if (!currentUser || !user) return;
@@ -88,24 +93,18 @@ export function UserProfilePopup({
         await updateDoc(userRef, {
           blockedUsers: arrayRemove(user.uid),
         });
-
         toast({
           title: "User unblocked",
           description: `You have unblocked ${user.displayName}.`,
         });
-
-        setIsBlocked(false);
       } else {
         await updateDoc(userRef, {
           blockedUsers: arrayUnion(user.uid),
         });
-
         toast({
           title: "User blocked",
-          description: `You have blocked ${user.displayName}. They will not be able to see your profile or send you messages.`,
+          description: `You have blocked ${user.displayName}.`,
         });
-
-        setIsBlocked(true);
       }
     } catch (error) {
       console.error("Error blocking/unblocking user:", error);
@@ -128,7 +127,11 @@ export function UserProfilePopup({
 
         <div className="flex flex-col items-center py-4 space-y-4">
           <div className="w-24 h-24">
-            <UserAvatar user={user} size="lg" isBlocked={isBlocked} />
+            <UserAvatar
+              user={user}
+              size="lg"
+              isBlocked={isBlocked || isUserBlockedByContact}
+            />
           </div>
 
           <div className="text-center">
@@ -206,26 +209,35 @@ export function UserProfilePopup({
         </div>
 
         <DialogFooter className="flex-col sm:flex-col gap-2">
-          <Button
-            variant={isBlocked ? "outline" : "destructive"}
-            className="w-full"
-            onClick={handleBlockUser}
-            disabled={isBlocking}
-          >
-            {isBlocking ? (
-              "Processing..."
-            ) : isBlocked ? (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                Unblock User
-              </>
-            ) : (
-              <>
-                <Ban className="mr-2 h-4 w-4" />
-                Block User
-              </>
-            )}
-          </Button>
+          {!isUserBlockedByContact && (
+            <Button
+              variant={isBlocked ? "outline" : "destructive"}
+              className="w-full"
+              onClick={handleBlockUser}
+              disabled={isBlocking}
+            >
+              {isBlocking ? (
+                "Processing..."
+              ) : isBlocked ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Unblock User
+                </>
+              ) : (
+                <>
+                  <Ban className="mr-2 h-4 w-4" />
+                  Block User
+                </>
+              )}
+            </Button>
+          )}
+
+          {isUserBlockedByContact && (
+            <p className="text-sm text-red-500 text-center w-full">
+              You can’t block/unblock this user because they have already
+              blocked you.
+            </p>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

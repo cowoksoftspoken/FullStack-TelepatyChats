@@ -1,55 +1,47 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { AddContact } from "@/components/add-contact";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
+import { useFirebase } from "@/lib/firebase-provider";
+import type { User } from "@/types/user";
+import normalizeName from "@/utils/normalizename";
 import { signOut } from "firebase/auth";
 import {
-  doc,
-  updateDoc,
   collection,
-  query,
-  where,
-  onSnapshot,
+  doc,
   getDoc,
-  type DocumentData,
   getDocs,
-  writeBatch,
-  orderBy,
   limit,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc,
+  where,
+  writeBatch,
+  type DocumentData,
 } from "firebase/firestore";
 import {
   deleteObject as deleteStorageObject,
   ref as storageRef,
 } from "firebase/storage";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Loader2, LogOut, Search, Settings, UserPlus, X } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { AddContact } from "@/components/add-contact";
-import type { User } from "@/types/user";
-import { useFirebase } from "@/lib/firebase-provider";
-import { UserAvatar } from "./user-avatar";
-import { StoryCreator } from "./story/story-creator";
+import { useEffect, useMemo, useState } from "react";
+import { ContactItem } from "./contact-item";
+import { StoryCircleWrapper } from "./story-wrapper";
 import { StoryCircle } from "./story/story-circle";
-import {
-  Loader2,
-  LogOut,
-  Phone,
-  Search,
-  Settings,
-  Trash2,
-  UserPlus,
-  Video,
-  X,
-} from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import normalizeName from "@/utils/normalizename";
+import { StoryCreator } from "./story/story-creator";
+import { UserAvatar } from "./user-avatar";
 
 interface SidebarProps {
   user: any;
@@ -79,10 +71,6 @@ export function Sidebar({
   const [userData, setUserData] = useState<DocumentData | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
-  const [blockedContacts, setBlockedContacts] = useState<string[]>([]);
-  const [contactsWhoBlockedMe, setContactsWhoBlockedMe] = useState<string[]>(
-    []
-  );
   const { toast } = useToast();
 
   const [lastMessageTimestamps, setLastMessageTimestamps] = useState<
@@ -150,40 +138,6 @@ export function Sidebar({
   useEffect(() => {
     if (!user?.uid) return;
 
-    const fetchBlockedUsers = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          setBlockedContacts(userData.blockedUsers || []);
-        }
-
-        const blockedByList: string[] = [];
-
-        for (const contactId of userContacts) {
-          const contactDoc = await getDoc(doc(db, "users", contactId));
-          if (contactDoc.exists()) {
-            const contactData = contactDoc.data();
-            if (contactData.blockedUsers?.includes(user.uid)) {
-              blockedByList.push(contactId);
-            }
-          }
-        }
-
-        setContactsWhoBlockedMe(blockedByList);
-      } catch (error) {
-        console.error("Error fetching blocked users:", error);
-      }
-    };
-
-    if (userContacts.length > 0) {
-      fetchBlockedUsers();
-    }
-  }, [user, db, userContacts]);
-
-  useEffect(() => {
-    if (!user?.uid) return;
-
     const now = new Date();
 
     const checkCurrentUserStories = async () => {
@@ -226,8 +180,7 @@ export function Sidebar({
             const storyData = doc.data();
 
             if (
-              storyData.userId !== user.uid && // Not the current user's story
-              !isContactBlocked(storyData.userId) && // Not a blocked contact
+              storyData.userId !== user.uid &&
               (storyData.privacy === "public" ||
                 (storyData.privacy === "contacts" &&
                   userContacts.includes(storyData.userId)) ||
@@ -252,7 +205,7 @@ export function Sidebar({
     };
 
     fetchContactsWithStories();
-  }, [user, contacts, db, userContacts, blockedContacts, contactsWhoBlockedMe]);
+  }, [user, contacts, db, userContacts]);
 
   const handleDeleteContact = async (contactId: string) => {
     setContactToDelete(contactId);
@@ -336,13 +289,6 @@ export function Sidebar({
     }
   };
 
-  const isContactBlocked = (contactId: string) => {
-    return (
-      blockedContacts.includes(contactId) ||
-      contactsWhoBlockedMe.includes(contactId)
-    );
-  };
-
   const handleSignOut = async () => {
     try {
       if (user?.uid) {
@@ -388,14 +334,6 @@ export function Sidebar({
     };
     usersData();
   }, [user, db]);
-
-  // useEffect(() => {
-  //   const updated =
-  //     contacts.find((c) => c.uid === selectedContact?.uid) || null;
-  //   if (updated) {
-  //     setSelectedContact(updated);
-  //   }
-  // }, [contacts, selectedContact, setSelectedContact]);
 
   return (
     <div className="flex h-full w-80 relative flex-col border-r dark:bg-[#151516]">
@@ -484,30 +422,13 @@ export function Sidebar({
           </div>
 
           {contactsWithStories.map((contact) => (
-            <div key={contact.uid} className="flex flex-col items-center">
-              <StoryCircle user={contact} currentUser={user} />
-              <span className="mt-1 text-xs truncate max-w-[64px] flex items-center gap-1">
-                {contact.displayName.split(" ")[0]}
-                {contact.isVerified && (
-                  <span className="">
-                    <svg
-                      aria-label="Sudah Diverifikasi"
-                      fill="rgb(0, 149, 246)"
-                      height="14"
-                      role="img"
-                      viewBox="0 0 40 40"
-                      width="14"
-                    >
-                      <title>Sudah Diverifikasi</title>
-                      <path
-                        d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
-                        fillRule="evenodd"
-                      ></path>
-                    </svg>
-                  </span>
-                )}
-              </span>
-            </div>
+            <>
+              <StoryCircleWrapper
+                key={contact.uid}
+                storyUser={contact}
+                currentUser={user}
+              />
+            </>
           ))}
         </div>
       </div>
@@ -546,135 +467,18 @@ export function Sidebar({
               </div>
             ) : (
               filteredAndSortedContacts.map((contact) => {
-                const blocked = isContactBlocked(contact.uid);
                 return (
-                  <div
+                  <ContactItem
                     key={contact.uid}
-                    className={`flex items-center justify-between rounded-lg p-2 ${
-                      selectedContact?.uid === contact.uid
-                        ? "bg-accent"
-                        : "hover:bg-accent/50"
-                    } ${blocked ? "opacity-70" : ""}`}
-                    onClick={() => {
-                      setSelectedContact(contact);
-                      setIsChatActive(true);
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <UserAvatar
-                          user={contact}
-                          isBlocked={blocked}
-                          showEnlargeOnClick={false}
-                        />
-                        {contact.online && !blocked && (
-                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 ring-2 ring-background"></span>
-                        )}
-                        {blocked && (
-                          <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-red-500 ring-2 ring-background"></span>
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1">
-                          <p className="font-medium">
-                            {normalizeName(contact?.displayName)}
-                          </p>
-                          {contact.isVerified && !blocked && (
-                            <span className="">
-                              <svg
-                                aria-label="Sudah Diverifikasi"
-                                fill="rgb(0, 149, 246)"
-                                height="14"
-                                role="img"
-                                viewBox="0 0 40 40"
-                                width="14"
-                              >
-                                <title>Sudah Diverifikasi</title>
-                                <path
-                                  d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
-                                  fillRule="evenodd"
-                                ></path>
-                              </svg>
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {blocked
-                            ? "Blocked"
-                            : contact.online
-                            ? "Online"
-                            : "Offline"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (blocked) {
-                            toast({
-                              variant: "destructive",
-                              title: "Cannot initiate call",
-                              description:
-                                "You cannot call this contact because one of you has blocked the other.",
-                            });
-                          } else if (!contact.online) {
-                            toast({
-                              variant: "destructive",
-                              title: "Cannot initiate call",
-                              description: "This contact is currently offline.",
-                            });
-                          } else {
-                            initiateCall(contact, false);
-                          }
-                        }}
-                        disabled={blocked || !contact.online}
-                      >
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (blocked) {
-                            toast({
-                              variant: "destructive",
-                              title: "Cannot initiate call",
-                              description:
-                                "You cannot call this contact because one of you has blocked the other.",
-                            });
-                          } else if (!contact.online) {
-                            toast({
-                              variant: "destructive",
-                              title: "Cannot initiate call",
-                              description: "This contact is currently offline.",
-                            });
-                          } else {
-                            initiateCall(contact, true);
-                          }
-                        }}
-                        disabled={blocked || !contact.online}
-                      >
-                        <Video className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 rounded-full"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteContact(contact.uid);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                    contact={contact}
+                    user={user}
+                    selectedContact={selectedContact}
+                    setSelectedContact={setSelectedContact}
+                    setIsChatActive={setIsChatActive}
+                    handleDeleteContact={handleDeleteContact}
+                    initiateCall={initiateCall}
+                    toast={toast}
+                  />
                 );
               })
             )}

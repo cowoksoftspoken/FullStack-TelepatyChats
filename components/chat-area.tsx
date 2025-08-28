@@ -91,7 +91,10 @@ export function ChatArea({
     null
   );
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const isOnline = useUserStatus(contact.uid);
+  const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
+    contact.uid,
+    currentUser?.uid
+  );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -100,7 +103,6 @@ export function ChatArea({
   const timerIntervalRef = useRef<number | null>(null);
   const { theme } = useTheme();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
   const { toast } = useToast();
   const [accuracy, setAccuracy] = useState(0);
   const {
@@ -166,35 +168,6 @@ export function ChatArea({
     });
 
     return () => unsubscribe();
-  }, [currentUser, contact, db]);
-
-  useEffect(() => {
-    if (!currentUser || !contact) return;
-
-    const checkBlockStatus = async () => {
-      try {
-        const [contactDoc, currentUserDoc] = await Promise.all([
-          getDoc(doc(db, "users", contact.uid)),
-          getDoc(doc(db, "users", currentUser.uid)),
-        ]);
-
-        if (contactDoc.exists() && currentUserDoc.exists()) {
-          const contactData = contactDoc.data();
-          const currentUserData = currentUserDoc.data();
-
-          const contactBlockedUser =
-            contactData.blockedUsers?.includes(currentUser.uid) || false;
-          const userBlockedContact =
-            currentUserData.blockedUsers?.includes(contact.uid) || false;
-
-          setIsBlocked(contactBlockedUser || userBlockedContact);
-        }
-      } catch (error) {
-        console.error("Error checking block status:", error);
-      }
-    };
-
-    checkBlockStatus();
   }, [currentUser, contact, db]);
 
   useEffect(() => {
@@ -1351,13 +1324,16 @@ export function ChatArea({
             <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
           </button>
 
-          <UserAvatar user={contact} isBlocked={isBlocked} />
+          <UserAvatar
+            user={contact}
+            isBlocked={isBlocked || isUserBlockedByContact}
+          />
           <div>
             <div className="flex items-center gap-1">
               <p className="font-medium">
                 {normalizeName(contact.displayName)}
               </p>
-              {contact.isVerified && !isBlocked && (
+              {contact.isVerified && !isBlocked && !isUserBlockedByContact && (
                 <svg
                   aria-label="Sudah Diverifikasi"
                   fill="rgb(0, 149, 246)"
@@ -1376,7 +1352,7 @@ export function ChatArea({
             </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <ContactStatus
-                isBlocked={isBlocked}
+                isBlocked={isBlocked || isUserBlockedByContact}
                 contact={contact}
                 onlineStatus={isOnline}
                 contactIsTyping={contactIsTyping}
@@ -1388,10 +1364,10 @@ export function ChatArea({
           <Button
             variant="ghost"
             size="icon"
-            disabled={isBlocked}
+            disabled={isBlocked || isUserBlockedByContact}
             title="Start voice call"
             onClick={() => {
-              if (isOnline) {
+              if (isOnline && !isBlocked && !isUserBlockedByContact) {
                 initiateCall(false);
               } else {
                 toast({
@@ -1408,9 +1384,9 @@ export function ChatArea({
             variant="ghost"
             size="icon"
             title="Start video call"
-            disabled={isBlocked}
+            disabled={isBlocked || isUserBlockedByContact}
             onClick={() => {
-              if (isOnline) {
+              if (isOnline && !isBlocked && !isUserBlockedByContact) {
                 initiateCall(true);
               } else {
                 toast({
@@ -1434,11 +1410,12 @@ export function ChatArea({
         </div>
       </div>
 
-      {isBlocked && (
-        <div className="px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-center">
-          You cannot send messages because one of you has blocked the other.
-        </div>
-      )}
+      {isBlocked ||
+        (isUserBlockedByContact && (
+          <div className="px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-center">
+            You cannot send messages because one of you has blocked the other.
+          </div>
+        ))}
 
       <div
         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]"
@@ -1543,7 +1520,6 @@ export function ChatArea({
                   {renderSeenIndicator(msg)}
                 </div>
 
-                {/* Message actions */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -1584,7 +1560,6 @@ export function ChatArea({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Reply preview */}
       {replyTo && (
         <div className="px-4 py-2 border-t flex items-center justify-between dark:bg-[#151516]">
           <div className="flex items-center gap-2">
@@ -1599,7 +1574,7 @@ export function ChatArea({
               <p className="text-xs truncate max-w-[200px] md:max-w-md">
                 {replyTo && decryptedMessages[replyTo.id]
                   ? decryptedMessages[replyTo.id]
-                  : replyTo?.text || "[Encrypted message]"}
+                  : replyTo?.text || "Locked message"}
               </p>
             </div>
           </div>
@@ -1609,7 +1584,6 @@ export function ChatArea({
         </div>
       )}
 
-      {/* Recording UI */}
       {isRecording && (
         <div className="px-4 py-2 border-t flex items-center justify-between bg-red-50 dark:bg-red-900/20">
           <div className="flex items-center gap-2">
@@ -1632,7 +1606,7 @@ export function ChatArea({
       <MessageInput
         currentUser={currentUser}
         contact={contact}
-        isBlocked={isBlocked}
+        isBlocked={isBlocked || isUserBlockedByContact}
         sendMessage={sendMessage}
         handleFileSelect={handleFileSelect}
         handleShareLocation={handleShareLocation}

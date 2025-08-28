@@ -1,4 +1,3 @@
-// // Firebase configuration
 // export const firebaseConfig = {
 //   apiKey: "AIzaSyD2NwS9elb_IiQF0YR7YMBvqYund42JD0g",
 //   authDomain: "web-kelas-46eea.firebaseapp.com",
