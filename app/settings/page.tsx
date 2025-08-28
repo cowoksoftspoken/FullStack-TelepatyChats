@@ -65,7 +65,6 @@ import { ToastAction } from "@/components/ui/toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserAvatar } from "@/components/user-avatar";
 import { VerificationRequest } from "@/components/admin/verification-request";
-import { normalize } from "path";
 import normalizeName from "@/utils/normalizename";
 
 export default function SettingsPage() {
@@ -278,7 +277,7 @@ export default function SettingsPage() {
 
     try {
       await sendEmailVerification(currentUser, {
-        url: "https://zerochats.vercel.app/dashboard",
+        url: "https://telepaty.vercel.app/dashboard",
         handleCodeInApp: true,
       });
       setVerificationSent(true);
@@ -303,7 +302,7 @@ export default function SettingsPage() {
 
     try {
       await sendPasswordResetEmail(auth, currentUser.email, {
-        url: "https://zerochats.vercel.app/login",
+        url: "https://telepaty.vercel.app/login",
         handleCodeInApp: true,
       });
       setResetPasswordSent(true);
@@ -352,7 +351,6 @@ export default function SettingsPage() {
           </CardHeader>
 
           <CardContent className="space-y-6">
-            {/* Avatar */}
             <div className="flex flex-col items-center justify-center">
               <div className="relative group">
                 <UserAvatar
