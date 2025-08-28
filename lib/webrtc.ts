@@ -648,34 +648,42 @@
 //   }
 // };
 
-"use client"
+"use client";
 
 // Legacy compatibility layer for existing code
 // This file provides backward compatibility while using the new WebRTC implementation
 
-import { initializeWebRTC, getWebRTCManager, type Firestore } from "./webrtc-native"
+import {
+  initializeWebRTC,
+  getWebRTCManager,
+  type Firestore,
+} from "./webrtc-native";
 
 // Initialize WebRTC manager for legacy compatibility
-let isInitialized = false
+let isInitialized = false;
 
 const ensureInitialized = (db: Firestore, userId: string) => {
   if (!isInitialized) {
-    initializeWebRTC(db, userId)
-    isInitialized = true
+    initializeWebRTC(db, userId);
+    isInitialized = true;
   }
-}
+};
 
 // Legacy function: Listen for calls
-export const listenForCalls = (db: Firestore, userId: string, callback: (callData: any) => void) => {
-  ensureInitialized(db, userId)
-  const manager = getWebRTCManager()
+export const listenForCalls = (
+  db: Firestore,
+  userId: string,
+  callback: (callData: any) => void
+) => {
+  ensureInitialized(db, userId);
+  const manager = getWebRTCManager();
 
   if (manager) {
-    return manager.listenForIncomingCalls(callback)
+    return manager.listenForIncomingCalls(callback);
   }
 
-  return () => {} // Empty unsubscribe function
-}
+  return () => {}; // Empty unsubscribe function
+};
 
 // Legacy function: Initiate call
 export const initiateCall = async (
@@ -683,72 +691,76 @@ export const initiateCall = async (
   localStream: MediaStream, // This parameter is ignored in new implementation
   userId: string,
   recipientId: string,
-  isVideo: boolean,
+  isVideo: boolean
 ) => {
-  ensureInitialized(db, userId)
-  const manager = getWebRTCManager()
+  ensureInitialized(db, userId);
+  const manager = getWebRTCManager();
 
   if (!manager) {
-    throw new Error("WebRTC manager not initialized")
+    throw new Error("WebRTC manager not initialized");
   }
 
-  const callId = await manager.initiateCall(recipientId, isVideo)
+  const callId = await manager.initiateCall(recipientId, isVideo);
 
   // Return a mock peer object for compatibility
   return {
     on: (event: string, callback: Function) => {
       if (event === "stream") {
         window.addEventListener("webrtc-remotestream", (e: any) => {
-          callback(e.detail.stream)
-        })
+          callback(e.detail.stream);
+        });
       }
     },
     destroy: () => manager.endCall(),
     streams: [], // Mock streams array
-  }
-}
+  };
+};
 
 // Legacy function: Accept call
 export const acceptCall = async (
   db: Firestore,
   callData: any,
   localStream: MediaStream, // This parameter is ignored in new implementation
-  userId: string,
+  userId: string
 ) => {
-  ensureInitialized(db, userId)
-  const manager = getWebRTCManager()
+  ensureInitialized(db, userId);
+  const manager = getWebRTCManager();
 
   if (!manager) {
-    throw new Error("WebRTC manager not initialized")
+    throw new Error("WebRTC manager not initialized");
   }
 
   // Extract callId from callData
-  const callId = callData.callId || `${callData.from}_${userId}_${Date.now()}`
+  const callId = callData.callId || `${callData.from}_${userId}_${Date.now()}`;
 
-  await manager.answerCall(callId)
+  await manager.answerCall(callId);
 
   // Return a mock peer object for compatibility
   return {
     on: (event: string, callback: Function) => {
       if (event === "stream") {
         window.addEventListener("webrtc-remotestream", (e: any) => {
-          callback(e.detail.stream)
-        })
+          callback(e.detail.stream);
+        });
       }
     },
     destroy: () => manager.endCall(),
     streams: [], // Mock streams array
-  }
-}
+  };
+};
 
 // Legacy function: End call
-export const endCall = async (db: Firestore, userId: string, peerId: string) => {
-  const manager = getWebRTCManager()
+export const endCall = async (
+  db: Firestore,
+  userId: string,
+  peerId: string
+) => {
+  const manager = getWebRTCManager();
 
   if (manager) {
-    await manager.endCall()
+    await manager.endCall();
   }
-}
+};
 
 // Export new implementation for direct use
-export * from "./webrtc-native"
+export * from "./webrtc-native";

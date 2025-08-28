@@ -18,7 +18,7 @@ export default function TermsAndConditionsPage() {
           </h1>
           <p className="text-lg text-gray-500 dark:text-gray-400 mt-2">
             Please read these terms and conditions carefully before using the
-            Zerochats application (the "Service") operated by ISB Developer (the
+            Telepaty application (the "Service") operated by ISB Developer (the
             "Developer").
           </p>
         </div>
@@ -44,7 +44,7 @@ export default function TermsAndConditionsPage() {
               Service such as a computer, a cellphone or a digital tablet.
             </li>
             <li>
-              <strong>Service</strong> refers to the Zerochats application.
+              <strong>Service</strong> refers to the Telepaty application.
             </li>
             <li>
               <strong>Terms and Conditions</strong> (also referred as "Terms")

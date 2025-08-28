@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
               <br />
               <br />
               Please read this Privacy Policy carefully before using the
-              Zerochats application (the "Service") operated by ISB Developer.
+              Telepaty application (the "Service") operated by ISB Developer.
             </p>
           </div>
         </div>

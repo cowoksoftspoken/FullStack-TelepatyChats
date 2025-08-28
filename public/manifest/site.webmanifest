@@ -1,14 +1,14 @@
 {
-  "name": "ZeroChats - Real-time Messaging App",
-  "short_name": "ZeroChats",
+  "name": "Telepaty - Real-time Messaging App",
+  "short_name": "Telepaty",
   "icons": [
     {
-      "src": "/logo/android-chrome-192x192.png",
+      "src": "/dark_icon/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/logo/android-chrome-512x512.png",
+      "src": "/dark_icon/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
@@ -19,5 +19,5 @@
   "background_color": "#ffffff",
   "orientation": "portrait-primary",
   "scope": "/",
-  "description": "ZeroChats is a real-time messaging app with location sharing, media messages, calls, video calls, stories, and end-to-end encryption."
+  "description": "Telepaty is a real-time messaging app with location sharing, media messages, calls, video calls, stories, and end-to-end encryption."
 }

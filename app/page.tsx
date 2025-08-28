@@ -167,7 +167,7 @@ export default function Home() {
             className="text-center"
           >
             <h1 className="text-2xl font-bold text-foreground mb-2">
-              ZeroChats
+              Telepaty
             </h1>
             <p className="text-lg font-medium text-foreground">
               {loading ? loadingPhrase : redirectMessage}
