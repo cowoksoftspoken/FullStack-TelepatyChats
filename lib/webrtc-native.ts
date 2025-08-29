@@ -627,17 +627,18 @@ class WebRTCManager {
     }
   }
 
-  private handleCallEnd() {
-    // delete incoming call field from user doc
-    if (this.currentCallId) {
-      updateDoc(doc(this.db, "users", this.userId), {
-        incomingCall: null,
-      }).catch((error) =>
-        console.error("Error clearing incoming call field:", error)
-      );
-    }
+  private handleCallEnd(): void {
     this.endCall();
     this.dispatchStreamEvent("callended", null);
+    setTimeout(() => {
+      if (this.currentCallId) {
+        updateDoc(doc(this.db, "users", this.userId), {
+          incomingCall: null,
+        }).catch((error) =>
+          console.error("Error clearing incoming call field:", error)
+        );
+      }
+    }, 900);
   }
 
   toggleMute(): boolean {

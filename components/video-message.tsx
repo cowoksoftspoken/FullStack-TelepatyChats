@@ -207,10 +207,12 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
       await videoContainerRef.current?.requestFullscreen();
 
       if (screen.orientation && (screen.orientation as any).lock) {
-        try {
-          await (screen.orientation as any).lock("landscape");
-        } catch (err) {
-          console.warn("Orientation lock failed:", err);
+        if (videoRef.current) {
+          try {
+            await (screen.orientation as any).lock("landscape");
+          } catch (err) {
+            console.warn("Orientation lock failed:", err);
+          }
         }
       }
     } else {
@@ -339,7 +341,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                             .webkitVideoDecodedByteCount *
                             8) /
                             videoRef.current.buffered.end(0)
-                        )
+                        ).toLocaleString()
                       : 0}{" "}
                     kbps
                   </p>
@@ -384,13 +386,17 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
 
           <video
             ref={videoRef}
-            className={`w-full h-full ${isFullscreen ? "" : "aspect-video"} cursor-pointer object-contain`}
+            className={`w-full h-full ${
+              isFullscreen
+                ? "w-auto h-auto max-w-full max-h-screen object-contain mx-auto my-auto"
+                : "aspect-video"
+            } cursor-pointer object-contain`}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
             onMouseMove={showVideoControls}
             preload="metadata"
-            poster="https://zerochats.vercel.app/logo/8b2dd08b-d439-4116-b798-89421c394982.png"
+            poster="https://telepaty.vercel.app/dark_icon/android-chrome-512x512.png"
             src={fileURL}
             controls={false}
             muted={isMuted}
