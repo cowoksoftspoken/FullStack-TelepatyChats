@@ -110,7 +110,7 @@ export function EnhancedCallInterface({
         iceConnectionState
       );
       return {
-        text: isConnected ? "Connected" : "Waiting",
+        text: isConnected ? "Connected" : "Waiting Answer",
         color: "bg-gray-500",
       };
     }

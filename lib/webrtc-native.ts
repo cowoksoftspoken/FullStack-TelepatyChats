@@ -595,29 +595,38 @@ class WebRTCManager {
 
         if (callSnap.exists()) {
           const callData = callSnap.data() as CallData;
+          console.log(callData);
 
-          await updateDoc(doc(this.db, "users", callData.receiverId), {
-            IncomingCall: null,
-          }).catch((_) => console.log(_));
-
-          await updateDoc(callRef, { status: "ended" });
-
-          setTimeout(async () => {
-            const callSnapAgain = await getDoc(callRef);
-            if (callSnapAgain.exists()) {
-              await deleteDoc(callRef);
-            }
-
-            const q = query(
-              collection(this.db, "iceCandidates"),
-              where("callId", "==", this.currentCallId)
+          if (callData.receiverId) {
+            console.log(
+              "Updating IncomingCall for:",
+              callData.receiverId,
+              "doc path:",
+              doc(this.db, "users", callData.receiverId).path
             );
-            const snapshot = await getDocs(q);
-            const deletePromises = snapshot.docs.map((doc) =>
-              deleteDoc(doc.ref)
-            );
-            await Promise.all(deletePromises);
-          }, 1000);
+
+            await updateDoc(doc(this.db, "users", callData.receiverId), {
+              incomingCall: null,
+            });
+          }
+
+          await updateDoc(callRef, { status: "ended" }),
+            setTimeout(async () => {
+              const callSnapAgain = await getDoc(callRef);
+              if (callSnapAgain.exists()) {
+                await deleteDoc(callRef);
+              }
+
+              const q = query(
+                collection(this.db, "iceCandidates"),
+                where("callId", "==", this.currentCallId)
+              );
+              const snapshot = await getDocs(q);
+              const deletePromises = snapshot.docs.map((doc) =>
+                deleteDoc(doc.ref)
+              );
+              await Promise.all(deletePromises);
+            }, 1000);
         } else {
           console.log("Call doc has been delete, skip update/delete");
         }

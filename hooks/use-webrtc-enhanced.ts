@@ -14,7 +14,7 @@ interface CallData {
 
 interface UseWebRTCEnhancedProps {
   currentUser: any;
-  onIncomingCall: (callData: CallData) => void;
+  onIncomingCall: (callData: CallData | null) => void;
   onCallEnded: () => void;
   onRemoteStream: (stream: MediaStream) => void;
   onLocalStream: (stream: MediaStream) => void;
@@ -47,16 +47,20 @@ export function useWebRTCEnhanced({
   useEffect(() => {
     if (!currentUser || !db) return;
 
-    console.log("🚀 Initializing WebRTC manager...");
+    console.log("Initializing WebRTC manager...");
     webrtcManagerRef.current = initializeWebRTC(db, currentUser.uid);
 
     const unsubscribe = webrtcManagerRef.current.listenForIncomingCalls(
-      (callData: CallData) => {
-        console.log("📞 Incoming call received:", callData);
-        onIncomingCall(callData);
+      (callData: CallData | null) => {
+        if (callData) {
+          console.log("Incoming call received:", callData);
+          onIncomingCall(callData);
+        } else {
+          console.log("Incoming call cleared");
+          onIncomingCall(null);
+        }
       }
     );
-
     unsubscribeRef.current = unsubscribe;
 
     return () => {
@@ -68,18 +72,18 @@ export function useWebRTCEnhanced({
 
   useEffect(() => {
     const handleLocalStream = (event: any) => {
-      console.log("📺 Local stream received");
+      console.log("Local stream received");
       onLocalStream(event.detail.stream);
     };
 
     const handleRemoteStream = (event: any) => {
-      console.log("📺 Remote stream received");
+      console.log("Remote stream received");
       onRemoteStream(event.detail.stream);
       setIsConnected(true);
     };
 
     const handleCallEnded = () => {
-      console.log("📞 Call ended");
+      console.log("Call ended");
       setIsCallActive(false);
       setIsConnected(false);
       setConnectionState("new");
@@ -145,7 +149,7 @@ export function useWebRTCEnhanced({
           description: `${video ? "Video" : "Audio"} call started`,
         });
       } catch (error) {
-        console.error("❌ Error initiating call:", error);
+        console.error("Error initiating call:", error);
         toast({
           variant: "destructive",
           title: "Call Failed",
@@ -201,7 +205,7 @@ export function useWebRTCEnhanced({
           description: "Call has been rejected",
         });
       } catch (error) {
-        console.error("❌ Error rejecting call:", error);
+        console.error("Error rejecting call:", error);
       }
     },
     [toast]

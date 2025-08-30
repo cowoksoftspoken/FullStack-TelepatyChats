@@ -9,7 +9,9 @@ export function ServiceWorkerReg() {
         .then((fallback) =>
           console.info(
             `SW Registered ${
-              (fallback.active, fallback.scope, fallback.cookies)
+              (fallback.active,
+              fallback.scope,
+              fallback.cookies.getSubscriptions.name)
             }`
           )
         )

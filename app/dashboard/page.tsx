@@ -66,19 +66,24 @@ export default function DashboardPage() {
     toggleVideo,
   } = useWebRTCEnhanced({
     currentUser,
-    onIncomingCall: async (callData: CallData) => {
-      try {
-        const callerDoc = await getDoc(doc(db, "users", callData.from));
-        if (callerDoc.exists()) {
-          const callerData = callerDoc.data() as User;
-          setCurrentCaller(callerData);
-          setIncomingCall({
-            callData,
-            caller: callerData,
-          });
+    onIncomingCall: async (callData: CallData | null) => {
+      if (callData) {
+        try {
+          const callerDoc = await getDoc(doc(db, "users", callData.from));
+          if (callerDoc.exists()) {
+            const callerData = callerDoc.data() as User;
+            setCurrentCaller(callerData);
+            setIncomingCall({
+              callData,
+              caller: callerData,
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching caller data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching caller data:", error);
+      } else {
+        setCurrentCaller(null);
+        setIncomingCall(null);
       }
     },
     onCallEnded: () => {
@@ -261,7 +266,6 @@ export default function DashboardPage() {
 
   const handleEndCall = useCallback(async () => {
     try {
-      console.log("Ending call");
       await handleCallEnd();
       setCurrentCaller(null);
     } catch (error) {
