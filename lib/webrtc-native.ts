@@ -13,7 +13,7 @@ import {
   query,
   where,
   orderBy,
-  getDocs, // Import getDocs
+  getDocs,
 } from "firebase/firestore";
 
 interface CallData {
@@ -71,7 +71,7 @@ class WebRTCManager {
   }
 
   private createPeerConnection(): RTCPeerConnection {
-    console.log("🔄 Creating new RTCPeerConnection...");
+    console.log("Creating new RTCPeerConnection...");
 
     const pc = new RTCPeerConnection({
       iceServers: this.iceServers,
@@ -80,10 +80,10 @@ class WebRTCManager {
 
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
-      console.log(`🔗 Connection state: ${state}`);
+      console.log(`Connection state: ${state}`);
 
       if (state === "connected") {
-        console.log("✅ WebRTC connection established!");
+        console.log("WebRTC connection established!");
         this.adjustVideoQuality();
         this.adjustAudioQuality();
       } else if (
@@ -91,47 +91,47 @@ class WebRTCManager {
         state === "disconnected" ||
         state === "closed"
       ) {
-        console.log("❌ Connection failed/disconnected/closed");
+        console.log("Connection failed/disconnected/closed");
         this.handleCallEnd();
       }
     };
 
     pc.oniceconnectionstatechange = () => {
       const state = pc.iceConnectionState;
-      console.log(`🧊 ICE connection state: ${state}`);
+      console.log(`ICE connection state: ${state}`);
 
       if (state === "connected" || state === "completed") {
-        console.log("✅ ICE connection established!");
+        console.log("ICE connection established!");
       } else if (
         state === "failed" ||
         state === "disconnected" ||
         state === "closed"
       ) {
-        console.log("❌ ICE connection failed");
+        console.log("ICE connection failed");
         this.handleCallEnd();
       }
     };
 
     pc.onicegatheringstatechange = () => {
-      console.log(`📡 ICE gathering state: ${pc.iceGatheringState}`);
+      console.log(`ICE gathering state: ${pc.iceGatheringState}`);
     };
 
     pc.onicecandidate = async (event) => {
       if (event.candidate && this.currentCallId) {
-        console.log("🧊 New ICE candidate:", event.candidate);
+        console.log("New ICE candidate:", event.candidate);
         await this.sendICECandidate(event.candidate);
       } else if (!event.candidate) {
-        console.log("🏁 ICE gathering completed");
+        console.log("ICE gathering completed");
       }
     };
 
     pc.ontrack = (event) => {
-      console.log("📺 Received remote track:", event.track.kind);
+      console.log("Received remote track:", event.track.kind);
 
       if (event.streams && event.streams[0]) {
         this.remoteStream = event.streams[0];
         console.log(
-          "✅ Remote stream received:",
+          "Remote stream received:",
           this.remoteStream.getTracks().length,
           "tracks"
         );
@@ -141,7 +141,7 @@ class WebRTCManager {
     };
 
     pc.ondatachannel = (event) => {
-      console.log("📡 Data channel received:", event.channel.label);
+      console.log("Data channel received:", event.channel.label);
     };
 
     this.peerConnection = pc;
@@ -150,7 +150,7 @@ class WebRTCManager {
 
   private async getUserMedia(video = false): Promise<MediaStream | null> {
     try {
-      console.log(`🎥 Requesting user media - Video: ${video}`);
+      console.log(`Requesting user media - Video: ${video}`);
 
       const constraints: MediaStreamConstraints = {
         audio: {
@@ -171,7 +171,7 @@ class WebRTCManager {
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log(
-        "✅ User media obtained:",
+        "User media obtained:",
         stream.getTracks().map((t) => `${t.kind}: ${t.label}`)
       );
 
@@ -180,7 +180,7 @@ class WebRTCManager {
 
       return stream;
     } catch (error) {
-      console.error("❌ Error getting user media:", error);
+      console.error("Error getting user media:", error);
       throw new Error(
         "Could not access camera/microphone. Please check permissions."
       );
@@ -293,7 +293,7 @@ class WebRTCManager {
       }
 
       await sender.setParameters(params);
-      console.log("✅ Video quality adjusted based on connection type");
+      console.log("Video quality adjusted based on connection type");
     } catch (err) {
       console.error("Failed to adjust video quality:", err);
     }
@@ -303,10 +303,10 @@ class WebRTCManager {
     stream: MediaStream,
     pc: RTCPeerConnection
   ) {
-    console.log("➕ Adding local stream to peer connection");
+    console.log("Adding local stream to peer connection");
 
     stream.getTracks().forEach((track) => {
-      console.log(`➕ Adding ${track.kind} track:`, track.label);
+      console.log(`Adding ${track.kind} track:`, track.label);
       pc.addTrack(track, stream);
     });
   }
@@ -323,14 +323,14 @@ class WebRTCManager {
       };
 
       await addDoc(collection(this.db, "iceCandidates"), candidateData);
-      console.log("✅ ICE candidate sent to Firestore");
+      console.log("ICE candidate sent to Firestore");
     } catch (error) {
-      console.error("❌ Error sending ICE candidate:", error);
+      console.error("Error sending ICE candidate:", error);
     }
   }
 
   private listenForICECandidates(callId: string) {
-    console.log("👂 Listening for ICE candidates...");
+    console.log("Listening for ICE candidates...");
 
     const q = query(
       collection(this.db, "iceCandidates"),
@@ -357,29 +357,29 @@ class WebRTCManager {
 
       if (this.hasRemoteDescription) {
         await this.peerConnection.addIceCandidate(candidate);
-        console.log("✅ Added ICE candidate");
+        console.log("Added ICE candidate");
       } else {
         this.iceCandidatesQueue.push(candidateData);
-        console.log("📦 Queued ICE candidate");
+        console.log("Queued ICE candidate");
       }
     } catch (error) {
-      console.error("❌ Error adding ICE candidate:", error);
+      console.error("Error adding ICE candidate:", error);
     }
   }
 
   private async processQueuedICECandidates() {
     if (this.hasRemoteDescription && this.iceCandidatesQueue.length > 0) {
       console.log(
-        `🧊 Processing ${this.iceCandidatesQueue.length} queued ICE candidates`
+        `Processing ${this.iceCandidatesQueue.length} queued ICE candidates`
       );
 
       for (const candidateData of this.iceCandidatesQueue) {
         try {
           const candidate = new RTCIceCandidate(candidateData);
           await this.peerConnection!.addIceCandidate(candidate);
-          console.log("✅ Added queued ICE candidate");
+          console.log("Added queued ICE candidate");
         } catch (error) {
-          console.error("❌ Error adding queued ICE candidate:", error);
+          console.error("Error adding queued ICE candidate:", error);
         }
       }
 
@@ -390,7 +390,7 @@ class WebRTCManager {
   async initiateCall(receiverId: string, isVideo = false): Promise<string> {
     try {
       console.log(
-        `📞 Initiating ${isVideo ? "video" : "audio"} call to:`,
+        `Initiating ${isVideo ? "video" : "audio"} call to:`,
         receiverId
       );
 
@@ -417,14 +417,14 @@ class WebRTCManager {
 
       this.listenForICECandidates(callId);
 
-      console.log("📝 Creating offer...");
+      console.log("Creating offer...");
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: isVideo,
       });
 
       await pc.setLocalDescription(offer);
-      console.log("✅ Local description set (offer)");
+      console.log("Local description set (offer)");
 
       await updateDoc(doc(this.db, "calls", callId), {
         offer,
@@ -451,7 +451,7 @@ class WebRTCManager {
 
   async answerCall(callId: string): Promise<void> {
     try {
-      console.log("📞 Answering call:", callId);
+      console.log("Answering call:", callId);
 
       const callDoc = await getDoc(doc(this.db, "calls", callId));
       if (!callDoc.exists()) {
@@ -474,7 +474,7 @@ class WebRTCManager {
       this.listenForICECandidates(callId);
 
       if (callData.offer) {
-        console.log("📝 Setting remote description (offer)");
+        console.log("Setting remote description (offer)");
         await pc.setRemoteDescription(
           new RTCSessionDescription(callData.offer)
         );
@@ -483,10 +483,10 @@ class WebRTCManager {
         await this.processQueuedICECandidates();
       }
 
-      console.log("📝 Creating answer...");
+      console.log("Creating answer...");
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      console.log("✅ Local description set (answer)");
+      console.log("Local description set (answer)");
 
       await updateDoc(doc(this.db, "calls", callId), {
         answer,
@@ -497,19 +497,19 @@ class WebRTCManager {
         incomingCall: null,
       });
 
-      console.log("✅ Call answered successfully");
+      console.log("Call answered successfully");
     } catch (error) {
-      console.error("❌ Error answering call:", error);
+      console.error("Error answering call:", error);
       throw error;
     }
   }
 
   private listenForCallUpdates(callId: string) {
-    console.log("👂 Listening for call updates:", callId);
+    console.log("Listening for call updates:", callId);
 
     return onSnapshot(doc(this.db, "calls", callId), async (snapshot) => {
       if (!snapshot.exists()) {
-        console.log("📞 Call document deleted");
+        console.log("Call document deleted");
         this.handleCallEnd();
         return;
       }
@@ -520,7 +520,7 @@ class WebRTCManager {
       if (!pc) return;
 
       if (callData.answer && !this.hasRemoteDescription) {
-        console.log("📝 Received answer, setting remote description");
+        console.log("Received answer, setting remote description");
         try {
           await pc.setRemoteDescription(
             new RTCSessionDescription(callData.answer)
@@ -529,26 +529,26 @@ class WebRTCManager {
 
           await this.processQueuedICECandidates();
 
-          console.log("✅ Remote description set (answer)");
+          console.log("Remote description set (answer)");
         } catch (error) {
-          console.error("❌ Error setting remote description:", error);
+          console.error("Error setting remote description:", error);
         }
       }
 
       if (callData.status === "rejected" || callData.status === "ended") {
-        console.log("📞 Call ended/rejected");
+        console.log("Call ended/rejected");
         this.handleCallEnd();
       }
     });
   }
 
   listenForIncomingCalls(callback: (callData: any) => void) {
-    console.log("👂 Listening for incoming calls...");
+    console.log("Listening for incoming calls...");
 
     return onSnapshot(doc(this.db, "users", this.userId), (snapshot) => {
       const userData = snapshot.data();
       if (userData?.incomingCall) {
-        console.log("📞 Incoming call detected");
+        console.log("Incoming call detected");
         callback(userData.incomingCall);
       }
     });
@@ -564,20 +564,20 @@ class WebRTCManager {
         incomingCall: null,
       });
 
-      console.log("✅ Call rejected");
+      console.log("Call rejected");
     } catch (error) {
-      console.error("❌ Error rejecting call:", error);
+      console.error("Error rejecting call:", error);
     }
   }
 
   async endCall(): Promise<void> {
     try {
-      console.log("📞 Ending call...");
+      console.log("Ending call...");
 
       if (this.localStream) {
         this.localStream.getTracks().forEach((track) => {
           track.stop();
-          console.log(`🛑 Stopped ${track.kind} track`);
+          console.log(`Stopped ${track.kind} track`);
         });
         this.localStream = null;
       }
@@ -594,6 +594,12 @@ class WebRTCManager {
         const callSnap = await getDoc(callRef);
 
         if (callSnap.exists()) {
+          const callData = callSnap.data() as CallData;
+
+          await updateDoc(doc(this.db, "users", callData.receiverId), {
+            IncomingCall: null,
+          }).catch((_) => console.log(_));
+
           await updateDoc(callRef, { status: "ended" });
 
           setTimeout(async () => {
@@ -621,24 +627,15 @@ class WebRTCManager {
       this.hasRemoteDescription = false;
       this.iceCandidatesQueue = [];
 
-      console.log("✅ Call ended successfully");
+      console.log("Call ended successfully");
     } catch (error) {
-      console.error("❌ Error ending call:", error);
+      console.error("Error ending call:", error);
     }
   }
 
   private handleCallEnd(): void {
     this.endCall();
     this.dispatchStreamEvent("callended", null);
-    setTimeout(() => {
-      if (this.currentCallId) {
-        updateDoc(doc(this.db, "users", this.userId), {
-          incomingCall: null,
-        }).catch((error) =>
-          console.error("Error clearing incoming call field:", error)
-        );
-      }
-    }, 900);
   }
 
   toggleMute(): boolean {
@@ -646,7 +643,7 @@ class WebRTCManager {
       const audioTrack = this.localStream.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
-        console.log(`🔇 Audio ${audioTrack.enabled ? "unmuted" : "muted"}`);
+        console.log(`Audio ${audioTrack.enabled ? "unmuted" : "muted"}`);
         return !audioTrack.enabled;
       }
     }
@@ -658,7 +655,7 @@ class WebRTCManager {
       const videoTrack = this.localStream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
-        console.log(`📹 Video ${videoTrack.enabled ? "enabled" : "disabled"}`);
+        console.log(`Video ${videoTrack.enabled ? "enabled" : "disabled"}`);
         return !videoTrack.enabled;
       }
     }
@@ -715,7 +712,6 @@ export const listenForCalls = (
 
 export const initiateCall = async (
   db: Firestore,
-  localStream: MediaStream,
   userId: string,
   recipientId: string,
   isVideo: boolean
@@ -742,7 +738,6 @@ export const initiateCall = async (
 export const acceptCall = async (
   db: Firestore,
   callData: any,
-  localStream: MediaStream,
   userId: string
 ) => {
   if (!webrtcManager) {
@@ -763,11 +758,7 @@ export const acceptCall = async (
   };
 };
 
-export const endCall = async (
-  db: Firestore,
-  userId: string,
-  peerId: string
-) => {
+export const endCall = async () => {
   if (webrtcManager) {
     await webrtcManager.endCall();
   }

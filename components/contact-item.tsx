@@ -60,7 +60,11 @@ export function ContactItem({
         </div>
         <div>
           <div className="flex items-center gap-1">
-            <p className="font-medium">{normalizeName(contact.displayName)}</p>
+            <p className="font-medium">
+              {contact?.displayName
+                ? normalizeName(contact?.displayName)
+                : "Loading..."}
+            </p>
             {contact.isVerified && !blocked && (
               <span>
                 <svg

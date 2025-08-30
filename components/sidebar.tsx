@@ -245,15 +245,19 @@ export function Sidebar({
         batch.delete(doc(db, "contacts", reverseContactSnapshot.docs[0].id));
       }
 
+      // const messagesQuery = query(
+      //   collection(db, "messages"),
+      //   where("participants", "array-contains", user.uid),
+      //   where("senderId", "in", [user.uid, contactToDelete]),
+      //   where("receiverId", "in", [user.uid, contactToDelete])
+      // );
+      const chatId = [user.uid, contactToDelete].sort().join("_");
       const messagesQuery = query(
         collection(db, "messages"),
-        where("participants", "array-contains", user.uid),
-        where("senderId", "in", [user.uid, contactToDelete]),
-        where("receiverId", "in", [user.uid, contactToDelete])
+        where("chatId", "==", chatId)
       );
-
       const messagesSnapshot = await getDocs(messagesQuery);
-
+      const storageDeletes: Promise<void>[] = [];
       for (const messageDoc of messagesSnapshot.docs) {
         const messageData = messageDoc.data();
 
@@ -261,7 +265,7 @@ export function Sidebar({
           for (const attachment of messageData.attachments) {
             const fileRef = storageRef(storage, attachment.path);
             try {
-              await deleteStorageObject(fileRef);
+              storageDeletes.push(deleteStorageObject(fileRef));
             } catch (error) {
               console.error("Error deleting file:", error);
             }
@@ -271,7 +275,7 @@ export function Sidebar({
         batch.delete(doc(db, "messages", messageDoc.id));
       }
 
-      await batch.commit();
+      await Promise.all([await batch.commit(), ...storageDeletes]);
 
       if (selectedContact?.uid === contactToDelete) {
         setSelectedContact(null);
@@ -350,7 +354,11 @@ export function Sidebar({
           <UserAvatar user={user} />
           <div>
             <div className="flex items-center gap-1">
-              <p className="font-medium">{normalizeName(user?.displayName)}</p>
+              <p className="font-medium">
+                {user?.displayName
+                  ? normalizeName(user?.displayName)
+                  : "Loading..."}
+              </p>
               {userData?.isVerified && (
                 <svg
                   aria-label="Sudah Diverifikasi"

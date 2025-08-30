@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseProvider } from "@/lib/firebase-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
+import { ServiceWorkerReg } from "@/utils/workerRegist";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,6 +33,11 @@ export const metadata: Metadata = {
       },
     ],
     type: "website",
+  },
+  other: {
+    releaseDate: "2024-7-23",
+    author: "Inggrit Setya Budi",
+    version: "2.15.8",
   },
   twitter: {
     card: "summary_large_image",
@@ -101,8 +107,27 @@ export default function RootLayout({
           href="/favicon_dark.jpg"
           media="(prefers-color-scheme: dark)"
         />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              name: "Telepaty",
+              applicationCategory: "MessagingApp",
+              operatingSystem: "Web",
+              author: {
+                "@type": "Person",
+                name: metadata.other?.author ?? "Telepaty Team",
+              },
+              releaseDate: metadata.other?.releaseDate ?? "2024-7-23",
+              version: metadata.other?.version ?? "2.15.8",
+            }),
+          }}
+        />
       </head>
       <body className={`${inter.className} antialiased`}>
+        <ServiceWorkerReg />
         <ToastProvider>
           <ThemeProvider defaultTheme="system" storageKey="zerochats-theme">
             <FirebaseProvider>

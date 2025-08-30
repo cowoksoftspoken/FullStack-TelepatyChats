@@ -484,7 +484,7 @@ export default function SettingsPage() {
             )}
 
             <div className="space-y-2">
-              <Label>Password</Label>
+              <Label htmlFor="">Password</Label>
               <div>
                 <Button
                   variant="outline"

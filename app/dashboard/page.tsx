@@ -82,18 +82,15 @@ export default function DashboardPage() {
       }
     },
     onCallEnded: () => {
-      console.log("📞 Call ended");
       setIncomingCall(null);
       setCurrentCaller(null);
       setLocalStream(null);
       setRemoteStream(null);
     },
     onRemoteStream: (stream: MediaStream) => {
-      console.log("📺 Remote stream received");
       setRemoteStream(stream);
     },
     onLocalStream: (stream: MediaStream) => {
-      console.log("📺 Local stream received");
       setLocalStream(stream);
     },
   });
@@ -235,16 +232,16 @@ export default function DashboardPage() {
 
   const handleAcceptCall = useCallback(async () => {
     if (!incomingCall || !incomingCall.caller || !currentUser || !db) {
-      console.error("❌ Error: Missing call data or user information");
+      console.error("Error: Missing call data or user information");
       return;
     }
 
     try {
-      console.log("📞 Accepting call from:", incomingCall.caller.displayName);
+      console.log("Accepting call from:", incomingCall.caller.displayName);
       await answerCall(incomingCall.callData.callId, incomingCall.callData);
       setIncomingCall(null);
     } catch (error) {
-      console.error("❌ Error accepting call:", error);
+      console.error("Error accepting call:", error);
       toast.error("Could not accept call. Please try again.");
     }
   }, [incomingCall, currentUser, db, answerCall]);
@@ -253,7 +250,7 @@ export default function DashboardPage() {
     if (!incomingCall || !incomingCall.caller || !currentUser || !db) return;
 
     try {
-      console.log("📞 Rejecting call from:", incomingCall.caller.displayName);
+      console.log("Rejecting call from:", incomingCall.caller.displayName);
       await rejectCall(incomingCall.callData.callId);
       setIncomingCall(null);
       setCurrentCaller(null);
@@ -264,7 +261,7 @@ export default function DashboardPage() {
 
   const handleEndCall = useCallback(async () => {
     try {
-      console.log("📞 Ending call");
+      console.log("Ending call");
       await handleCallEnd();
       setCurrentCaller(null);
     } catch (error) {

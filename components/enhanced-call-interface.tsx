@@ -57,14 +57,12 @@ export function EnhancedCallInterface({
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream;
-      console.log("📺 Local video stream attached");
     }
   }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
-      console.log("📺 Remote video stream attached");
     }
   }, [remoteStream]);
 
@@ -112,7 +110,7 @@ export function EnhancedCallInterface({
         iceConnectionState
       );
       return {
-        text: isConnected ? "Connected" : "Disconnected",
+        text: isConnected ? "Connected" : "Waiting",
         color: "bg-gray-500",
       };
     }
@@ -129,6 +127,7 @@ export function EnhancedCallInterface({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+        data-json={JSON.stringify({ contact, status })}
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between p-4 bg-black/50">
@@ -183,7 +182,7 @@ export function EnhancedCallInterface({
                     onLoadedMetadata={() =>
                       console.log("📺 Local video loaded")
                     }
-                    onError={(e) => console.error("❌ Local video error:", e)}
+                    onError={(e) => console.error("Local video error:", e)}
                   />
                   {!isVideoEnabled && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
