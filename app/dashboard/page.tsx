@@ -101,6 +101,23 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    if (!currentUser) return;
+
+    const userRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      const userData = snapshot.data();
+
+      if (!userData?.incomingCall) {
+        setIncomingCall(null);
+        setCurrentCaller(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, db]);
+
+  useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push("/login");
     }

@@ -53,10 +53,8 @@ export function useWebRTCEnhanced({
     const unsubscribe = webrtcManagerRef.current.listenForIncomingCalls(
       (callData: CallData | null) => {
         if (callData) {
-          console.log("Incoming call received:", callData);
           onIncomingCall(callData);
         } else {
-          console.log("Incoming call cleared");
           onIncomingCall(null);
         }
       }
