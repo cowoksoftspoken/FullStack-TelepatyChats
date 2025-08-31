@@ -441,10 +441,20 @@ class WebRTCManager {
 
       this.listenForCallUpdates(callId);
 
-      console.log("✅ Call initiated successfully");
+      setTimeout(async () => {
+        const callSnap = await getDoc(doc(this.db, "calls", callId));
+        if (callSnap.exists()) {
+          const snapData = callSnap.data() as CallData;
+          if (snapData.status === "calling") {
+            console.log("Call TimeOut auto ending....");
+            this.handleCallEnd();
+          }
+        }
+      }, 12000);
+
       return callId;
     } catch (error) {
-      console.error("❌ Error initiating call:", error);
+      console.error("Error initiating call:", error);
       throw error;
     }
   }

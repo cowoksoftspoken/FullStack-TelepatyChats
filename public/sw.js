@@ -36,17 +36,27 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, networkResponse.clone());
-          return networkResponse;
-        });
-      });
-    })
-  );
+  const url = new URL(event.request.url);
+
+  if (url.origin === location.origin) {
+    if (
+      ASSETS_TO_CACHE.includes(url.pathname) ||
+      url.pathname.endsWith(".png") ||
+      url.pathname.endsWith(".jpg") ||
+      url.pathname.endsWith(".ico")
+    ) {
+      event.respondWith(
+        caches.match(event.request).then((cachedResponse) => {
+          return (
+            cachedResponse ||
+            fetch(event.request).then(async (networkResponse) => {
+              const cache = await caches.open(CACHE_NAME);
+              cache.put(event.request, networkResponse.clone());
+              return networkResponse;
+            })
+          );
+        })
+      );
+    }
+  }
 });

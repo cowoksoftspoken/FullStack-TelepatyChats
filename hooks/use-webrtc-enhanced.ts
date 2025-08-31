@@ -127,7 +127,7 @@ export function useWebRTCEnhanced({
     async (receiverId: string, video = false) => {
       try {
         console.log(
-          `📞 Initiating ${video ? "video" : "audio"} call to:`,
+          `Initiating ${video ? "video" : "audio"} call to:`,
           receiverId
         );
 
@@ -161,7 +161,7 @@ export function useWebRTCEnhanced({
   const answerCall = useCallback(
     async (callId: string, callData: CallData) => {
       try {
-        console.log("📞 Answering call:", callId);
+        console.log("Answering call:", callId);
 
         const manager = getWebRTCManager();
         if (!manager) {
@@ -179,7 +179,7 @@ export function useWebRTCEnhanced({
           description: "Call connected successfully",
         });
       } catch (error) {
-        console.error("❌ Error answering call:", error);
+        console.error("Error answering call:", error);
         toast({
           variant: "destructive",
           title: "Call Failed",
@@ -222,7 +222,7 @@ export function useWebRTCEnhanced({
         description: "Call has been ended",
       });
     } catch (error) {
-      console.error("❌ Error ending call:", error);
+      console.error("Error ending call:", error);
     }
   }, [toast]);
 

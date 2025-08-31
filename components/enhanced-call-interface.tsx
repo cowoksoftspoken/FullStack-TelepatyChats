@@ -110,7 +110,7 @@ export function EnhancedCallInterface({
         iceConnectionState
       );
       return {
-        text: isConnected ? "Connected" : "Waiting Answer",
+        text: isConnected ? "Connected" : "Waiting to be Answer",
         color: "bg-gray-500",
       };
     }
@@ -127,7 +127,12 @@ export function EnhancedCallInterface({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
-        data-json={JSON.stringify({ contact, status })}
+        data-json={JSON.stringify({
+          from: contact.displayName,
+          callId: contact.uid,
+          createdAt: contact.createdAt,
+          status,
+        })}
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between p-4 bg-black/50">
