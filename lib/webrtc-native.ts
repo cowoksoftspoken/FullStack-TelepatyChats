@@ -450,7 +450,7 @@ class WebRTCManager {
             this.handleCallEnd();
           }
         }
-      }, 12000);
+      }, 15000);
 
       return callId;
     } catch (error) {
@@ -605,16 +605,8 @@ class WebRTCManager {
 
         if (callSnap.exists()) {
           const callData = callSnap.data() as CallData;
-          console.log(callData);
 
           if (callData.receiverId) {
-            console.log(
-              "Updating IncomingCall for:",
-              callData.receiverId,
-              "doc path:",
-              doc(this.db, "users", callData.receiverId).path
-            );
-
             await updateDoc(doc(this.db, "users", callData.receiverId), {
               incomingCall: null,
             });

@@ -160,7 +160,10 @@ export function EnhancedCallInterface({
             </div>
 
             <div className="text-right text-xs text-white/80 space-y-1">
-              <div className="flex items-center justify-end gap-2">
+              <div
+                className="flex items-center justify-end gap-2"
+                title="Connection"
+              >
                 <Wifi
                   size={14}
                   className={
@@ -171,7 +174,7 @@ export function EnhancedCallInterface({
                       : "text-red-400"
                   }
                 />
-                <span className="font-medium">Connection:</span>
+                <span className="font-medium">:</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] ${
                     connectionState === "connected"
@@ -185,12 +188,15 @@ export function EnhancedCallInterface({
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div
+                className="flex items-center justify-end gap-2"
+                title="Your Stream"
+              >
                 <Mic
                   size={14}
                   className={localStream ? "text-green-400" : "text-red-400"}
                 />
-                <span className="font-medium">Local Stream:</span>
+                <span className="font-medium">:</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] ${
                     localStream
@@ -202,12 +208,15 @@ export function EnhancedCallInterface({
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-2">
+              <div
+                className="flex items-center justify-end gap-2"
+                title="Callee Stream"
+              >
                 <Video
                   size={14}
                   className={remoteStream ? "text-green-400" : "text-red-400"}
                 />
-                <span className="font-medium">Remote Stream:</span>
+                <span className="font-medium">:</span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] ${
                     remoteStream

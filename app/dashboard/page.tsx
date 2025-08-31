@@ -101,21 +101,44 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !incomingCall?.callData.callId) return;
 
-    const userRef = doc(db, "users", currentUser.uid);
+    const callRef = doc(db, "calls", incomingCall.callData.callId);
 
-    const unsubscribe = onSnapshot(userRef, (snapshot) => {
-      const userData = snapshot.data();
+    let unsubscribeUser: (() => void) | null = null;
 
-      if (!userData?.incomingCall) {
+    const unsubscribeCall = onSnapshot(callRef, (callSnap) => {
+      if (!callSnap.exists()) return;
+
+      const callData = callSnap.data() as any;
+      const receiverId = callData.receiverId;
+
+      if (receiverId && !unsubscribeUser) {
+        const userRef = doc(db, "users", receiverId);
+        unsubscribeUser = onSnapshot(userRef, (userSnap) => {
+          if (!userSnap.exists()) return;
+          const userData = userSnap.data();
+
+          if (!userData?.incomingCall) {
+            console.log("Receiver incomingCall null, reset state");
+            setIncomingCall(null);
+          }
+        });
+      }
+
+      if (callData.status === "ended") {
         setIncomingCall(null);
         setCurrentCaller(null);
+        setLocalStream(null);
+        setRemoteStream(null);
       }
     });
 
-    return () => unsubscribe();
-  }, [currentUser, db]);
+    return () => {
+      unsubscribeCall();
+      if (unsubscribeUser) unsubscribeUser();
+    };
+  }, [currentUser, db, incomingCall?.callData.callId]);
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
