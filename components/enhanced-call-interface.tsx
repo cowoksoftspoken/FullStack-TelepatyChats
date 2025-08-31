@@ -11,6 +11,7 @@ import {
   Monitor,
   Volume2,
   VolumeX,
+  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -158,10 +159,65 @@ export function EnhancedCallInterface({
               </div>
             </div>
 
-            <div className="text-right text-xs text-white/70">
-              <div>Connection: {connectionState}</div>
-              <div>Local Straming: {localStream ? "Accepted" : "❌"}</div>
-              <div>Remote Streaming: {remoteStream ? "Accepted" : "❌"}</div>
+            <div className="text-right text-xs text-white/80 space-y-1">
+              <div className="flex items-center justify-end gap-2">
+                <Wifi
+                  size={14}
+                  className={
+                    connectionState === "connected"
+                      ? "text-green-400"
+                      : connectionState === "connecting"
+                      ? "text-yellow-400"
+                      : "text-red-400"
+                  }
+                />
+                <span className="font-medium">Connection:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    connectionState === "connected"
+                      ? "bg-green-500/20 text-green-400"
+                      : connectionState === "connecting"
+                      ? "bg-yellow-500/20 text-yellow-400"
+                      : "bg-red-500/20 text-red-400"
+                  }`}
+                >
+                  {connectionState}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Mic
+                  size={14}
+                  className={localStream ? "text-green-400" : "text-red-400"}
+                />
+                <span className="font-medium">Local Stream:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    localStream
+                      ? "bg-green-500/20 text-green-400"
+                      : "bg-red-500/20 text-red-400"
+                  }`}
+                >
+                  {localStream ? "Active" : "Inactive"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2">
+                <Video
+                  size={14}
+                  className={remoteStream ? "text-green-400" : "text-red-400"}
+                />
+                <span className="font-medium">Remote Stream:</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] ${
+                    remoteStream
+                      ? "bg-green-500/20 text-green-400"
+                      : "bg-red-500/20 text-red-400"
+                  }`}
+                >
+                  {remoteStream ? "Active" : "Inactive"}
+                </span>
+              </div>
             </div>
           </div>
 
