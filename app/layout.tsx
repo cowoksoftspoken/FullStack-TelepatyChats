@@ -6,7 +6,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseProvider } from "@/lib/firebase-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
-import { ServiceWorkerReg } from "@/utils/workerRegist";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -127,7 +126,6 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <ServiceWorkerReg />
         <ToastProvider>
           <ThemeProvider defaultTheme="system" storageKey="zerochats-theme">
             <FirebaseProvider>

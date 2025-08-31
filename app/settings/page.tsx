@@ -13,6 +13,7 @@ import {
   updateProfile,
   sendEmailVerification,
   sendPasswordResetEmail,
+  reload,
 } from "firebase/auth";
 import {
   doc,
@@ -20,6 +21,7 @@ import {
   updateDoc,
   getDoc,
   DocumentData,
+  onSnapshot,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -66,6 +68,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UserAvatar } from "@/components/user-avatar";
 import { VerificationRequest } from "@/components/admin/verification-request";
 import normalizeName from "@/utils/normalizename";
+import { AvatarCropDialog } from "@/components/avatarcrop-dialog";
+import { User } from "@/types/user";
 
 export default function SettingsPage() {
   const {
@@ -92,6 +96,9 @@ export default function SettingsPage() {
   const [currentPrivateKey, setCurrentPrivateKey] = useState<string | null>(
     null
   );
+  const [localPhotoURL, setLocalPhotoURL] = useState(currentUser?.photoURL);
+  const [showCrop, setShowCrop] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [oldPrivateKey, setOldPrivateKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -185,52 +192,52 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAvatarClick = () => {
-    fileInputRef.current?.click();
-  };
+  // const handleAvatarClick = () => {
+  //   fileInputRef.current?.click();
+  // };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
+  // const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (!file || !currentUser) return;
 
-    setAvatarUploading(true);
+  //   setAvatarUploading(true);
 
-    try {
-      const storageRef = ref(
-        storage,
-        `avatars/${currentUser.uid}/${Date.now()}_${file.name}`
-      );
-      await uploadBytes(storageRef, file);
+  //   try {
+  //     const storageRef = ref(
+  //       storage,
+  //       `avatars/${currentUser.uid}/${Date.now()}_${file.name}`
+  //     );
+  //     await uploadBytes(storageRef, file);
 
-      const downloadURL = await getDownloadURL(storageRef);
+  //     const downloadURL = await getDownloadURL(storageRef);
 
-      await updateProfile(currentUser, {
-        photoURL: downloadURL,
-      });
+  //     await updateProfile(currentUser, {
+  //       photoURL: downloadURL,
+  //     });
 
-      await updateDoc(doc(db, "users", currentUser.uid), {
-        photoURL: downloadURL,
-      });
+  //     await updateDoc(doc(db, "users", currentUser.uid), {
+  //       photoURL: downloadURL,
+  //     });
 
-      toast({
-        title: "Avatar updated",
-        description: "Your profile picture has been updated successfully.",
-      });
-    } catch (error) {
-      console.error("Error uploading avatar:", error);
-      toast({
-        variant: "destructive",
-        title: "Upload failed",
-        description: "Failed to update your profile picture. Please try again.",
-        action: <ToastAction altText="Try again">Try again</ToastAction>,
-      });
-    } finally {
-      setAvatarUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-    }
-  };
+  //     toast({
+  //       title: "Avatar updated",
+  //       description: "Your profile picture has been updated successfully.",
+  //     });
+  //   } catch (error) {
+  //     console.error("Error uploading avatar:", error);
+  //     toast({
+  //       variant: "destructive",
+  //       title: "Upload failed",
+  //       description: "Failed to update your profile picture. Please try again.",
+  //       action: <ToastAction altText="Try again">Try again</ToastAction>,
+  //     });
+  //   } finally {
+  //     setAvatarUploading(false);
+  //     if (fileInputRef.current) {
+  //       fileInputRef.current.value = "";
+  //     }
+  //   }
+  // };
 
   const handleUpdateName = async () => {
     if (!currentUser || !displayName.trim()) return;
@@ -297,8 +304,73 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDeletePhoto = async () => {
+    if (!currentUser) return;
+    if (!currentUser.photoURL) {
+      toast({
+        title: "Error",
+        description: "There is no profile photo",
+      });
+      return;
+    }
+    try {
+      await updateProfile(currentUser, { photoURL: "" });
+      await updateDoc(doc(db, "users", currentUser.uid), { photoURL: null });
+      setLocalPhotoURL(null);
+      await reload(currentUser);
+      toast({ title: "Photo deleted", description: "Profile photo removed." });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete photo",
+      });
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setSelectedImage(reader.result as string);
+      setShowCrop(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropConfirm = async (file: File) => {
+    setAvatarUploading(true);
+
+    try {
+      const storageRef = ref(
+        storage,
+        `avatars/${currentUser.uid}/${Date.now()}_${file.name}`
+      );
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      await updateProfile(currentUser, { photoURL: downloadURL });
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        photoURL: downloadURL,
+      });
+      setLocalPhotoURL(downloadURL);
+      toast({
+        title: "Avatar updated",
+        description: "Profile picture updated.",
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+    } finally {
+      setAvatarUploading(false);
+      setSelectedImage(null);
+    }
+  };
+
   const handleRequestPasswordReset = async () => {
-    if (!currentUser || !currentUser.email) return;
+    if (!currentUser || !currentUser.email || !currentUser.emailVerified)
+      return;
 
     try {
       await sendPasswordResetEmail(auth, currentUser.email, {
@@ -354,22 +426,27 @@ export default function SettingsPage() {
             <div className="flex flex-col items-center justify-center">
               <div className="relative group">
                 <UserAvatar
-                  user={currentUser}
-                  className="h-24 w-24 cursor-pointer"
-                  showHoverCard={false}
+                  user={{ ...currentUser, photoURL: localPhotoURL } as User}
+                  className="h-24 w-24"
                   size="lg"
-                  showEnlargeOnClick={true}
+                  showHoverCard={false}
+                  enableMenu
+                  onChangePhoto={() => fileInputRef.current?.click()}
+                  onDeletePhoto={handleDeletePhoto}
                 />
-                <div
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  onClick={handleAvatarClick}
-                >
-                  {avatarUploading ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-white" />
-                  ) : (
-                    <Camera className="h-8 w-8 text-white" />
-                  )}
-                </div>
+
+                {avatarUploading && (
+                  <div
+                    className={`absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer`}
+                  >
+                    {avatarUploading ? (
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    ) : (
+                      <Camera className="h-8 w-8 text-white" />
+                    )}
+                  </div>
+                )}
+
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -379,9 +456,18 @@ export default function SettingsPage() {
                 />
               </div>
               <p className="mt-2 text-sm text-muted-foreground">
-                Click to change your profile picture
+                Click avatar to view, change, or delete your photo
               </p>
             </div>
+
+            {selectedImage && (
+              <AvatarCropDialog
+                image={selectedImage}
+                open={showCrop}
+                onClose={() => setShowCrop(false)}
+                onConfirm={handleCropConfirm}
+              />
+            )}
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -484,25 +570,39 @@ export default function SettingsPage() {
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="">Password</Label>
-              <div>
-                <Button
-                  variant="outline"
-                  className="w-full flex items-center justify-center gap-2"
-                  onClick={handleRequestPasswordReset}
-                  disabled={!currentUser.emailVerified || resetPasswordSent}
+              <fieldset
+                disabled={!currentUser.emailVerified || resetPasswordSent}
+              >
+                <Label
+                  htmlFor="pw"
+                  className={
+                    !currentUser.emailVerified || resetPasswordSent
+                      ? "text-muted-foreground cursor-not-allowed"
+                      : ""
+                  }
                 >
-                  <KeyRound className="h-4 w-4" />
-                  {resetPasswordSent
-                    ? "Password Reset Email Sent"
-                    : "Request Password Change"}
-                </Button>
-                {!currentUser.emailVerified && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You need to verify your email before changing your password.
-                  </p>
-                )}
-              </div>
+                  Password
+                </Label>
+                <div>
+                  <Button
+                    variant="outline"
+                    id="pw"
+                    className="w-full flex items-center justify-center gap-2"
+                    onClick={handleRequestPasswordReset}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    {resetPasswordSent
+                      ? "Password Reset Email Sent"
+                      : "Request Password Change"}
+                  </Button>
+                  {!currentUser.emailVerified && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You need to verify your email before changing your
+                      password.
+                    </p>
+                  )}
+                </div>
+              </fieldset>
             </div>
             {!userData?.isVerified && currentUser?.emailVerified && (
               <VerificationRequest />
@@ -711,8 +811,9 @@ export default function SettingsPage() {
                 id="dark-mode"
                 checked={
                   theme === "dark" ||
-                  (typeof window !== "undefined" &&
-                    localStorage.getItem("zerochats-theme") === "dark")
+                  (theme === "system" &&
+                    "undefined" &&
+                    window.matchMedia("(prefers-color-scheme: dark)").matches)
                 }
                 onCheckedChange={(checked) =>
                   setTheme(checked ? "dark" : "light")

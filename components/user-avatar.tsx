@@ -14,8 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Mail, User } from "lucide-react";
+import { Camera, Eye, Mail, Trash2, User } from "lucide-react";
 import type { User as UserType } from "@/types/user";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface UserAvatarProps {
   user: UserType | null;
@@ -24,6 +30,9 @@ interface UserAvatarProps {
   showEnlargeOnClick?: boolean;
   size?: "sm" | "md" | "lg";
   isBlocked?: boolean;
+  enableMenu?: boolean;
+  onChangePhoto?: () => void;
+  onDeletePhoto?: () => void;
 }
 
 export function UserAvatar({
@@ -33,6 +42,9 @@ export function UserAvatar({
   showEnlargeOnClick = true,
   size = "md",
   isBlocked = false,
+  enableMenu,
+  onChangePhoto,
+  onDeletePhoto,
 }: UserAvatarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -45,8 +57,6 @@ export function UserAvatar({
       </Avatar>
     );
   }
-
-  // Determine the size of the avatar based on the size prop
 
   const getSizeClass = () => {
     switch (size) {
@@ -79,12 +89,57 @@ export function UserAvatar({
     </Avatar>
   );
 
-  // If both hover card and enlarge are disabled, just return the avatar
+  if (enableMenu) {
+    return (
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>{avatarComponent}</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => setDialogOpen(true)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Lihat Foto
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onChangePhoto}>
+              <Camera className="h-4 w-4 mr-2" />
+              Ganti Foto
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onDeletePhoto}>
+              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+              Hapus Foto
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {showEnlargeOnClick && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+              <DialogHeader className="sr-only">
+                <DialogTitle>{user.displayName || "User Profile"}</DialogTitle>
+              </DialogHeader>
+              <div className="relative w-full aspect-square">
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.displayName || "User"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-muted text-4xl">
+                    {user.displayName?.charAt(0) || "U"}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </>
+    );
+  }
+
   if (!showHoverCard && !showEnlargeOnClick) {
     return avatarComponent;
   }
 
-  // If only enlarge on click is enabled
   if (!showHoverCard && showEnlargeOnClick) {
     return (
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -111,7 +166,6 @@ export function UserAvatar({
     );
   }
 
-  // If both or only hover card is enabled
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
@@ -144,7 +198,10 @@ export function UserAvatar({
       <HoverCardContent className="w-80">
         <div className="flex justify-between space-x-4">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={user.photoURL || ""} className="object-cover" />
+            <AvatarImage
+              src={user.photoURL || undefined}
+              className="object-cover"
+            />
             <AvatarFallback>
               {user.displayName?.charAt(0) || "U"}
             </AvatarFallback>
