@@ -36,21 +36,7 @@ import Picker from "@emoji-mart/react";
 import { useEffect, useRef, useState } from "react";
 import type { User } from "@/types/user";
 
-export default function MessageInput({
-  currentUser,
-  contact,
-  isBlocked,
-  sendMessage,
-  handleFileSelect,
-  handleShareLocation,
-  startRecording,
-  setIsCameraDialogOpen,
-  isGettingLocation,
-  imageInputRef,
-  videoInputRef,
-  audioInputRef,
-  fileInputRef,
-}: {
+interface MessageInputProps {
   currentUser: User;
   contact: User;
   isBlocked: boolean;
@@ -68,7 +54,23 @@ export default function MessageInput({
   audioInputRef: React.RefObject<HTMLInputElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   isEncryptionEnabled?: boolean;
-}) {
+}
+
+export default function MessageInput({
+  currentUser,
+  contact,
+  isBlocked,
+  sendMessage,
+  handleFileSelect,
+  handleShareLocation,
+  startRecording,
+  setIsCameraDialogOpen,
+  isGettingLocation,
+  imageInputRef,
+  videoInputRef,
+  audioInputRef,
+  fileInputRef,
+}: MessageInputProps) {
   const { db } = useFirebase();
   const { theme } = useTheme();
   const isTypingRef = useRef(false);

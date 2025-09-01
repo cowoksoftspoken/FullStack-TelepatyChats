@@ -812,7 +812,7 @@ export default function SettingsPage() {
                 checked={
                   theme === "dark" ||
                   (theme === "system" &&
-                    "undefined" &&
+                    typeof window !== "undefined" &&
                     window.matchMedia("(prefers-color-scheme: dark)").matches)
                 }
                 onCheckedChange={(checked) =>

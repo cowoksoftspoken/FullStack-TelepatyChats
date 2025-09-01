@@ -1421,7 +1421,10 @@ export function ChatArea({
         className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]"
         style={{
           backgroundImage: `url("${
-            theme === "dark"
+            theme === "dark" ||
+            (theme === "system" &&
+              typeof window !== "undefined" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches)
               ? "https://i.ibb.co.com/m5p2Ttrf/wp-132-dark.jpg"
               : "https://i.ibb.co.com/qLvfqFLR/wp-132.jpg"
           }")`,
