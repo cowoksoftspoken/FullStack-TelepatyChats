@@ -459,6 +459,77 @@ class WebRTCManager {
     }
   }
 
+  async shareScreen() {
+    if (!this.peerConnection) {
+      console.error("PeerConnection not Initialized");
+      return;
+    }
+
+    try {
+      const shareScreenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1080, max: 1920 },
+          height: { ideal: 1080, max: 1920 },
+          frameRate: { ideal: 30, max: 60 },
+        },
+        audio: true,
+      });
+
+      const screenVideoTrack = shareScreenStream.getVideoTracks()[0];
+      const videoSender = this.peerConnection
+        .getSenders()
+        .find((s) => s.track?.kind === "video");
+
+      if (videoSender && screenVideoTrack) {
+        await videoSender.replaceTrack(screenVideoTrack);
+        console.log("Replaced camera video with screen video");
+      }
+
+      const screenAudioTrack = shareScreenStream.getAudioTracks()[0];
+      if (screenAudioTrack) {
+        const audioSender = this.peerConnection
+          .getSenders()
+          .find((s) => s.track?.kind === "audio");
+
+        if (audioSender) {
+          await audioSender.replaceTrack(screenAudioTrack);
+          console.log("Replaced mic audio with system audio");
+        } else {
+          this.peerConnection.addTrack(screenAudioTrack, shareScreenStream);
+          console.log("Added system audio track");
+        }
+      }
+
+      this.localStream = shareScreenStream;
+      this.dispatchStreamEvent("localstream", shareScreenStream);
+
+      screenVideoTrack.onended = async () => {
+        console.log("Screen sharing stopped, falling back to camera");
+
+        const camStream = await this.getUserMedia(true);
+        if (!camStream) return;
+
+        const camVideoTrack = camStream.getVideoTracks()[0];
+        if (camVideoTrack && videoSender) {
+          await videoSender.replaceTrack(camVideoTrack);
+        }
+
+        const micAudioTrack = camStream.getAudioTracks()[0];
+        if (micAudioTrack) {
+          const micSender = this.peerConnection
+            ?.getSenders()
+            .find((s) => s.track?.kind === "audio");
+          if (micSender) await micSender.replaceTrack(micAudioTrack);
+        }
+
+        this.localStream = camStream;
+        this.dispatchStreamEvent("localstream", camStream);
+      };
+    } catch (error) {
+      console.log("Error Sharing Screen", error);
+    }
+  }
+
   async answerCall(callId: string): Promise<void> {
     try {
       console.log("Answering call:", callId);

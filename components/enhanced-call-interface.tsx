@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "./user-avatar";
 import type { User } from "@/types/user";
+import { toast } from "@/hooks/use-toast";
 
 interface EnhancedCallInterfaceProps {
   isActive: boolean;
@@ -33,6 +34,7 @@ interface EnhancedCallInterfaceProps {
   onEndCall: () => void;
   onToggleMute: () => void;
   onToggleVideo: () => void;
+  shareScreen: () => void;
 }
 
 export function EnhancedCallInterface({
@@ -49,6 +51,7 @@ export function EnhancedCallInterface({
   onEndCall,
   onToggleMute,
   onToggleVideo,
+  shareScreen,
 }: EnhancedCallInterfaceProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -115,6 +118,14 @@ export function EnhancedCallInterface({
         color: "bg-gray-500",
       };
     }
+  };
+
+  const canShareScreen = (): boolean => {
+    const isMobile = /Mobi|Android|iPhone|iPod/i.test(navigator.userAgent);
+    const supportDisplayMedia =
+      !!navigator.mediaDevices && !!navigator.mediaDevices.getDisplayMedia;
+
+    return !isMobile && supportDisplayMedia;
   };
 
   const status = getConnectionStatus();
@@ -237,7 +248,7 @@ export function EnhancedCallInterface({
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover md:object-contain bg-black"
+                  className="absolute inset-0 w-full h-full object-cover md:object-contain bg-black -scale-x-100"
                   onLoadedMetadata={() => console.log("📺 Remote video loaded")}
                   onError={(e) => console.error("❌ Remote video error:", e)}
                 />
@@ -248,7 +259,7 @@ export function EnhancedCallInterface({
                     autoPlay
                     playsInline
                     muted
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover -scale-x-100"
                     onLoadedMetadata={() =>
                       console.log("📺 Local video loaded")
                     }
@@ -354,6 +365,26 @@ export function EnhancedCallInterface({
                   <VolumeX className="h-6 w-6" />
                 )}
               </Button>
+
+              {isVideo && (
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  className="rounded-full h-14 w-14"
+                  onClick={() => {
+                    if (canShareScreen()) {
+                      shareScreen();
+                    } else {
+                      toast({
+                        title: "Error",
+                        description: "Share Screen (Not supported on mobile)",
+                      });
+                    }
+                  }}
+                >
+                  <Monitor className="h-6 w-6" />
+                </Button>
+              )}
             </div>
           </div>
         </div>

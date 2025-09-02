@@ -64,6 +64,7 @@ export default function DashboardPage() {
     handleCallEnd,
     toggleMute,
     toggleVideo,
+    toggleShareScreen,
   } = useWebRTCEnhanced({
     currentUser,
     onIncomingCall: async (callData: CallData | null) => {
@@ -389,6 +390,7 @@ export default function DashboardPage() {
             isVideo={isVideo}
             isMuted={isMuted}
             isVideoEnabled={isVideoEnabled}
+            shareScreen={toggleShareScreen}
             contact={currentCaller || selectedContact!}
             localStream={localStream}
             remoteStream={remoteStream}

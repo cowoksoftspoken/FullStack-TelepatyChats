@@ -242,6 +242,13 @@ export function useWebRTCEnhanced({
     }
   }, []);
 
+  const toggleShareScreen = useCallback(async () => {
+    const manager = getWebRTCManager();
+    if (manager) {
+      await manager.shareScreen();
+    }
+  }, []);
+
   return {
     isCallActive,
     isConnected,
@@ -249,6 +256,7 @@ export function useWebRTCEnhanced({
     iceConnectionState,
     isVideo,
     isMuted,
+    toggleShareScreen,
     isVideoEnabled,
     currentCallId,
     initiateCall,
