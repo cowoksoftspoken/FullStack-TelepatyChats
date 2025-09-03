@@ -248,9 +248,9 @@ export function EnhancedCallInterface({
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
-                  className="absolute inset-0 w-full h-full object-cover md:object-contain bg-black -scale-x-100"
-                  onLoadedMetadata={() => console.log("📺 Remote video loaded")}
-                  onError={(e) => console.error("❌ Remote video error:", e)}
+                  className="absolute inset-0 w-full h-full object-cover md:object-contain bg-black"
+                  onLoadedMetadata={() => console.log("Remote video loaded")}
+                  onError={(e) => console.error("Remote video error:", e)}
                 />
 
                 <Card className="absolute top-4 right-4 w-48 h-36 overflow-hidden">
@@ -260,9 +260,7 @@ export function EnhancedCallInterface({
                     playsInline
                     muted
                     className="w-full h-full object-cover -scale-x-100"
-                    onLoadedMetadata={() =>
-                      console.log("📺 Local video loaded")
-                    }
+                    onLoadedMetadata={() => console.log("Local video loaded")}
                     onError={(e) => console.error("Local video error:", e)}
                   />
                   {!isVideoEnabled && (
@@ -306,7 +304,7 @@ export function EnhancedCallInterface({
                       if (el) el.srcObject = remoteStream;
                     }}
                     muted={!isRemoteAudioEnabled}
-                    onError={(e) => console.error("❌ Remote audio error:", e)}
+                    onError={(e) => console.error("Remote audio error:", e)}
                     className="hidden"
                   ></audio>
                 )}
