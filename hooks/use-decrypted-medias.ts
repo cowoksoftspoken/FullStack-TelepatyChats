@@ -3,14 +3,10 @@
 import { useState, useEffect, useRef } from "react";
 import {
   base64ToArrayBuffer,
-  decryptedBuffer,
   decryptKey,
   importPrivateKey,
-  importPublicKey,
 } from "@/utils/encryption";
 import { get } from "idb-keyval";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 
 export function useDecryptedMedia() {
   const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>(
@@ -85,29 +81,23 @@ export function useDecryptedMedia() {
         }
 
         const privateKey = await importPrivateKey(privKeyString);
-        const userDocKeys = await getDoc(doc(db, "userKeys", currentUserId));
-        if (!userDocKeys.exists()) {
-          console.error("Public key not found in Firestore");
-          return fileURL;
-        }
-        const importedPublicKey = await importPublicKey(
-          userDocKeys?.data()?.publicKey
-        );
-        const messageKey = await decryptKey(
-          keyData,
-          privateKey,
-          importedPublicKey
-        );
+
+        const messageKey = await decryptKey(keyData, privateKey);
+
+        const ivArrayBuffer = base64ToArrayBuffer(iv);
 
         const encryptedBuffer = await encryptedBlob.arrayBuffer();
 
-        const decryptedBuffered = await decryptedBuffer(
-          encryptedBuffer,
+        const decryptedBuffer = await window.crypto.subtle.decrypt(
+          {
+            name: "AES-GCM",
+            iv: new Uint8Array(ivArrayBuffer),
+          },
           messageKey,
-          fileIv
+          encryptedBuffer
         );
 
-        const decryptedBlob = new Blob([decryptedBuffered.slice(0)], {
+        const decryptedBlob = new Blob([decryptedBuffer], {
           type: fileType || "application/octet-stream",
         });
 

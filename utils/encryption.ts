@@ -1,196 +1,190 @@
-export async function generateKeyPair(): Promise<CryptoKeyPair> {
-  return window.crypto.subtle.generateKey(
-    {
-      name: "RSA-OAEP",
-      modulusLength: 2048,
-      publicExponent: new Uint8Array([1, 0, 1]),
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt", "decrypt"]
+import sodium from "libsodium-wrappers";
+
+export async function generateKeyPair() {
+  await sodium.ready;
+  const kp = sodium.crypto_box_keypair();
+  return {
+    publicKey: kp.publicKey,
+    privateKey: kp.privateKey,
+  };
+}
+
+export async function generateMessageKey() {
+  await sodium.ready;
+  return sodium.randombytes_buf(
+    sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES
   );
 }
 
-export async function exportPublicKey(publicKey: CryptoKey): Promise<string> {
-  const exported = await window.crypto.subtle.exportKey("spki", publicKey);
-  return arrayBufferToBase64(exported);
+export async function exportPublicKey(publicKey: Uint8Array): Promise<string> {
+  await sodium.ready;
+  return sodium.to_base64(publicKey, sodium.base64_variants.URLSAFE_NO_PADDING);
 }
 
-export async function exportPrivateKey(privateKey: CryptoKey): Promise<string> {
-  const exported = await window.crypto.subtle.exportKey("pkcs8", privateKey);
-  return arrayBufferToBase64(exported);
+export async function exportPrivateKey(
+  privateKey: Uint8Array
+): Promise<string> {
+  await sodium.ready;
+  return sodium.to_base64(
+    privateKey,
+    sodium.base64_variants.URLSAFE_NO_PADDING
+  );
 }
 
 export async function importPublicKey(
-  publicKeyString: string
-): Promise<CryptoKey> {
-  const keyData = base64ToArrayBuffer(publicKeyString);
-  return window.crypto.subtle.importKey(
-    "spki",
-    keyData,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256",
-    },
-    true,
-    ["encrypt"]
+  pubKeyString: string
+): Promise<Uint8Array> {
+  await sodium.ready;
+  return sodium.from_base64(
+    pubKeyString,
+    sodium.base64_variants.URLSAFE_NO_PADDING
   );
 }
 
 export async function importPrivateKey(
-  privateKeyString: string
-): Promise<CryptoKey> {
-  const keyData = base64ToArrayBuffer(privateKeyString);
-  return window.crypto.subtle.importKey(
-    "pkcs8",
-    keyData,
-    {
-      name: "RSA-OAEP",
-      hash: "SHA-256",
-    },
-    true,
-    ["decrypt"]
+  privKeyString: string
+): Promise<Uint8Array> {
+  await sodium.ready;
+  return sodium.from_base64(
+    privKeyString,
+    sodium.base64_variants.URLSAFE_NO_PADDING
   );
 }
 
-export async function generateMessageKey(): Promise<CryptoKey> {
-  return window.crypto.subtle.generateKey(
-    {
-      name: "AES-GCM",
-      length: 256,
-    },
-    true,
-    ["encrypt", "decrypt"]
-  );
+export async function arrayBufferToBase64(buffer: ArrayBuffer) {
+  await sodium.ready;
+  const bytes = new Uint8Array(buffer);
+  return sodium.to_base64(bytes, sodium.base64_variants.URLSAFE_NO_PADDING);
 }
 
-export async function exportMessageKey(key: CryptoKey): Promise<string> {
-  const exported = await window.crypto.subtle.exportKey("raw", key);
-  return arrayBufferToBase64(exported);
+export async function base64ToArrayBuffer(base64: string) {
+  await sodium.ready;
+  const bytes = sodium.from_base64(
+    base64,
+    sodium.base64_variants.URLSAFE_NO_PADDING
+  );
+  return bytes.buffer;
 }
 
-export async function importMessageKey(keyString: string): Promise<CryptoKey> {
-  const keyData = base64ToArrayBuffer(keyString);
-  return window.crypto.subtle.importKey(
-    "raw",
-    keyData,
-    {
-      name: "AES-GCM",
-      length: 256,
-    },
-    false,
-    ["encrypt", "decrypt"]
+export async function encryptedBuffer(
+  buffer: ArrayBuffer,
+  messageKey: Uint8Array
+) {
+  await sodium.ready;
+
+  const key =
+    messageKey ||
+    sodium.randombytes_buf(sodium.crypto_aead_chacha20poly1305_ietf_KEYBYTES);
+  const nonce = sodium.randombytes_buf(
+    sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES
   );
+
+  const encryptedBuffer = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    new Uint8Array(buffer),
+    null,
+    null,
+    nonce,
+    key
+  );
+  const nonceBase64 = await arrayBufferToBase64(nonce.buffer as ArrayBuffer);
+
+  return {
+    encryptedBuffer,
+    nonceBase64,
+    messageKey: key,
+  };
+}
+
+export async function decryptedBuffer(
+  encryptedBuffer: ArrayBuffer,
+  messageKey: Uint8Array,
+  iv: string
+) {
+  await sodium.ready;
+  const nonce = await base64ToArrayBuffer(iv);
+  const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+    null,
+    new Uint8Array(encryptedBuffer),
+    null,
+    new Uint8Array(nonce),
+    messageKey
+  );
+
+  return decrypted;
 }
 
 export async function encryptMessage(
   message: string,
-  key: CryptoKey
-): Promise<{ ciphertext: string; iv: string }> {
+  key: Uint8Array
+): Promise<{ cipherText: string; iv: string }> {
+  await sodium.ready;
   const encoder = new TextEncoder();
   const data = encoder.encode(message);
 
-  const iv = window.crypto.getRandomValues(new Uint8Array(12));
-
-  const encrypted = await window.crypto.subtle.encrypt(
-    {
-      name: "AES-GCM",
-      iv,
-    },
-    key,
-    data
+  const nonce = sodium.randombytes_buf(
+    sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES
   );
-
+  const encrypted = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+    data,
+    null,
+    null,
+    nonce,
+    key
+  );
   return {
-    ciphertext: arrayBufferToBase64(encrypted),
-    iv: arrayBufferToBase64(iv.buffer),
+    cipherText: sodium.to_base64(
+      encrypted,
+      sodium.base64_variants.URLSAFE_NO_PADDING
+    ),
+    iv: sodium.to_base64(nonce, sodium.base64_variants.URLSAFE_NO_PADDING),
   };
 }
 
 export async function decryptMessage(
-  ciphertext: string,
+  cipherText: string,
   iv: string,
-  key: CryptoKey
-): Promise<string> {
+  key: Uint8Array
+) {
+  await sodium.ready;
   const decoder = new TextDecoder();
-  const encryptedData = base64ToArrayBuffer(ciphertext);
-  const ivData = base64ToArrayBuffer(iv);
+  const encryptedData = sodium.from_base64(
+    cipherText,
+    sodium.base64_variants.URLSAFE_NO_PADDING
+  );
+  const nonce = sodium.from_base64(
+    iv,
+    sodium.base64_variants.URLSAFE_NO_PADDING
+  );
 
-  const decrypted = await window.crypto.subtle.decrypt(
-    {
-      name: "AES-GCM",
-      iv: ivData,
-    },
-    key,
-    encryptedData
+  const decrypted = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+    null,
+    encryptedData,
+    null,
+    nonce,
+    key
   );
 
   return decoder.decode(decrypted);
 }
 
 export async function encryptKey(
-  messageKey: CryptoKey,
-  publicKey: CryptoKey
-): Promise<string> {
-  const exportedKey = await window.crypto.subtle.exportKey("raw", messageKey);
-  const encrypted = await window.crypto.subtle.encrypt(
-    {
-      name: "RSA-OAEP",
-    },
-    publicKey,
-    exportedKey
-  );
-
-  return arrayBufferToBase64(encrypted);
+  messageKey: Uint8Array,
+  publicKey: Uint8Array
+) {
+  await sodium.ready;
+  const encrypted = sodium.crypto_box_seal(messageKey, publicKey);
+  return sodium.to_base64(encrypted, sodium.base64_variants.URLSAFE_NO_PADDING);
 }
 
 export async function decryptKey(
   encryptedKey: string,
-  privateKey: CryptoKey
-): Promise<CryptoKey> {
-  const encryptedKeyData = base64ToArrayBuffer(encryptedKey);
-  const decrypted = await window.crypto.subtle.decrypt(
-    {
-      name: "RSA-OAEP",
-    },
-    privateKey,
-    encryptedKeyData
+  privateKey: Uint8Array,
+  publicKey: Uint8Array
+) {
+  await sodium.ready;
+  const encryptedData = sodium.from_base64(
+    encryptedKey,
+    sodium.base64_variants.URLSAFE_NO_PADDING
   );
-
-  return window.crypto.subtle.importKey(
-    "raw",
-    decrypted,
-    {
-      name: "AES-GCM",
-      length: 256,
-    },
-    false,
-    ["encrypt", "decrypt"]
-  );
-}
-
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window
-    .btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-export function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  base64 = base64.replace(/-/g, "+").replace(/_/g, "/");
-  while (base64.length % 4) {
-    base64 += "=";
-  }
-  const binaryString = window.atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes.buffer;
+  return sodium.crypto_box_seal_open(encryptedData, publicKey, privateKey);
 }

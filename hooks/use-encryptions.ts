@@ -14,18 +14,16 @@ import {
   decryptMessage,
   encryptKey,
   decryptKey,
-  arrayBufferToBase64,
-  encryptedBuffer,
 } from "@/utils/encryption";
 import { set, get } from "idb-keyval";
 
 export function useEncryption(currentUser: any) {
   const { db } = useFirebase();
-  const [publicKey, setPublicKey] = useState<Uint8Array | null>(null);
-  const [privateKey, setPrivateKey] = useState<Uint8Array | null>(null);
+  const [publicKey, setPublicKey] = useState<CryptoKey | null>(null);
+  const [privateKey, setPrivateKey] = useState<CryptoKey | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [contactPublicKeys, setContactPublicKeys] = useState<
-    Record<string, Uint8Array>
+    Record<string, CryptoKey>
   >({});
 
   useEffect(() => {
@@ -76,7 +74,7 @@ export function useEncryption(currentUser: any) {
 
   const fetchContactPublicKey = async (
     contactId: string
-  ): Promise<Uint8Array | null> => {
+  ): Promise<CryptoKey | null> => {
     if (contactPublicKeys[contactId]) {
       return contactPublicKeys[contactId];
     }
@@ -120,7 +118,7 @@ export function useEncryption(currentUser: any) {
 
       const messageKey = await generateMessageKey();
 
-      const { cipherText, iv } = await encryptMessage(message, messageKey);
+      const { ciphertext, iv } = await encryptMessage(message, messageKey);
 
       const encryptedKeyForContact = await encryptKey(
         messageKey,
@@ -131,7 +129,7 @@ export function useEncryption(currentUser: any) {
 
       return {
         isEncrypted: true,
-        encryptedText: cipherText,
+        encryptedText: ciphertext,
         encryptedKeyForContact,
         encryptedKeyForSelf,
         iv,
@@ -163,7 +161,7 @@ export function useEncryption(currentUser: any) {
         ? encryptedKeyForSelf || encryptedKey
         : encryptedKey;
 
-      const messageKey = await decryptKey(keyToDecrypt, privateKey, publicKey!);
+      const messageKey = await decryptKey(keyToDecrypt, privateKey);
 
       const decryptedMessage = await decryptMessage(
         encryptedText,
@@ -209,14 +207,21 @@ export function useEncryption(currentUser: any) {
 
       const messageKey = await generateMessageKey();
 
-      const encryptedBufferr = await encryptedBuffer(fileBuffer, messageKey);
+      const iv = window.crypto.getRandomValues(new Uint8Array(12));
+      const ivString = arrayBufferToBase64(iv.buffer);
 
-      const encryptedBlob = new Blob(
-        [encryptedBufferr.encryptedBuffer.slice(0)],
+      const encryptedBuffer = await window.crypto.subtle.encrypt(
         {
-          type: "application/octet-stream",
-        }
+          name: "AES-GCM",
+          iv,
+        },
+        messageKey,
+        fileBuffer
       );
+
+      const encryptedBlob = new Blob([encryptedBuffer], {
+        type: "application/octet-stream",
+      });
 
       const encryptedKeyForContact = await encryptKey(
         messageKey,
@@ -229,7 +234,7 @@ export function useEncryption(currentUser: any) {
         encryptedFile: encryptedBlob,
         encryptedKey: encryptedKeyForContact,
         encryptedKeyForSelf: encryptedKeyForSelf,
-        iv: encryptedBufferr.nonceBase64,
+        iv: ivString,
         isEncrypted: true,
       };
     } catch (error) {
@@ -242,6 +247,15 @@ export function useEncryption(currentUser: any) {
         isEncrypted: false,
       };
     }
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
   };
 
   return {

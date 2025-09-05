@@ -159,11 +159,11 @@ export function AudioMessage({
           className={`w-1 rounded-full ${
             isActive
               ? isDark
-                ? "bg-primary-foreground"
-                : "bg-primary"
+                ? "bg-primary"
+                : "bg-primary-foreground"
               : isDark
-              ? "bg-primary-foreground/30"
-              : "bg-primary/30"
+              ? "bg-primary/30"
+              : "bg-primary-foreground/30"
           }`}
           style={{ height: `${height}px`, transition: "height 0.1s linear" }}
         />
@@ -174,7 +174,7 @@ export function AudioMessage({
   return (
     <div
       className={`rounded-lg ${
-        isDark ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20"
+        isDark ? "bg-muted-foreground/20" : "bg-primary text-primary-foreground"
       } ${className} ${isSmallScreen ? "px-2 py-2" : "p-3"}`}
     >
       <audio ref={audioRef} src={src} preload="metadata" />
@@ -190,8 +190,8 @@ export function AudioMessage({
             isSmallScreen ? "h-8 w-8" : "h-10 w-10"
           } rounded-full flex items-center justify-center ${
             isDark
-              ? "bg-primary-foreground/20 text-primary-foreground"
-              : "bg-primary/10 text-primary"
+              ? "bg-primary/10 text-primary"
+              : "bg-primary-foreground/20 text-primary-foreground"
           }`}
         >
           {isPlaying ? (

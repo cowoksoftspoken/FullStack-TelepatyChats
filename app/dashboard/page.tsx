@@ -25,6 +25,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { ChatProvider } from "@/components/chat-context";
 import { NotificationProvider } from "@/components/notification-provider";
 import { toast } from "sonner";
+import SystemNotif from "@/components/system-notif";
 
 interface CallData {
   callId: string;
@@ -47,6 +48,7 @@ export default function DashboardPage() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [currentCaller, setCurrentCaller] = useState<User | null>(null);
   const { theme } = useTheme();
+  const [open, setOpen] = useState(false);
 
   const router = useRouter();
 
@@ -140,6 +142,31 @@ export default function DashboardPage() {
       if (unsubscribeUser) unsubscribeUser();
     };
   }, [currentUser, db, incomingCall?.callData.callId]);
+
+  useEffect(() => {
+    const isHidden = localStorage.getItem("migration_notif_hidden") === "true";
+    if (!isHidden) {
+      setOpen(true);
+    }
+  }, []);
+
+  const handleRelogin = useCallback(async () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+
+      if ("indexedDB" in window) {
+        const dbs = await window.indexedDB.databases();
+        for (const db of dbs) {
+          if (db.name) window.indexedDB.deleteDatabase(db.name);
+        }
+      }
+
+      router.push("/login");
+    } catch (error) {
+      console.error("Error clearing data:", error);
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -409,6 +436,18 @@ export default function DashboardPage() {
           />
         )}
       </div>
+
+      <SystemNotif
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Pembaruan Sistem"
+        description="Kami melakukan upgrade enkripsi"
+        message="Kami telah melakukan update besar pada sistem keamanan. Semua public key lama telah dihapus. Silakan login ulang agar sistem dapat menghasilkan kunci baru."
+        type="error"
+        storageKey="migration_notif_hidden"
+        forceRelogin={true}
+        onRelogin={handleRelogin}
+      />
     </ChatProvider>
   );
 }

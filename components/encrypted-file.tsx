@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { FileText, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
 import {
-  base64ToArrayBuffer,
+  decryptedBuffer,
   decryptKey,
   importPrivateKey,
+  importPublicKey,
 } from "@/utils/encryption";
+import { doc, getDoc } from "firebase/firestore";
+import { get } from "idb-keyval";
+import { FileText } from "lucide-react";
+import { useState } from "react";
 
 interface EncryptedFileProps {
   messageId: string;
@@ -63,9 +67,7 @@ export function EncryptedFile({
           throw new Error("Missing encryption data");
         }
 
-        const ivArrayBuffer = base64ToArrayBuffer(iv);
-
-        const privKeyString = localStorage.getItem(
+        const privKeyString = await get(
           `encryption_private_key_${currentUserId}`
         );
 
@@ -74,19 +76,28 @@ export function EncryptedFile({
         }
 
         const privateKey = await importPrivateKey(privKeyString);
-        const messageKey = await decryptKey(keyData, privateKey);
-
-        const encryptedBuffer = await encryptedBlob.arrayBuffer();
-        const decryptedBuffer = await window.crypto.subtle.decrypt(
-          {
-            name: "AES-GCM",
-            iv: new Uint8Array(ivArrayBuffer),
-          },
-          messageKey,
-          encryptedBuffer
+        const userDocKeys = await getDoc(doc(db, "userKeys", currentUserId));
+        if (!userDocKeys.exists()) {
+          console.error("Public key not found in Firestore");
+          return fileURL;
+        }
+        const importedPublicKey = await importPublicKey(
+          userDocKeys?.data()?.publicKey
+        );
+        const messageKey = await decryptKey(
+          keyData,
+          privateKey,
+          importedPublicKey
         );
 
-        const decryptedBlob = new Blob([decryptedBuffer], {
+        const encryptedBuffer = await encryptedBlob.arrayBuffer();
+        const decryptedBuffered = await decryptedBuffer(
+          encryptedBuffer,
+          messageKey,
+          fileIv
+        );
+
+        const decryptedBlob = new Blob([decryptedBuffered.slice(0)], {
           type: fileType || "application/octet-stream",
         });
 
