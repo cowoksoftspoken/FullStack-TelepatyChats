@@ -15,6 +15,7 @@ import {
   encryptKey,
   decryptKey,
 } from "@/utils/encryption";
+import { set, get } from "idb-keyval";
 
 export function useEncryption(currentUser: any) {
   const { db } = useFirebase();
@@ -30,7 +31,7 @@ export function useEncryption(currentUser: any) {
 
     const initializeEncryption = async () => {
       try {
-        const localPrivateKey = localStorage.getItem(
+        const localPrivateKey = await get(
           `encryption_private_key_${currentUser.uid}`
         );
 
@@ -53,7 +54,7 @@ export function useEncryption(currentUser: any) {
             createdAt: new Date().toISOString(),
           });
 
-          localStorage.setItem(
+          await set(
             `encryption_private_key_${currentUser.uid}`,
             exportedPrivateKey
           );

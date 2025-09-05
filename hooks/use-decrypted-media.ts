@@ -6,6 +6,7 @@ import {
   decryptKey,
   importPrivateKey,
 } from "@/utils/encryption";
+import { get } from "idb-keyval";
 
 export function useDecryptedMedia() {
   const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>(
@@ -72,7 +73,7 @@ export function useDecryptedMedia() {
 
         const privKeyString =
           typeof window !== "undefined"
-            ? localStorage.getItem(`encryption_private_key_${currentUserId}`)
+            ? await get(`encryption_private_key_${currentUserId}`)
             : null;
         if (!privKeyString) {
           console.error("Private key not found in localStorage");

@@ -128,6 +128,9 @@ importers:
       framer-motion:
         specifier: ^12.8.0
         version: 12.8.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      idb-keyval:
+        specifier: ^6.2.2
+        version: 6.2.2
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -1672,6 +1675,9 @@ packages:
 
   http-parser-js@0.5.9:
     resolution: {integrity: sha512-n1XsPy3rXVxlqxVioEWdC+0+M+SQw0DpJynwtOPo1X+ZlvdzTLtDBIJJlDQTnwZIFJrZSzSGmIOUdP8tu+SgLw==}
+
+  idb-keyval@6.2.2:
+    resolution: {integrity: sha512-yjD9nARJ/jb1g+CvD0tlhUHOrJ9Sy0P8T9MF3YaLlHnSRpwPfpTX0XIvpmw3gAJUmEu3FiICLBDPXVwyEvrleg==}
 
   idb@7.1.1:
     resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
@@ -3866,6 +3872,8 @@ snapshots:
       function-bind: 1.1.2
 
   http-parser-js@0.5.9: {}
+
+  idb-keyval@6.2.2: {}
 
   idb@7.1.1: {}
 

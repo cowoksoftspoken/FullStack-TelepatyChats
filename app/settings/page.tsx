@@ -70,6 +70,7 @@ import { VerificationRequest } from "@/components/admin/verification-request";
 import normalizeName from "@/utils/normalizename";
 import { AvatarCropDialog } from "@/components/avatarcrop-dialog";
 import { User } from "@/types/user";
+import { get, set } from "idb-keyval";
 
 export default function SettingsPage() {
   const {
@@ -123,34 +124,21 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const localPrivateKey = localStorage.getItem(
-      `encryption_private_key_${currentUser.uid}`
-    );
-
-    if (localPrivateKey) {
-      setCurrentPrivateKey(localPrivateKey);
-    }
-
-    return () => {
-      if (currentPrivateKey) {
-        localStorage.setItem(
-          `encryption_private_key_${currentUser.uid}`,
-          currentPrivateKey
-        );
-      }
+    const checkLocalPrivKey = async () => {
+      const localPrivateKey = await get(
+        `encryption_private_key_${currentUser.uid}`
+      );
+      if (localPrivateKey) setCurrentPrivateKey(localPrivateKey);
     };
+
+    checkLocalPrivKey();
   }, [currentUser]);
 
-  const handleChangePrivateKey = () => {
+  const handleChangePrivateKey = async () => {
     const value = oldPrivateKey;
-    if (typeof window !== "undefined") {
-      localStorage.setItem(
-        `encryption_private_key_${currentUser.uid}`,
-        value as string
-      );
-      setCurrentPrivateKey(value);
-      setOldPrivateKey("");
-    }
+    await set(`encryption_private_key_${currentUser.uid}`, value as string);
+    setCurrentPrivateKey(value);
+    setOldPrivateKey("");
   };
 
   const handleSignOut = async () => {
@@ -191,53 +179,6 @@ export default function SettingsPage() {
       setDeleteLoading(false);
     }
   };
-
-  // const handleAvatarClick = () => {
-  //   fileInputRef.current?.click();
-  // };
-
-  // const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const file = e.target.files?.[0];
-  //   if (!file || !currentUser) return;
-
-  //   setAvatarUploading(true);
-
-  //   try {
-  //     const storageRef = ref(
-  //       storage,
-  //       `avatars/${currentUser.uid}/${Date.now()}_${file.name}`
-  //     );
-  //     await uploadBytes(storageRef, file);
-
-  //     const downloadURL = await getDownloadURL(storageRef);
-
-  //     await updateProfile(currentUser, {
-  //       photoURL: downloadURL,
-  //     });
-
-  //     await updateDoc(doc(db, "users", currentUser.uid), {
-  //       photoURL: downloadURL,
-  //     });
-
-  //     toast({
-  //       title: "Avatar updated",
-  //       description: "Your profile picture has been updated successfully.",
-  //     });
-  //   } catch (error) {
-  //     console.error("Error uploading avatar:", error);
-  //     toast({
-  //       variant: "destructive",
-  //       title: "Upload failed",
-  //       description: "Failed to update your profile picture. Please try again.",
-  //       action: <ToastAction altText="Try again">Try again</ToastAction>,
-  //     });
-  //   } finally {
-  //     setAvatarUploading(false);
-  //     if (fileInputRef.current) {
-  //       fileInputRef.current.value = "";
-  //     }
-  //   }
-  // };
 
   const handleUpdateName = async () => {
     if (!currentUser || !displayName.trim()) return;
