@@ -25,7 +25,9 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { ChatProvider } from "@/components/chat-context";
 import { NotificationProvider } from "@/components/notification-provider";
 import { toast } from "sonner";
-import SystemNotif from "@/components/system-notif";
+import { useSystemNotif } from "@/components/system-notif-context";
+import { auth } from "@/lib/firebase";
+import { get } from "idb-keyval";
 
 interface CallData {
   callId: string;
@@ -48,6 +50,7 @@ export default function DashboardPage() {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [currentCaller, setCurrentCaller] = useState<User | null>(null);
   const { theme } = useTheme();
+  const { showNotif } = useSystemNotif();
 
   const router = useRouter();
 
@@ -229,6 +232,37 @@ export default function DashboardPage() {
     });
 
     return () => unsubscribe();
+  }, [currentUser, db]);
+
+  useEffect(() => {
+    if (!currentUser || !db) return;
+
+    const checkKeys = async () => {
+      const localPrivateKey = await get(
+        `encryption_private_key_${currentUser.uid}`
+      );
+      const userDoc = await getDoc(doc(db, "userKeys", currentUser.uid));
+
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.publicKey && !localPrivateKey) {
+          const isHidden = localStorage.getItem("hide_system_notif");
+          if (isHidden === "true") {
+            return;
+          }
+          showNotif({
+            title: "Backup Your Private Key",
+            description: "Private key is missing on this device",
+            message:
+              "Your private key was not found on this device. Please back it up now to keep your encrypted messages accessible. If you don’t back it up, you could lose access to your secure chats.",
+            type: "error",
+            forceRelogin: false,
+          });
+        }
+      }
+    };
+
+    checkKeys();
   }, [currentUser, db]);
 
   useEffect(() => {

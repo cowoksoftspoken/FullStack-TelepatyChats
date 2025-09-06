@@ -71,6 +71,8 @@ import normalizeName from "@/utils/normalizename";
 import { AvatarCropDialog } from "@/components/avatarcrop-dialog";
 import { User } from "@/types/user";
 import { get, set } from "idb-keyval";
+import BackupKeyQR from "@/components/backup-qr";
+import { QRScannerModal } from "@/components/qr-reader-modal";
 
 export default function SettingsPage() {
   const {
@@ -101,6 +103,7 @@ export default function SettingsPage() {
   const [showCrop, setShowCrop] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [oldPrivateKey, setOldPrivateKey] = useState<string | null>(null);
+  const [qrReaderOpen, setIsQrReaderOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -139,6 +142,30 @@ export default function SettingsPage() {
     await set(`encryption_private_key_${currentUser.uid}`, value as string);
     setCurrentPrivateKey(value);
     setOldPrivateKey("");
+  };
+
+  const handleResult = async (data: any) => {
+    try {
+      const parser = JSON.parse(data);
+      if (parser.type === "telepaty-key-migration" && parser.privateKey) {
+        await set(
+          `encryption_private_key_${currentUser.uid}`,
+          parser.privateKey
+        );
+        console.warn("Key imported Successfully.");
+        toast({
+          title: "Success",
+          description: "Key imported Successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Invalid QR Format!",
+        });
+      }
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const handleSignOut = async () => {
@@ -622,6 +649,12 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
 
+        <QRScannerModal
+          open={qrReaderOpen}
+          onClose={() => setIsQrReaderOpen(false)}
+          onResult={handleResult}
+        />
+
         {userData?.isAdmin && (
           <Card>
             <CardHeader>
@@ -672,6 +705,9 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <BackupKeyQR privateKey={currentPrivateKey as string} />
+            </div>
             <div className="flex flex-col space-y-2">
               <Label
                 htmlFor="current-encrypt-key"
@@ -712,7 +748,6 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="replace-key">Paste Old Private Key</Label>
               <div className="flex items-center gap-3">
@@ -732,6 +767,13 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setIsQrReaderOpen(true)}
+            >
+              Open QR Scanner
+            </Button>
           </CardContent>
         </Card>
 

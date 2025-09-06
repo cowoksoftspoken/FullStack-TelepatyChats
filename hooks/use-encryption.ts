@@ -39,13 +39,22 @@ export function useEncryption(currentUser: any) {
 
         const userKeysDoc = await getDoc(doc(db, "userKeys", currentUser.uid));
 
-        if (userKeysDoc.exists() && localPrivateKey) {
+        if (userKeysDoc.exists()) {
           const data = userKeysDoc.data();
-          const importedPrivateKey = await importPrivateKey(localPrivateKey);
-          const importedPublicKey = await importPublicKey(data.publicKey);
 
-          setPrivateKey(importedPrivateKey);
-          setPublicKey(importedPublicKey);
+          if (localPrivateKey) {
+            const importedPrivateKey = await importPrivateKey(localPrivateKey);
+            const importedPublicKey = await importPublicKey(data.publicKey);
+
+            setPrivateKey(importedPrivateKey);
+            setPublicKey(importedPublicKey);
+          } else {
+            const importedPublicKey = await importPublicKey(data.publicKey);
+            setPublicKey(importedPublicKey);
+            console.warn(
+              "[Encryption] The private key was not found on this device. Please import it from your old device."
+            );
+          }
         } else {
           const keyPair = await generateKeyPair();
           const exportedPublicKey = await exportPublicKey(keyPair.publicKey);

@@ -50,9 +50,9 @@ export default function SystemNotif({
   };
 
   const handleClose = () => {
-    if (dontShowAgain && storageKey) {
+    if (localStorage && storageKey && dontShowAgain)
       localStorage.setItem(storageKey, "true");
-    }
+
     onClose();
   };
 
@@ -86,7 +86,7 @@ export default function SystemNotif({
               htmlFor="dont-show-again"
               className="text-sm font-medium text-gray-600 cursor-pointer dark:text-white"
             >
-              Jangan tampilkan lagi
+              Don't Show Again
             </label>
           </div>
         </div>
@@ -94,7 +94,7 @@ export default function SystemNotif({
         <DialogFooter className="flex justify-between gap-2 border-t px-4 py-3">
           {!forceRelogin && (
             <Button variant="outline" onClick={handleClose}>
-              Tutup
+              Close
             </Button>
           )}
           {forceRelogin && (
@@ -102,7 +102,7 @@ export default function SystemNotif({
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={onRelogin}
             >
-              Login Ulang
+              Relogin
             </Button>
           )}
         </DialogFooter>
