@@ -14,9 +14,6 @@ export const metadata: Metadata = {
   title: "Telepaty - Real-time messaging app",
   description:
     "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     title: "Telepaty - Real-time messaging app",
     description:
@@ -47,7 +44,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/dark_icon/favicon.ico", type: "image/x-icon" },
+      { url: "/favicon_dark.png", type: "image/x-icon" },
       {
         url: "/dark_icon/favicon-16x16.png",
         sizes: "16x16",
