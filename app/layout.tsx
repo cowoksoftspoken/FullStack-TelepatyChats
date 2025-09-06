@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: "Telepaty - Real-time messaging app",
     description:
       "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    url: "https://telepathy.vercel.app",
+    url: "https://telepaty.vercel.app",
     siteName: "Telepaty",
     images: [
       {
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   other: {
-    releaseDate: "2024-7-23",
+    releaseDate: "2024-07-23",
     author: "Inggrit Setya Budi",
     version: "2.15.8",
   },
@@ -44,31 +44,56 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon_dark.png", type: "image/x-icon" },
+      {
+        url: "/light_icon/favicon-16x16.png",
+        type: "image/png",
+        sizes: "16x16",
+      },
+      {
+        url: "/light_icon/favicon-32x32.png",
+        type: "image/png",
+        sizes: "32x32",
+      },
+      {
+        url: "/light_icon/android-chrome-192x192.png",
+        type: "image/png",
+        sizes: "192x192",
+      },
+      {
+        url: "/light_icon/android-chrome-512x512.png",
+        type: "image/png",
+        sizes: "512x512",
+      },
+      {
+        url: "/light_icon/apple-touch-icon.png",
+        type: "image/png",
+        sizes: "180x180",
+      },
+
       {
         url: "/dark_icon/favicon-16x16.png",
-        sizes: "16x16",
         type: "image/png",
+        sizes: "16x16",
       },
       {
         url: "/dark_icon/favicon-32x32.png",
-        sizes: "32x32",
         type: "image/png",
+        sizes: "32x32",
       },
       {
         url: "/dark_icon/android-chrome-192x192.png",
-        sizes: "192x192",
         type: "image/png",
+        sizes: "192x192",
       },
       {
         url: "/dark_icon/android-chrome-512x512.png",
-        sizes: "512x512",
         type: "image/png",
+        sizes: "512x512",
       },
       {
         url: "/dark_icon/apple-touch-icon.png",
-        sizes: "180x180",
         type: "image/png",
+        sizes: "180x180",
       },
     ],
     shortcut: "/light_icon/favicon.ico",
@@ -95,13 +120,37 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="/favicon_light.jpg"
+          href="/light_icon/favicon-16x16.png"
           media="(prefers-color-scheme: light)"
+          type="image/png"
+          sizes="16x16"
         />
         <link
           rel="icon"
-          href="/favicon_dark.jpg"
+          href="/light_icon/favicon-32x32.png"
+          media="(prefers-color-scheme: light)"
+          type="image/png"
+          sizes="32x32"
+        />
+        <link
+          rel="icon"
+          href="/dark_icon/favicon-16x16.png"
           media="(prefers-color-scheme: dark)"
+          type="image/png"
+          sizes="16x16"
+        />
+        <link
+          rel="icon"
+          href="/dark_icon/favicon-32x32.png"
+          media="(prefers-color-scheme: dark)"
+          type="image/png"
+          sizes="32x32"
+        />
+
+        <link
+          rel="shortcut icon"
+          href="/light_icon/favicon.ico"
+          type="image/x-icon"
         />
         <script
           type="application/ld+json"
@@ -116,7 +165,7 @@ export default function RootLayout({
                 "@type": "Person",
                 name: metadata.other?.author ?? "Telepaty Team",
               },
-              releaseDate: metadata.other?.releaseDate ?? "2024-7-23",
+              releaseDate: metadata.other?.releaseDate ?? "2024-07-23",
               version: metadata.other?.version ?? "2.15.8",
             }),
           }}

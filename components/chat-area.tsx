@@ -1355,6 +1355,8 @@ export function ChatArea({
                 isBlocked={isBlocked || isUserBlockedByContact}
                 contact={contact}
                 onlineStatus={isOnline}
+                isAdmin={contact.isAdmin}
+                isVerified={contact.isVerified}
                 contactIsTyping={contactIsTyping}
               />
             </div>

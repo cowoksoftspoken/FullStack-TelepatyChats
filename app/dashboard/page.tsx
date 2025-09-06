@@ -215,6 +215,8 @@ export default function DashboardPage() {
     };
   }, [currentUser, db]);
 
+  document.title = `${currentUser.displayName}'s Session - TelepatyChats`;
+
   useEffect(() => {
     if (!currentUser) return;
 

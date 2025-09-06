@@ -1,4 +1,3 @@
-import { on } from "events";
 import React from "react";
 
 type Timestamp = {
@@ -16,6 +15,8 @@ type Props = {
   contact: Contact;
   onlineStatus?: boolean;
   contactIsTyping: boolean;
+  isAdmin?: boolean;
+  isVerified?: boolean;
 };
 
 function formatLastSeen(timestamp?: Timestamp): string {
@@ -59,6 +60,8 @@ const ContactStatus: React.FC<Props> = ({
   contact,
   onlineStatus,
   contactIsTyping,
+  isAdmin,
+  isVerified,
 }) => {
   if (isBlocked) {
     return <span>You cannot interact with this user</span>;
@@ -70,6 +73,14 @@ const ContactStatus: React.FC<Props> = ({
 
   if (onlineStatus) {
     return <span>Online</span>;
+  }
+
+  if (isVerified && isAdmin && !onlineStatus) {
+    return <span>Developer Telepaty</span>;
+  }
+
+  if (isVerified && !onlineStatus) {
+    return <span>Verified Account</span>;
   }
 
   return <span>{formatLastSeen(contact.lastSeen)}</span>;

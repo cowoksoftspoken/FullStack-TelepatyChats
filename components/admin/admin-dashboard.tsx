@@ -18,6 +18,7 @@ import {
   Users,
   MessageSquare,
   ArrowLeft,
+  Crown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -47,29 +48,6 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("verification");
 
-  // Fetch user details from Firestore
-  // useEffect(() => {
-  //   const fetchUserData = async () => {
-  //     if (!currentUser?.uid) return;
-
-  //     try {
-  //       const userRef = doc(db, "users", currentUser.uid);
-  //       const userSnap = await getDoc(userRef);
-
-  //       if (userSnap.exists()) {
-  //         setUserData(userSnap.data() as UserType);
-  //       } else {
-  //         console.warn("User data not found in Firestore.");
-  //       }
-  //     } catch (error) {
-  //       console.error("Error fetching user data:", error);
-  //     }
-  //   };
-
-  //   fetchUserData();
-  // }, [currentUser, db]);
-
-  // Fetch verification requests and users only after userData is available
   useEffect(() => {
     if (!userData?.isAdmin) return;
 
@@ -351,7 +329,13 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
                   <span className="font-medium">{user.displayName}</span>
                 </div>
                 <div className="flex items-center">{user.email}</div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
+                  {user?.isAdmin && (
+                    <span className="flex items-center gap-1 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full">
+                      <Crown className="w-3 h-3" />
+                      Developer
+                    </span>
+                  )}
                   {user.isVerified ? (
                     <span className="flex items-center gap-1 text-green-600 dark:text-green-500">
                       <CheckCircle className="h-4 w-4" />
