@@ -21,10 +21,9 @@ import {
   updateDoc,
   getDoc,
   DocumentData,
-  onSnapshot,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
+import { validatePrivateKey } from "@/utils/encryption";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -102,8 +101,8 @@ export default function SettingsPage() {
   const [localPhotoURL, setLocalPhotoURL] = useState(currentUser?.photoURL);
   const [showCrop, setShowCrop] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [oldPrivateKey, setOldPrivateKey] = useState<string | null>(null);
   const [qrReaderOpen, setIsQrReaderOpen] = useState<boolean>(false);
+  const inputValReference = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -138,10 +137,18 @@ export default function SettingsPage() {
   }, [currentUser]);
 
   const handleChangePrivateKey = async () => {
-    const value = oldPrivateKey;
+    const value = inputValReference?.current?.value;
+    const isValidPrivateKey = await validatePrivateKey(value as string);
+    if (!isValidPrivateKey) {
+      toast({
+        title: "Error",
+        description: "Invalid privateKey",
+      });
+      return;
+    }
     await set(`encryption_private_key_${currentUser.uid}`, value as string);
-    setCurrentPrivateKey(value);
-    setOldPrivateKey("");
+    setCurrentPrivateKey(value as string);
+    inputValReference.current!.value = "";
   };
 
   const handleResult = async (data: any) => {
@@ -753,16 +760,11 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3">
                 <Input
                   id="replace-key"
-                  placeholder="Paste your old private key here..."
-                  value={oldPrivateKey ?? ""}
-                  onChange={(e) => setOldPrivateKey(e.target.value)}
+                  placeholder="Paste PrivateKey here..."
+                  ref={inputValReference}
                   className="w-full"
                 />
-                <Button
-                  variant="outline"
-                  onClick={handleChangePrivateKey}
-                  disabled={!oldPrivateKey}
-                >
+                <Button variant="outline" onClick={handleChangePrivateKey}>
                   Replace
                 </Button>
               </div>

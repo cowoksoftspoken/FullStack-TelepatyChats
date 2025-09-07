@@ -1,4 +1,4 @@
-import sodium from "libsodium-wrappers";
+import sodium, { base64_variants } from "libsodium-wrappers";
 
 export async function generateKeyPair() {
   await sodium.ready;
@@ -7,6 +7,24 @@ export async function generateKeyPair() {
     publicKey: kp.publicKey,
     privateKey: kp.privateKey,
   };
+}
+
+export async function validatePrivateKey(privateKey: string){
+  await sodium.ready
+  try {
+    const keyBytes = sodium.from_base64(privateKey, sodium.base64_variants.URLSAFE_NO_PADDING);
+    if(keyBytes.length !== sodium.crypto_box_SECRETKEYBYTES){
+      return false
+    }
+     const pubKey = sodium.crypto_scalarmult_base(keyBytes);
+    if (pubKey.length !== sodium.crypto_box_PUBLICKEYBYTES) {
+      return false;
+    }
+
+    return true
+  } catch (error) {
+    return false;
+  }
 }
 
 export async function generateMessageKey() {
