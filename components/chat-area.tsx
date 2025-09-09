@@ -111,7 +111,12 @@ export function ChatArea({
     decryptMessageFromContact,
     encryptFile,
   } = useEncryption(currentUser);
-
+  const [decryptedImageCache, setDecryptedImageCache] = useState<
+    Record<string, string>
+  >({});
+  const [captionDecryptedCache, setCaptionDecryptedCache] = useState<
+    Record<string, string>
+  >({});
   const [previewFile, setPreviewFile] = useState<{
     file: File;
     type: "image" | "video" | "file" | "audio";
@@ -1280,10 +1285,15 @@ export function ChatArea({
     if (messageIndex === -1) return;
 
     const message = imageMessages[messageIndex];
-
+    const decryptedCaption = getMessageText(message);
+    setCaptionDecryptedCache((prev) => ({
+      ...prev,
+      [message.id]: decryptedCaption,
+    }));
     setCurrentImageIndex(messageIndex);
+    const cachedBlobUrl = decryptedImageCache[message.id] || null;
     setCurrentViewingImage({
-      url: message.fileURL || "",
+      url: cachedBlobUrl || message.fileURL || "",
       messageId: message.id,
       fileName: message.fileName,
       isEncrypted: message.fileIsEncrypted || false,
@@ -1293,7 +1303,7 @@ export function ChatArea({
       fileType: message.fileType || "image/jpeg",
       isSender: message.senderId === currentUser.uid,
       currentUserId: currentUser.uid,
-      text: message.text || message.fileName || "",
+      text: decryptedCaption || message.text || message.fileName || "",
     });
     setIsImageViewerOpen(true);
   };
@@ -1512,6 +1522,7 @@ export function ChatArea({
                 currentUserId={currentUser.uid}
                 theme={theme}
                 onImageClick={(messageId) => handleOpenImageViewer(messageId)}
+                setDecryptedImageCache={setDecryptedImageCache}
               />
 
               <div className="flex items-center justify-between text-xs opacity-70 mt-1">
@@ -1796,6 +1807,8 @@ export function ChatArea({
           setCurrentIndex={setCurrentImageIndex}
           setCurrentViewingImage={setCurrentViewingImage}
           currentUser={currentUser}
+          decryptedImageCache={decryptedImageCache}
+          captionDecryptedCache={captionDecryptedCache}
         />
       )}
     </div>

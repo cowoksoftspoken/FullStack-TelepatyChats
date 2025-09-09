@@ -51,6 +51,8 @@ interface ImageViewerProps {
   ) => void;
   setCurrentIndex: (index: number) => void;
   currentUser: any;
+  decryptedImageCache?: Record<string, string>;
+  captionDecryptedCache?: Record<string, string>;
 }
 
 export function ImageViewer({
@@ -62,6 +64,8 @@ export function ImageViewer({
   setCurrentIndex,
   currentUser,
   setCurrentViewingImage,
+  decryptedImageCache,
+  captionDecryptedCache,
 }: ImageViewerProps) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -129,14 +133,15 @@ export function ImageViewer({
       const newIndex = currentIndex + 1;
       setCurrentIndex(newIndex);
       updateCurrentImage(newIndex);
-      console.log(images);
     }
   };
 
   const updateCurrentImage = (index: number) => {
     const newImage = images[index];
+    const cachedBlob = decryptedImageCache?.[newImage.id];
+    const cachedCaption = captionDecryptedCache?.[newImage.id];
     setCurrentViewingImage({
-      url: newImage.fileURL || "",
+      url: cachedBlob || newImage.fileURL || "",
       messageId: newImage.id,
       fileName: newImage.fileName,
       isEncrypted: newImage.fileIsEncrypted || false,
@@ -146,7 +151,7 @@ export function ImageViewer({
       fileType: newImage.fileType || "image/jpeg",
       isSender: newImage.senderId === currentUser.uid,
       currentUserId: currentUser.uid,
-      text: newImage.text || newImage.fileName || "",
+      text: cachedCaption || newImage.text || newImage.fileName || "",
     });
   };
 
@@ -218,6 +223,11 @@ export function ImageViewer({
       const image = getCurrentImageUrl();
       setDecryptedImageUrl(null);
 
+      if (currentImage?.url && currentImage.url.startsWith("blob:")) {
+        setDecryptedImageUrl(currentImage.url);
+        return;
+      }
+
       if (currentImage?.isEncrypted) {
         const url = await decryptAndCreateBlobUrl(
           currentImage.messageId,
@@ -238,7 +248,18 @@ export function ImageViewer({
     };
 
     decryptImage();
-  }, [currentImage, currentIndex]);
+  }, [
+    currentImage?.messageId,
+    currentImage?.url,
+    currentImage?.isEncrypted,
+    currentImage?.encryptedKey,
+    currentImage?.encryptedKeyForSelf,
+    currentImage?.iv,
+    currentImage?.fileType,
+    currentImage?.isSender,
+    currentIndex,
+    currentUser.uid,
+  ]);
 
   if (!isOpen || !currentImage) return null;
 

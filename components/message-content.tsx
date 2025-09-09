@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
-import { Lock } from "lucide-react";
+import { Dispatch, SetStateAction, useMemo } from "react";
 import { EncryptedImage } from "./encrypted-image";
 import { EncryptedVideo } from "./encrypted-video";
 import { EncryptedAudio } from "./encrypted-audio";
@@ -17,6 +16,9 @@ interface MessageContentProps {
   currentUserId: string;
   theme: string;
   onImageClick?: (url: string) => void;
+  setDecryptedImageCache?: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
 }
 
 export function MessageContent({
@@ -25,6 +27,7 @@ export function MessageContent({
   currentUserId,
   theme,
   onImageClick,
+  setDecryptedImageCache,
 }: MessageContentProps) {
   const youtubeId = useMemo(() => {
     if (msg.type === "text") {
@@ -78,6 +81,15 @@ export function MessageContent({
             isSender={msg.senderId === currentUserId}
             currentUserId={currentUserId}
             onClick={handleImageClick}
+            onReady={(blobURL) => {
+              setDecryptedImageCache?.((prev) => {
+                if (prev[msg.id] === blobURL) return prev;
+                return {
+                  ...prev,
+                  [msg.id]: blobURL,
+                };
+              });
+            }}
           />
           {messageText !== msg.fileName && (
             <div className="mt-1 text-sm flex items-center gap-1">

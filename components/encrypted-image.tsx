@@ -17,6 +17,7 @@ interface EncryptedImageProps {
   isSender: boolean;
   currentUserId: string;
   onClick?: () => void;
+  onReady?: (decryptedUrl: string) => void;
 }
 
 export function EncryptedImage({
@@ -31,6 +32,7 @@ export function EncryptedImage({
   isSender,
   currentUserId,
   onClick,
+  onReady,
 }: EncryptedImageProps) {
   const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,7 @@ export function EncryptedImage({
         );
 
         setImageUrl(url);
+        onReady?.(url);
         setIsLoading(false);
       } catch (err) {
         console.error("Error in decryptImage:", err);
@@ -75,6 +78,7 @@ export function EncryptedImage({
 
     if (!fileIsEncrypted) {
       setImageUrl(fileURL || "/placeholder.svg");
+      onReady?.(fileURL || "/placeholder.svg");
       setIsLoading(false);
     } else {
       const cachedUrl = decryptedUrls[messageId];
