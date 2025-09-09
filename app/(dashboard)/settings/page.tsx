@@ -57,7 +57,6 @@ import {
   XCircle,
   AlertCircle,
   KeyRound,
-  CircleUser,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
@@ -154,7 +153,17 @@ export default function SettingsPage() {
   const handleResult = async (data: any) => {
     try {
       const parser = JSON.parse(data);
+      const thereCurrentPrivateKey = await get(
+        `encryption_private_key_${currentUser.uid}`
+      );
       if (parser.type === "telepaty-key-migration" && parser.privateKey) {
+        if (thereCurrentPrivateKey) {
+          toast({
+            title: "Error",
+            description: "PrivateKey on this device already exists.",
+          });
+          return;
+        }
         await set(
           `encryption_private_key_${currentUser.uid}`,
           parser.privateKey
