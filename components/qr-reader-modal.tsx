@@ -55,6 +55,7 @@ export function QRScannerModal({
                     setData(result);
                     onResult(result.getText());
                     console.log(data);
+                    onClose();
                   }
                 }}
                 facingMode="environment"
