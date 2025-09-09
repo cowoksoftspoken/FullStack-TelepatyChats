@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   other: {
     releaseDate: "2024-07-23",
     author: "Inggrit Setya Budi",
-    version: "2.15.8",
+    version: "2.16.8",
   },
   twitter: {
     card: "summary_large_image",
