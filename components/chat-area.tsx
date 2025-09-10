@@ -114,9 +114,6 @@ export function ChatArea({
   const [decryptedImageCache, setDecryptedImageCache] = useState<
     Record<string, string>
   >({});
-  const [captionDecryptedCache, setCaptionDecryptedCache] = useState<
-    Record<string, string>
-  >({});
   const [previewFile, setPreviewFile] = useState<{
     file: File;
     type: "image" | "video" | "file" | "audio";
@@ -1286,10 +1283,6 @@ export function ChatArea({
 
     const message = imageMessages[messageIndex];
     const decryptedCaption = getMessageText(message);
-    setCaptionDecryptedCache((prev) => ({
-      ...prev,
-      [message.id]: decryptedCaption,
-    }));
     setCurrentImageIndex(messageIndex);
     const cachedBlobUrl = decryptedImageCache[message.id] || null;
     setCurrentViewingImage({
@@ -1808,7 +1801,7 @@ export function ChatArea({
           setCurrentViewingImage={setCurrentViewingImage}
           currentUser={currentUser}
           decryptedImageCache={decryptedImageCache}
-          captionDecryptedCache={captionDecryptedCache}
+          getMessageText={getMessageText}
         />
       )}
     </div>

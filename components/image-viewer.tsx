@@ -52,7 +52,7 @@ interface ImageViewerProps {
   setCurrentIndex: (index: number) => void;
   currentUser: any;
   decryptedImageCache?: Record<string, string>;
-  captionDecryptedCache?: Record<string, string>;
+  getMessageText: (msg: Message) => string;
 }
 
 export function ImageViewer({
@@ -65,7 +65,7 @@ export function ImageViewer({
   currentUser,
   setCurrentViewingImage,
   decryptedImageCache,
-  captionDecryptedCache,
+  getMessageText,
 }: ImageViewerProps) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -139,7 +139,7 @@ export function ImageViewer({
   const updateCurrentImage = (index: number) => {
     const newImage = images[index];
     const cachedBlob = decryptedImageCache?.[newImage.id];
-    const cachedCaption = captionDecryptedCache?.[newImage.id];
+    const decryptedCaption = getMessageText(newImage);
     setCurrentViewingImage({
       url: cachedBlob || newImage.fileURL || "",
       messageId: newImage.id,
@@ -151,7 +151,7 @@ export function ImageViewer({
       fileType: newImage.fileType || "image/jpeg",
       isSender: newImage.senderId === currentUser.uid,
       currentUserId: currentUser.uid,
-      text: cachedCaption || newImage.text || newImage.fileName || "",
+      text: decryptedCaption || newImage.text || newImage.fileName || "",
     });
   };
 
