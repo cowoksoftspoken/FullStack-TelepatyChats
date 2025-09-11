@@ -101,6 +101,8 @@ export function ChatArea({
   const videoInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const timerIntervalRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+
   const { theme } = useTheme();
   const [isUserProfileOpen, setIsUserProfileOpen] = useState(false);
   const { toast } = useToast();
@@ -136,6 +138,7 @@ export function ChatArea({
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
   const [isImageViewerOpen, setIsImageViewerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const isCanceledRef = useRef<boolean>(null);
   const [currentViewingImage, setCurrentViewingImage] = useState<{
     url: string;
     messageId: string;
@@ -986,6 +989,8 @@ export function ChatArea({
       return;
     }
 
+    if (isRecording) return;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -998,12 +1003,23 @@ export function ChatArea({
       };
 
       recorder.onstop = async () => {
+        if (isCanceledRef.current) {
+          isCanceledRef.current = false;
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        const finalDuration = Math.floor(
+          (Date.now() - (startTimeRef.current || Date.now())) / 1000
+        );
         const audioBlob = new Blob(chunks, { type: "audio/webm" });
-        await sendAudioMessage(audioBlob);
+        try {
+          await sendAudioMessage(audioBlob, finalDuration);
+        } catch (err) {
+          console.error("Error sending audio:", err);
+        }
         setAudioChunks([]);
         setIsRecording(false);
         setRecordingTime(0);
-
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -1019,9 +1035,11 @@ export function ChatArea({
       recorder.start();
       setIsRecording(true);
 
-      const startTime = Date.now();
+      startTimeRef.current = Date.now();
       timerIntervalRef.current = window.setInterval(() => {
-        setRecordingTime(Math.floor((Date.now() - startTime) / 1000));
+        setRecordingTime(
+          Math.floor((Date.now() - (startTimeRef.current || Date.now())) / 1000)
+        );
       }, 1000);
 
       recorder.onerror = () => {
@@ -1053,6 +1071,7 @@ export function ChatArea({
 
   const cancelRecording = () => {
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
+      isCanceledRef.current = true;
       mediaRecorder.stop();
       if (timerIntervalRef.current) {
         clearInterval(timerIntervalRef.current);
@@ -1064,7 +1083,7 @@ export function ChatArea({
     }
   };
 
-  const sendAudioMessage = async (audioBlob: Blob) => {
+  const sendAudioMessage = async (audioBlob: Blob, finalDuration: number) => {
     if (!currentUser || !contact) return;
 
     if (isBlocked) {
@@ -1177,7 +1196,7 @@ export function ChatArea({
         fileName: "Audio message",
         fileType: "audio/webm",
         type: "audio",
-        duration: recordingTime,
+        duration: finalDuration,
         replyTo: replyToData,
         fileIsEncrypted: encryptionData.isEncrypted,
         fileEncryptedKey: encryptionData.encryptedKey,
@@ -1626,6 +1645,7 @@ export function ChatArea({
         videoInputRef={videoInputRef}
         audioInputRef={audioInputRef}
         fileInputRef={fileInputRef}
+        isRecording={isRecording}
         isEncryptionEnabled={isInitialized}
       />
 

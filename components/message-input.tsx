@@ -54,6 +54,7 @@ interface MessageInputProps {
   audioInputRef: React.RefObject<HTMLInputElement | null>;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   isEncryptionEnabled?: boolean;
+  isRecording?: boolean;
 }
 
 export default function MessageInput({
@@ -70,6 +71,7 @@ export default function MessageInput({
   videoInputRef,
   audioInputRef,
   fileInputRef,
+  isRecording,
 }: MessageInputProps) {
   const { db } = useFirebase();
   const { theme } = useTheme();
@@ -255,7 +257,7 @@ export default function MessageInput({
           disabled={isBlocked}
         />
 
-        {message.trim() ? (
+        {message.trim() && !isRecording ? (
           <Button
             type="submit"
             size="icon"
@@ -270,7 +272,7 @@ export default function MessageInput({
             size="icon"
             className="h-10 w-10 rounded-full"
             onMouseDown={startRecording}
-            disabled={isBlocked}
+            disabled={isBlocked || isRecording}
           >
             <Mic className="h-5 w-5" />
           </Button>

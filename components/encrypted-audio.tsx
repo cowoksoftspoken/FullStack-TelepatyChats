@@ -153,6 +153,7 @@ export function EncryptedAudio({
         duration={duration}
         fileName={fileName}
         isDark={isDark}
+        messageId={messageId}
         className="w-full"
       />
     </div>

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Play, Pause, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface AudioMessageProps {
   src: string;
@@ -10,6 +12,7 @@ interface AudioMessageProps {
   fileName?: string;
   className?: string;
   isDark?: boolean;
+  messageId?: string;
   onLoad?: (audioElement: HTMLAudioElement | null) => void;
 }
 
@@ -20,6 +23,7 @@ export function AudioMessage({
   className = "",
   isDark = false,
   onLoad,
+  messageId,
 }: AudioMessageProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -44,7 +48,20 @@ export function AudioMessage({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    const handleLoadedMetadata = () => setAudioDuration(audio.duration);
+    const handleLoadedMetadata = async () => {
+      const durationDoc = await getDoc(
+        doc(db, "messages", messageId as string)
+      );
+      if (durationDoc.exists()) {
+        const messageData = durationDoc.data();
+        const fduration = messageData.duration;
+        if (!isFinite(audio.duration)) {
+          setAudioDuration(fduration || 0);
+        } else {
+          setAudioDuration(audio.duration);
+        }
+      }
+    };
     audio.addEventListener("loadedmetadata", handleLoadedMetadata);
     return () =>
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
