@@ -1,4 +1,4 @@
-import sodium, { base64_variants } from "libsodium-wrappers";
+import sodium from "libsodium-wrappers";
 
 export async function generateKeyPair() {
   await sodium.ready;

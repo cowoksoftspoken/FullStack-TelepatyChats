@@ -3,16 +3,6 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// const firebaseConfig = {
-//   apiKey: "AIzaSyD2NwS9elb_IiQF0YR7YMBvqYund42JD0g",
-//   authDomain: "web-kelas-46eea.firebaseapp.com",
-//   projectId: "web-kelas-46eea",
-//   storageBucket: "web-kelas-46eea.appspot.com",
-//   messagingSenderId: "365156854136",
-//   appId: "1:365156854136:web:bae5126c68fb30d1c4c08d",
-//   measurementId: "G-7VR3K8BSDG",
-// }
-
 const firebaseConfig = {
   apiKey: "AIzaSyAOkE27nXxkipOczHekDsaoS3tXpqWOIEo",
   authDomain: "react-chat-98ca7.firebaseapp.com",

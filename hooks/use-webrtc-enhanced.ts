@@ -146,13 +146,21 @@ export function useWebRTCEnhanced({
           title: "Call Initiated",
           description: `${video ? "Video" : "Audio"} call started`,
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error initiating call:", error);
-        toast({
-          variant: "destructive",
-          title: "Call Failed",
-          description: "Could not initiate call. Please try again.",
-        });
+        if(error.code == "BUSY"){
+          toast({
+            variant:"destructive",
+            title: "Call Failed",
+            description: `User is currently on another call`
+          })
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Call Failed",
+            description: "Could not initiate call. Please try again.",
+          });
+        }
       }
     },
     [toast]

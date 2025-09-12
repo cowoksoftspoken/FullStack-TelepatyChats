@@ -42,7 +42,7 @@ class WebRTCManager {
   private userId: string;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
-
+  private activeCallData: {callerId: string, receiverId: string} | null = null
   private iceServers: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -394,6 +394,11 @@ class WebRTCManager {
         receiverId
       );
 
+      const isReceiverUserAvailable = await this.checkUserAvailability(receiverId);
+      if(!isReceiverUserAvailable){
+         throw { code: "BUSY", message: "User is busy or on another call"}
+      }
+
       const stream = await this.getUserMedia(isVideo);
       if (!stream) {
         throw new Error("Could not get user media");
@@ -411,6 +416,11 @@ class WebRTCManager {
         isVideo,
         timestamp: new Date().toISOString(),
       };
+      await this.setUserInCall(callData.callerId, callData.receiverId);
+      this.activeCallData = {
+        callerId: callData.callerId,
+        receiverId: callData.receiverId
+      }
 
       await setDoc(doc(this.db, "calls", callId), callData);
       this.currentCallId = callId;
@@ -457,6 +467,43 @@ class WebRTCManager {
       console.error("Error initiating call:", error);
       throw error;
     }
+  }
+
+  private async checkUserAvailability(targetUserId: string){
+    const targetSnap = await getDoc(doc(this.db, "users", targetUserId))
+    if(!targetSnap.exists()) return true;
+    const data = targetSnap.data();
+    return !data.userInCall;
+  }
+
+  private async setUserInCall(callerId: string, receiverId: string){
+    await Promise.all([
+    updateDoc(doc(this.db, "users", callerId), {
+      userInCall: true,
+      currentCallId: this.currentCallId,
+      otherUserId: receiverId, 
+    }),
+    updateDoc(doc(this.db, "users", receiverId), {
+      userInCall: true,
+      currentCallId: this.currentCallId,
+      otherUserId: callerId,
+    }),
+  ]);
+  }
+
+  private async resetUserInCall(callerId: string, receiverId: string){
+    await Promise.all([
+      updateDoc(doc(this.db, "users", callerId), {
+      userInCall: false,
+      currentCallId: null,
+      otherUserId: null,
+    }),
+    updateDoc(doc(this.db, "users", receiverId), {
+      userInCall: false,
+      currentCallId: null,
+      otherUserId: null,
+    }),
+    ])
   }
 
   async shareScreen() {
@@ -637,6 +684,8 @@ class WebRTCManager {
 
   async rejectCall(callId: string): Promise<void> {
     try {
+      await this.resetUserInCall(this.activeCallData?.callerId as string, this.activeCallData?.receiverId as string)
+
       await updateDoc(doc(this.db, "calls", callId), {
         status: "rejected",
       });
@@ -676,6 +725,8 @@ class WebRTCManager {
 
         if (callSnap.exists()) {
           const callData = callSnap.data() as CallData;
+
+          await this.resetUserInCall(callData.callerId, callData.receiverId)
 
           if (callData.receiverId) {
             await updateDoc(doc(this.db, "users", callData.receiverId), {
