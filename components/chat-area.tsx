@@ -64,6 +64,7 @@ import { MessageContent } from "./message-content";
 import { ImageViewer } from "./image-viewer";
 import normalizeName from "@/utils/normalizename";
 import useUserStatus from "@/hooks/use-user-status";
+import { AudioPreview } from "./audio-preview";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -1672,37 +1673,98 @@ export function ChatArea({
           <div className="space-y-4 py-4">
             {previewFile?.type === "image" && (
               <div className="flex justify-center">
-                <img
-                  src={previewFile.preview || "/placeholder.svg"}
-                  alt="Preview"
-                  className="max-h-60 max-w-full rounded-md object-contain"
-                />
+                <div
+                  className="relative max-h-60 max-w-full rounded-xl overflow-hidden
+        border border-gray-200 dark:border-neutral-800
+        bg-gray-50 dark:bg-neutral-900/40
+        shadow-sm hover:shadow-md transition-all duration-300
+        animate-in fade-in-80 zoom-in-90"
+                >
+                  <img
+                    src={previewFile.preview || "/placeholder.svg"}
+                    alt="Preview"
+                    className="h-full w-full object-contain rounded-xl"
+                  />
+
+                  <div
+                    className="absolute inset-0 pointer-events-none bg-gradient-to-t
+        from-black/20 via-transparent to-transparent opacity-0 
+        group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                </div>
               </div>
             )}
 
             {previewFile?.type === "video" && (
               <div className="flex justify-center">
-                <VideoPlayer fileURL={previewFile.preview} />
+                <div
+                  className="relative group max-h-64 max-w-full overflow-hidden rounded-xl
+        border border-gray-200 dark:border-neutral-800
+        bg-gray-50 dark:bg-neutral-900/40
+        shadow-sm transition-all duration-300
+        animate-in fade-in-80 zoom-in-90"
+                >
+                  <VideoPlayer fileURL={previewFile.preview} />
+                </div>
               </div>
             )}
 
             {previewFile?.type === "audio" && (
-              <div className="flex justify-center flex-col items-center gap-2 p-4 rounded-md">
-                <AudioMessage
-                  src={previewFile.preview}
-                  duration={previewFile.duration}
-                  fileName={previewFile.file.name}
-                  className="w-full h-full"
-                />
+              <div
+                className="flex flex-col items-center gap-4 p-5 rounded-xl
+      bg-white dark:bg-neutral-900
+      border border-gray-200 dark:border-neutral-800
+      shadow-sm transition-colors animate-in fade-in-80 slide-in-from-bottom-2"
+              >
+                <div className="relative flex items-center justify-center">
+                  <div
+                    className="absolute -inset-6 rounded-full bg-gradient-to-tr 
+        from-blue-400/20 via-blue-500/10 to-transparent blur-2xl animate-pulse"
+                  />
+
+                  <div className="absolute -left-5 top-2 text-blue-400/60 dark:text-blue-500/60 text-lg animate-bounce">
+                    🎵
+                  </div>
+
+                  <div className="absolute -right-5 bottom-2 text-blue-400/60 dark:text-blue-500/60 text-lg animate-bounce delay-200">
+                    🎶
+                  </div>
+
+                  <div className="relative flex items-center justify-center w-20 h-20 rounded-full bg-blue-100 dark:bg-blue-900/30 shadow-lg shadow-blue-200/30 dark:shadow-blue-900/30">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-8 w-8 text-blue-600 dark:text-blue-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 19V6l-2 2H4v8h3l2 2zm8-3a4 4 0 00-4 4m0-4a4 4 0 014-4"
+                      />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="w-full">
+                  <AudioPreview previewFile={previewFile} />
+                </div>
               </div>
             )}
 
             {previewFile?.type === "file" && (
-              <div className="flex items-center gap-2 p-4 border rounded-md">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">{previewFile.file.name}</p>
-                  <p className="text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 p-4 rounded-xl border bg-white dark:bg-neutral-900 border-gray-200 dark:border-neutral-800 shadow-sm transition-colors">
+                <div className="flex-shrink-0">
+                  <FileText className="h-10 w-10 text-blue-500 dark:text-blue-400" />
+                </div>
+
+                <div className="flex flex-col overflow-hidden">
+                  <p className="font-medium text-gray-800 dark:text-gray-100 truncate max-w-[180px]">
+                    {previewFile.file.name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {previewFile.file.size < 1024 * 1024
                       ? `${(previewFile.file.size / 1024).toFixed(2)} KB`
                       : `${(previewFile.file.size / (1024 * 1024)).toFixed(
@@ -1719,6 +1781,7 @@ export function ChatArea({
                 id="caption"
                 placeholder="Add a caption..."
                 value={caption}
+                className="resize-none"
                 onChange={(e) => setCaption(e.target.value)}
                 rows={3}
               />
@@ -1744,54 +1807,85 @@ export function ChatArea({
         open={isLocationDialogOpen}
         onOpenChange={setIsLocationDialogOpen}
       >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Share Location</DialogTitle>
-            <DialogDescription>
-              Preview your location before sharing
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            {location && (
-              <div className="h-64 w-full rounded-md border overflow-hidden">
+        <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-xl p-0 overflow-hidden">
+          <div className="px-6 pt-2 pb-4 border-b border-gray-100 dark:border-neutral-800">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Share Location
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+                Preview your current location before sharing it.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="relative mx-6 mt-4">
+            {location ? (
+              <div className="relative h-64 w-full overflow-hidden rounded-xl border border-gray-200 dark:border-neutral-800 shadow-sm">
                 <iframe
                   width="100%"
                   height="100%"
                   frameBorder="0"
                   scrolling="no"
-                  marginHeight={0}
-                  marginWidth={0}
                   src={`https://www.google.com/maps?q=${location.lat},${location.lng}&z=15&output=embed`}
-                  style={{ border: "1px solid #ccc" }}
+                  className="rounded-xl"
                 ></iframe>
+
+                <div className="absolute top-2 right-2 flex items-center justify-center w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm text-white shadow-lg">
+                  <MapPin className="h-5 w-5" />
+                </div>
+
+                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 via-black/10 to-transparent pointer-events-none" />
+              </div>
+            ) : (
+              <div className="flex h-64 w-full items-center justify-center rounded-xl border border-dashed border-gray-300 dark:border-neutral-700 bg-gray-50 dark:bg-neutral-800/50">
+                <p className="text-sm text-gray-500 dark:text-gray-400 animate-pulse">
+                  Fetching your location...
+                </p>
               </div>
             )}
           </div>
-          <p className="w-full break-words space-y-1 text-indigo-400 text-base flex items-center">
-            <MapPin className="mr-2 h-5 w-5" />{" "}
-            {`Distance ${Math.floor(accuracy)} meters`}
-          </p>
 
-          <div className="space-y-2">
-            <Label htmlFor="caption">Caption (optional)</Label>
+          {location && (
+            <div className="flex items-center mt-2 px-6 text-sm font-medium text-indigo-600 dark:text-indigo-400">
+              <MapPin className="mr-2 h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+              Distance:{" "}
+              <span className="ml-1">{Math.floor(accuracy)} meters</span>
+            </div>
+          )}
+
+          <div className="px-6 mt-2 mb-2 space-y-2">
+            <Label
+              htmlFor="caption"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Caption (optional)
+            </Label>
             <Textarea
               id="caption"
               placeholder="Add a caption..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
               rows={3}
-              className="resize-none"
+              className="resize-none rounded-lg border-gray-300 dark:border-neutral-700 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400"
             />
           </div>
-          <DialogFooter>
+
+          <div className="px-6 py-2 border-t border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-900/50 flex justify-end gap-3">
             <Button
               variant="outline"
+              className="rounded-lg border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800"
               onClick={() => setIsLocationDialogOpen(false)}
             >
               Cancel
             </Button>
-            <Button onClick={sendLocationMessage}>Share Location</Button>
-          </DialogFooter>
+            <Button
+              onClick={sendLocationMessage}
+              className="rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-500 dark:hover:bg-indigo-600 shadow-sm"
+            >
+              Share Location
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 

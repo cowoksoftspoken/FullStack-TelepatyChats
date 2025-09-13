@@ -155,46 +155,114 @@ export default function MessageInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full"
+              className="h-10 w-10 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
               disabled={isBlocked}
             >
-              <Paperclip className="h-5 w-5" />
+              <Paperclip className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => imageInputRef?.current?.click()}>
-              <ImageIcon className="mr-2 h-4 w-4" />
-              <span>Image</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => videoInputRef?.current?.click()}>
-              <Film className="mr-2 h-4 w-4" />
-              <span>Video</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => audioInputRef?.current?.click()}>
-              <Music className="mr-2 h-4 w-4" />
-              <span>Audio</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef?.current?.click()}>
-              <File className="mr-2 h-4 w-4" />
-              <span>File</span>
-            </DropdownMenuItem>
+
+          <DropdownMenuContent
+            align="end"
+            className="w-52 rounded-xl p-2 
+          bg-white dark:bg-neutral-900 
+          shadow-lg border border-gray-100 dark:border-neutral-800 
+          animate-in slide-in-from-top-2 fade-in-80
+        "
+          >
             <DropdownMenuItem
-              onClick={handleShareLocation}
-              disabled={isGettingLocation}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-green-50 dark:hover:bg-green-900/30 
+            transition-colors cursor-pointer
+          "
+              onClick={() => imageInputRef?.current?.click()}
             >
-              <MapPin className="mr-2 h-5 w-5" />
-              <span>
+              <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/40">
+                <ImageIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                Image
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-blue-50 dark:hover:bg-blue-900/30 
+            transition-colors cursor-pointer
+          "
+              onClick={() => videoInputRef?.current?.click()}
+            >
+              <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/40">
+                <Film className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                Video
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-purple-50 dark:hover:bg-purple-900/30 
+            transition-colors cursor-pointer
+          "
+              onClick={() => audioInputRef?.current?.click()}
+            >
+              <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/40">
+                <Music className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                Audio
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-yellow-50 dark:hover:bg-yellow-900/30 
+            transition-colors cursor-pointer
+          "
+              onClick={() => fileInputRef?.current?.click()}
+            >
+              <div className="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900/40">
+                <File className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                File
+              </span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              disabled={isGettingLocation}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-red-50 dark:hover:bg-red-900/30 
+            transition-colors cursor-pointer disabled:opacity-50
+          "
+              onClick={handleShareLocation}
+            >
+              <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/40">
+                <MapPin className="h-4 w-4 text-red-600 dark:text-red-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
                 {isGettingLocation ? "Getting location..." : "Location"}
               </span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsCameraDialogOpen(true)}>
-              <Camera className="mr-2 h-4 w-4" />
-              <span>Camera</span>
+
+            <DropdownMenuItem
+              className="flex items-center gap-3 px-3 py-2 rounded-lg 
+            hover:bg-pink-50 dark:hover:bg-pink-900/30 
+            transition-colors cursor-pointer
+          "
+              onClick={() => setIsCameraDialogOpen(true)}
+            >
+              <div className="p-2 rounded-full bg-pink-100 dark:bg-pink-900/40">
+                <Camera className="h-4 w-4 text-pink-600 dark:text-pink-400" />
+              </div>
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                Camera
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* file inputs */}
         <input
           type="file"
           ref={imageInputRef}
@@ -224,7 +292,6 @@ export default function MessageInput({
           onChange={(e) => handleFileSelect(e, "file")}
         />
 
-        {/* Emoji */}
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -246,7 +313,6 @@ export default function MessageInput({
           </PopoverContent>
         </Popover>
 
-        {/* Text input */}
         <Input
           value={message}
           onInput={handleInput}

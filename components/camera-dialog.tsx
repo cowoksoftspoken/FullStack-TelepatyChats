@@ -135,34 +135,36 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Camera</DialogTitle>
+      <DialogContent className="sm:max-w-md rounded-2xl border border-gray-200 dark:border-neutral-800 shadow-xl p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-2 pb-2">
+          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Camera
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center justify-center mt-2">
+        <div className="flex flex-col items-center justify-center px-6 pb-6">
           {hasCameraPermission === false && (
-            <div className="text-center py-2 w-full bg-red-50 dark:bg-red-900/20 rounded-sm">
-              <p>Camera access denied or not available.</p>
-              <p className="text-sm mt-2">
+            <div className="text-center py-4 w-full bg-red-50 dark:bg-red-900/20 rounded-md">
+              <p className="font-medium text-red-600 dark:text-red-400">
+                Camera access denied
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Please check your browser permissions.
               </p>
             </div>
           )}
 
           {capturedImage ? (
-            <div className="w-full">
+            <div className="w-full mt-4">
               <img
                 src={capturedImage}
                 alt="Captured"
-                className="w-full h-80 object-contain rounded-md border"
+                className="w-full h-80 object-contain rounded-xl border border-gray-200 dark:border-neutral-700 shadow-sm"
               />
             </div>
           ) : (
             <div
-              className={`relative w-full h-80 rounded-md overflow-hidden ${
-                hasCameraPermission === false ? "hidden" : "inline-block border"
-              }`}
+              className={`relative w-full h-80 rounded-xl overflow-hidden border border-gray-200 dark:border-neutral-700 mt-4`}
             >
               <video
                 ref={videoRef}
@@ -178,49 +180,66 @@ export function CameraDialog({ open, onClose, onCapture }: CameraDialogProps) {
           <canvas ref={canvasRef} className="hidden" />
 
           {hasCameraPermission && (
-            <p className="mt-2 text-sm">
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {isFrontCamera ? "Front Camera" : "Back Camera"}
             </p>
           )}
 
           {!capturedImage && stream && (
-            <div className="flex justify-center gap-4 mt-4">
+            <div className="flex justify-center gap-6 mt-4">
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-full h-12 w-12"
+                className="rounded-full h-12 w-12 flex items-center justify-center border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition"
                 onClick={switchCamera}
+                title="Switch Camera"
               >
-                <RefreshCw className="h-5 w-5" />
+                <RefreshCw className="h-5 w-5 text-gray-700 dark:text-gray-300" />
               </Button>
 
-              <Button className="rounded-full h-12 w-12" onClick={captureImage}>
-                <Camera className="h-5 w-5" />
+              <Button
+                className="rounded-full h-14 w-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white shadow-lg transition"
+                onClick={captureImage}
+                title="Capture Photo"
+              >
+                <Camera className="h-6 w-6" />
               </Button>
             </div>
           )}
 
           {capturedImage && (
-            <div className="w-full space-y-4 mt-4">
+            <div className="w-full space-y-4 mt-2">
               <div className="space-y-2">
-                <Label htmlFor="caption">Caption (optional)</Label>
+                <Label
+                  htmlFor="caption"
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                  Caption (optional)
+                </Label>
                 <Textarea
                   id="caption"
                   placeholder="Add a caption..."
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
                   rows={3}
-                  className="resize-none"
+                  className="resize-none rounded-lg border-gray-300 dark:border-neutral-700 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                 />
               </div>
 
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={retakePhoto}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Retake
+              <div className="flex justify-between gap-4">
+                <Button
+                  variant="outline"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg border-gray-300 dark:border-neutral-700 hover:bg-gray-100 dark:hover:bg-neutral-800 transition"
+                  onClick={retakePhoto}
+                >
+                  <RefreshCw className="h-4 w-4" /> Retake
                 </Button>
-                <Button onClick={handleSendCapture} disabled={isLoading}>
-                  <ImageIcon className="h-4 w-4 mr-2" />
+                <Button
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition shadow-sm"
+                  onClick={handleSendCapture}
+                  disabled={isLoading}
+                >
+                  <ImageIcon className="h-4 w-4" />
                   {isLoading ? "Sending..." : "Send"}
                 </Button>
               </div>

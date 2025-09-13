@@ -205,7 +205,7 @@ export function useWebRTCEnhanced({
         if (!manager) return;
 
         await manager.rejectCall(callId);
-
+        
         toast({
           title: "Call Rejected",
           description: "Call has been rejected",

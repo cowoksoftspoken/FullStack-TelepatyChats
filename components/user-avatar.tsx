@@ -94,18 +94,54 @@ export function UserAvatar({
       <>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>{avatarComponent}</DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem onClick={() => setDialogOpen(true)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Lihat Foto
+
+          <DropdownMenuContent
+            align="center"
+            sideOffset={8}
+            className="w-44 rounded-xl p-1 
+          bg-white dark:bg-neutral-900 
+          shadow-lg border border-gray-100 dark:border-neutral-800 
+          animate-in fade-in-80 slide-in-from-top-2 
+          data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-1
+        "
+          >
+            <DropdownMenuItem
+              onClick={() => setDialogOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md 
+            hover:bg-gray-100 dark:hover:bg-neutral-800 
+            cursor-pointer transition-colors
+          "
+            >
+              <Eye className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+              <span className="text-sm text-gray-800 dark:text-gray-200">
+                Lihat Foto
+              </span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onChangePhoto}>
-              <Camera className="h-4 w-4 mr-2" />
-              Ganti Foto
+
+            <DropdownMenuItem
+              onClick={onChangePhoto}
+              className="flex items-center gap-2 px-3 py-2 rounded-md 
+            hover:bg-gray-100 dark:hover:bg-neutral-800 
+            cursor-pointer transition-colors
+          "
+            >
+              <Camera className="h-4 w-4 text-gray-700 dark:text-gray-300" />
+              <span className="text-sm text-gray-800 dark:text-gray-200">
+                Ganti Foto
+              </span>
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDeletePhoto}>
-              <Trash2 className="h-4 w-4 mr-2 text-red-500" />
-              Hapus Foto
+
+            <DropdownMenuItem
+              onClick={onDeletePhoto}
+              className="flex items-center gap-2 px-3 py-2 rounded-md 
+            hover:bg-red-50 dark:hover:bg-red-900/30 
+            cursor-pointer transition-colors
+          "
+            >
+              <Trash2 className="h-4 w-4 text-red-500" />
+              <span className="text-sm text-red-600 dark:text-red-400 font-medium">
+                Hapus Foto
+              </span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
