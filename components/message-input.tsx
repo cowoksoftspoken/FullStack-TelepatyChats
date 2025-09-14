@@ -274,7 +274,7 @@ export default function MessageInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+              className="h-5 w-5 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
               disabled={isBlocked}
             >
               <Smile className="h-5 w-5 text-black dark:text-white" />
@@ -282,8 +282,8 @@ export default function MessageInput({
           </PopoverTrigger>
           <PopoverContent
             side="top"
-            align="start"
-            className="w-72 p-0 mb-2 rounded-xl shadow-md bg-white/80 dark:bg-[#1f1f1f]/80 backdrop-blur-md border-none"
+            align="end"
+            className="w-auto p-0 mb-2 rounded-xl shadow-md bg-white/80 dark:bg-[#1f1f1f]/80 backdrop-blur-md border-none"
           >
             <Picker
               data={data}
