@@ -245,12 +245,6 @@ export function Sidebar({
         batch.delete(doc(db, "contacts", reverseContactSnapshot.docs[0].id));
       }
 
-      // const messagesQuery = query(
-      //   collection(db, "messages"),
-      //   where("participants", "array-contains", user.uid),
-      //   where("senderId", "in", [user.uid, contactToDelete]),
-      //   where("receiverId", "in", [user.uid, contactToDelete])
-      // );
       const chatId = [user.uid, contactToDelete].sort().join("_");
       const messagesQuery = query(
         collection(db, "messages"),

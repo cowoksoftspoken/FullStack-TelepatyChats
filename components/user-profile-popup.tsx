@@ -43,44 +43,10 @@ export function UserProfilePopup({
   const { db } = useFirebase();
   const { toast } = useToast();
   const [isBlocking, setIsBlocking] = useState(false);
-  // const [isBlocked, setIsBlocked] = useState(false);
-  // const [isUserBlockedByContact, setIsUserBlockedByContact] = useState(false);
   const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
     user.uid,
     currentUser?.uid
   );
-
-  // useEffect(() => {
-  //   const checkBlockStatus = async () => {
-  //     if (!currentUser || !user) return;
-
-  //     try {
-  //       const [userDoc, contactDoc] = await Promise.all([
-  //         getDoc(doc(db, "users", currentUser.uid)),
-  //         getDoc(doc(db, "users", user.uid)),
-  //       ]);
-
-  //       if (userDoc.exists()) {
-  //         const userData = userDoc.data();
-  //         setIsBlocked(userData.blockedUsers?.includes(user.uid) || false);
-  //       }
-
-  //       if (contactDoc.exists()) {
-  //         const contactData = contactDoc.data();
-  //         setIsUserBlockedByContact(
-  //           contactData.blockedUsers?.includes(currentUser.uid) || false
-  //         );
-  //       }
-  //     } catch (error) {
-  //       console.error("Error checking block status:", error);
-  //     }
-  //   };
-
-  //   if (open) {
-  //     checkBlockStatus();
-  //   }
-  // }, [open, currentUser, user, db]);
-
   const handleBlockUser = async () => {
     if (!currentUser || !user) return;
 
@@ -137,7 +103,7 @@ export function UserProfilePopup({
           <div className="text-center">
             <h3 className="text-xl font-semibold flex items-center justify-center gap-1">
               {user.displayName}
-              {user.isVerified && (
+              {user.isVerified && !user.isAdmin && (
                 <span className="">
                   <svg
                     aria-label="Sudah Diverifikasi"
@@ -147,13 +113,44 @@ export function UserProfilePopup({
                     viewBox="0 0 40 40"
                     width="14"
                   >
-                    <title>Sudah Diverifikasi</title>
+                    <title>Verified</title>
                     <path
                       d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
                       fillRule="evenodd"
                     ></path>
                   </svg>
                 </span>
+              )}
+              {user.isAdmin && !isBlocked && !isUserBlockedByContact && (
+                <svg
+                  aria-label="Afiliated Account"
+                  height="16"
+                  role="img"
+                  viewBox="0 0 40 40"
+                  width="16"
+                >
+                  <defs>
+                    <linearGradient
+                      id="metallicGold"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="100%"
+                    >
+                      <stop offset="0%" stop-color="#fff7b0" />
+                      <stop offset="25%" stop-color="#ffd700" />
+                      <stop offset="50%" stop-color="#ffa500" />
+                      <stop offset="75%" stop-color="#ffd700" />
+                      <stop offset="100%" stop-color="#fff7b0" />
+                    </linearGradient>
+                  </defs>
+                  <title>Afiliated Account</title>
+                  <path
+                    d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                    fill="url(#metallicGold)"
+                    fill-rule="evenodd"
+                  ></path>
+                </svg>
               )}
             </h3>
             <p className="text-sm text-muted-foreground">{user.email}</p>
