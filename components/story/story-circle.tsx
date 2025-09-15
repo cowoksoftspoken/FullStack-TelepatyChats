@@ -26,16 +26,13 @@ export function StoryCircle({
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [users, setUsers] = useState<Record<string, User>>({});
 
-  // Fetch stories for this user
   useEffect(() => {
     const fetchStories = async () => {
       if (!user.uid) return;
 
       try {
-        // Get current time
         const now = new Date();
 
-        // Get stories that haven't expired yet
         const q = query(
           collection(db, "stories"),
           where("userId", "==", user.uid),
@@ -53,7 +50,6 @@ export function StoryCircle({
         setStories(storiesData);
         setHasStories(storiesData.length > 0);
 
-        // Check if current user has unseen stories
         if (currentUser && storiesData.length > 0) {
           const hasUnseen = storiesData.some(
             (story) => !story.viewers.includes(currentUser.uid)
@@ -68,7 +64,6 @@ export function StoryCircle({
     fetchStories();
   }, [user.uid, db, currentUser]);
 
-  // Prepare users data for story viewer
   useEffect(() => {
     if (stories.length > 0) {
       const usersData: Record<string, User> = {};

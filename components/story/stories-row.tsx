@@ -14,13 +14,11 @@ export function StoriesRow() {
   const [contacts, setContacts] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch contacts with stories
   useEffect(() => {
     const fetchContacts = async () => {
       if (!currentUser) return;
 
       try {
-        // Get current user's contacts
         const contactsQuery = query(
           collection(db, "contacts"),
           where("userId", "==", currentUser.uid)
@@ -38,7 +36,6 @@ export function StoriesRow() {
           return;
         }
 
-        // Get users data for these contacts
         const usersQuery = query(
           collection(db, "users"),
           where("uid", "in", contactIds)
@@ -73,7 +70,6 @@ export function StoriesRow() {
   return (
     <div className="w-full overflow-x-auto">
       <div className="flex gap-4 p-4">
-        {/* Story creator */}
         <Link href="/stories/create" className="flex flex-col items-center">
           <div className="relative h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
             <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
@@ -83,7 +79,6 @@ export function StoriesRow() {
           <span className="mt-1 text-xs">Your Story</span>
         </Link>
 
-        {/* Contact stories */}
         {contacts.map((contact) => (
           <Link
             href="/stories"
