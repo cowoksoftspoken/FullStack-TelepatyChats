@@ -46,10 +46,10 @@ export function StoryCircleWrapper({
         {storyUser.isAdmin && (
           <svg
             aria-label="Afiliated Account"
-            height="15"
+            height="14"
             role="img"
             viewBox="0 0 40 40"
-            width="15"
+            width="14"
           >
             <defs>
               <linearGradient
