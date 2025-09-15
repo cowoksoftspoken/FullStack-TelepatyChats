@@ -103,7 +103,7 @@ export function EnhancedIncomingCall({
             <div className="text-center">
               <div className="flex items-center justify-center gap-1">
                 <strong>{caller.displayName}</strong>{" "}
-                {caller.isVerified && caller.isAdmin && (
+                {caller.isVerified && !caller.isAdmin && (
                   <svg
                     aria-label="Verified"
                     fill="rgb(0, 149, 246)"
