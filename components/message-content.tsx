@@ -9,6 +9,7 @@ import { YoutubeEmbed } from "./yt-embed";
 import MapPreview from "./map-preview";
 import { Globe, MapPin } from "lucide-react";
 import type { Message } from "@/types/message";
+import { CollapsedText } from "./collapsed-text";
 
 interface MessageContentProps {
   msg: Message;
@@ -49,9 +50,9 @@ export function MessageContent({
       if (urlPattern.test(messageText)) {
         return messageText.replace(urlPattern, (url) => {
           if (youtubeRegex.test(url)) {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full break-words" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
+            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
           } else {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full break-words" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
+            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
           }
         });
       }
@@ -202,13 +203,8 @@ export function MessageContent({
       return (
         <>
           {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
-          <div className="flex items-center gap-1">
-            <p
-              className="w-full text-sm md:text-base break-words"
-              dangerouslySetInnerHTML={{
-                __html: processedText,
-              }}
-            />
+          <div className="flex w-full items-center gap-1">
+            <CollapsedText text={processedText} />
           </div>
         </>
       );
