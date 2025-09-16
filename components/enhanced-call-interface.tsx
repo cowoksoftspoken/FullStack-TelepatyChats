@@ -247,6 +247,7 @@ export function EnhancedCallInterface({
                 <video
                   ref={remoteVideoRef}
                   autoPlay
+                  muted={!isRemoteAudioEnabled}
                   playsInline
                   className="absolute inset-0 w-full h-full object-cover md:object-contain bg-black"
                   onLoadedMetadata={() => console.log("Remote video loaded")}

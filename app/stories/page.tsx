@@ -35,27 +35,23 @@ export default function StoriesPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push("/login");
     }
   }, [authLoading, currentUser, router]);
 
-  // Fetch blocked users and users who blocked the current user
   useEffect(() => {
     if (!currentUser) return;
 
     const fetchBlockedUsers = async () => {
       try {
-        // Get current user's data to see who they've blocked
         const userDoc = await getDoc(doc(db, "users", currentUser.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setBlockedUsers(userData.blockedUsers || []);
         }
 
-        // Check which contacts have blocked the current user
         const contactsQuery = query(
           collection(db, "contacts"),
           where("userId", "==", currentUser.uid)
@@ -71,7 +67,6 @@ export default function StoriesPage() {
 
         const blockedByList: string[] = [];
 
-        // For each contact, check if they've blocked the current user
         for (const contactId of contactIds) {
           const contactDoc = await getDoc(doc(db, "users", contactId));
           if (contactDoc.exists()) {
@@ -91,21 +86,17 @@ export default function StoriesPage() {
     fetchBlockedUsers();
   }, [currentUser, db]);
 
-  // Check if a user is blocked (in either direction)
   const isUserBlocked = (userId: string) => {
-    // Don't block current user's own stories
     if (userId === currentUser?.uid) return false;
 
     return blockedUsers.includes(userId) || usersWhoBlockedMe.includes(userId);
   };
 
-  // Fetch contacts
   useEffect(() => {
     if (!currentUser) return;
 
     const fetchContacts = async () => {
       try {
-        // Get user's contacts
         const contactsQuery = query(
           collection(db, "contacts"),
           where("userId", "==", currentUser.uid)
@@ -122,7 +113,6 @@ export default function StoriesPage() {
           return;
         }
 
-        // Get users data for these contacts
         const usersQuery = query(
           collection(db, "users"),
           where("uid", "in", contactIds)
@@ -137,13 +127,11 @@ export default function StoriesPage() {
           usersData[userData.uid] = userData;
         });
 
-        // Add current user to users data
         usersData[currentUser.uid] = currentUser as User;
 
         setContacts(contactsData);
         setUsers(usersData);
 
-        // Fetch stories for all contacts
         await fetchStoriesForContacts(
           [...contactIds, currentUser.uid],
           usersData
@@ -181,19 +169,16 @@ export default function StoriesPage() {
         const storyData = { id: doc.id, ...doc.data() } as Story;
         const userId = storyData.userId;
 
-        // Skip stories from blocked users or users who blocked the current user
-        // But always include current user's own stories
         if (isUserBlocked(userId) && userId !== currentUser?.uid) {
           return;
         }
 
-        // Check if this is a story the current user can see
         if (
-          userId === currentUser?.uid || // User's own story
-          storyData.privacy === "public" || // Public story
-          (storyData.privacy === "contacts" && userIds.includes(userId)) || // Story for contacts
+          userId === currentUser?.uid ||
+          storyData.privacy === "public" ||
+          (storyData.privacy === "contacts" && userIds.includes(userId)) ||
           (storyData.privacy === "selected" &&
-            storyData.allowedViewers?.includes(currentUser?.uid)) // Story for selected users
+            storyData.allowedViewers?.includes(currentUser?.uid))
         ) {
           if (!userStories[userId]) {
             userStories[userId] = [];
@@ -203,7 +188,6 @@ export default function StoriesPage() {
         }
       });
 
-      // Filter contacts to only include those with stories
       const contactsWithActiveStories = Object.keys(usersData)
         .filter((uid) => usersWithStories.has(uid))
         .map((uid) => usersData[uid]);
@@ -216,9 +200,7 @@ export default function StoriesPage() {
     }
   };
 
-  // Handle story click
   const handleStoryClick = async (user: User) => {
-    // Check if user is blocked before showing their stories
     if (isUserBlocked(user.uid) && user.uid !== currentUser?.uid) {
       toast({
         variant: "destructive",
@@ -231,10 +213,8 @@ export default function StoriesPage() {
     try {
       setSelectedUser(user);
 
-      // Get current time
       const now = new Date();
 
-      // Get stories for this user
       const q = query(
         collection(db, "stories"),
         where("userId", "==", user.uid),

@@ -35,7 +35,6 @@ export default function CreateStoryPage() {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push("/login");
@@ -52,7 +51,6 @@ export default function CreateStoryPage() {
     setMediaType(type);
     setMediaFile(file);
 
-    // Create preview
     const url = URL.createObjectURL(file);
     setPreview(url);
   };
@@ -63,7 +61,6 @@ export default function CreateStoryPage() {
     setIsUploading(true);
 
     try {
-      // Upload media
       const storageRef = ref(
         storage,
         `stories/${currentUser.uid}/${Date.now()}_${mediaFile.name}`
@@ -71,13 +68,11 @@ export default function CreateStoryPage() {
       await uploadBytes(storageRef, mediaFile);
       const mediaUrl = await getDownloadURL(storageRef);
 
-      // Calculate expiry time (24 hours from now)
       const now = new Date();
       const expiresAt = new Date(
         now.getTime() + 24 * 60 * 60 * 1000
       ).toISOString();
 
-      // Buat objek story dasar
       const storyData: {
         userId: string;
         mediaUrl: string;
@@ -99,12 +94,10 @@ export default function CreateStoryPage() {
         privacy,
       };
 
-      // Tambahkan allowedViewers hanya jika privacy adalah "selected"
       if (privacy === "selected") {
         storyData.allowedViewers = [];
       }
 
-      // Add story to Firestore
       await addDoc(collection(db, "stories"), storyData);
 
       toast({
@@ -112,7 +105,6 @@ export default function CreateStoryPage() {
         description: "Your story has been published successfully.",
       });
 
-      // Redirect to stories page
       router.push("/stories");
     } catch (error) {
       console.error("Error creating story:", error);

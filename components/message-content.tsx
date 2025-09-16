@@ -49,9 +49,9 @@ export function MessageContent({
       if (urlPattern.test(messageText)) {
         return messageText.replace(urlPattern, (url) => {
           if (youtubeRegex.test(url)) {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
+            return `<a href="${url}" class="text-indigo-500 underline max-w-full break-words" target="_blank" rel="noopener noreferrer" role="button">YouTube Link</a>`;
           } else {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
+            return `<a href="${url}" class="text-indigo-500 underline max-w-full break-words" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
           }
         });
       }
