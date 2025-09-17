@@ -356,7 +356,7 @@ export function ImageViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white rounded-full h-10 w-10"
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/30 text-white rounded-full h-10 w-10 z-20"
             onClick={(e) => {
               e.stopPropagation();
               navigateToPrevious();
@@ -370,7 +370,7 @@ export function ImageViewer({
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 text-white rounded-full h-10 w-10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/30 text-white rounded-full h-10 w-10 z-20"
             onClick={(e) => {
               e.stopPropagation();
               navigateToNext();
