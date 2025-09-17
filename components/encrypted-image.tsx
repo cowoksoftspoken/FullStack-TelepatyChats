@@ -124,10 +124,11 @@ export function EncryptedImage({
     <div className="relative">
       <img
         src={imageUrl || "/placeholder.svg"}
-        alt={fileName || "Image"}
+        alt={fileName ? btoa(fileName) : "Image"}
         className="w-full rounded-md max-h-60 object-cover cursor-pointer"
         onClick={handleClick}
         onLoad={handleImageLoad}
+        datatype={fileType}
         onError={handleImageError}
       />
       {isLoading && (

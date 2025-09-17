@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -11,6 +10,8 @@ import {
   ZoomIn,
   ZoomOut,
   Download,
+  RotateCw,
+  FlipHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Message } from "@/types/message";
@@ -71,6 +72,10 @@ export function ImageViewer({
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
+
+  const [rotation, setRotation] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
   const [decryptedImageUrl, setDecryptedImageUrl] = useState<string | null>(
@@ -80,12 +85,13 @@ export function ImageViewer({
   useEffect(() => {
     setScale(1);
     setPosition({ x: 0, y: 0 });
+    setRotation(0);
+    setIsFlipped(false);
   }, [currentIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
-
       switch (e.key) {
         case "Escape":
           onClose();
@@ -104,17 +110,13 @@ export function ImageViewer({
           break;
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, currentIndex, images.length]);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    if (isOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
     return () => {
       document.body.style.overflow = "";
     };
@@ -155,25 +157,25 @@ export function ImageViewer({
     });
   };
 
-  const handleZoomIn = () => {
-    setScale((prev) => Math.min(prev + 0.25, 3));
-  };
-
-  const handleZoomOut = () => {
-    setScale((prev) => Math.max(prev - 0.25, 0.5));
-  };
+  const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));
+  const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.25, 0.5));
 
   const handleDownload = () => {
     if (!currentImage) return;
-
     const imageUrl =
       currentImage.isEncrypted && decryptedUrls[currentImage.messageId]
         ? decryptedUrls[currentImage.messageId]
         : currentImage.url;
-
     const link = document.createElement("a");
+    const customFilename = `tpy_${Date.now()}.${currentImage.fileName
+      ?.split(".")
+      .pop()}`;
+
     link.href = imageUrl;
-    link.download = currentImage.fileName || `${currentImage.messageId}.jpg`;
+    link.download =
+      customFilename ||
+      currentImage.fileName ||
+      `${currentImage.messageId}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -188,7 +190,6 @@ export function ImageViewer({
       });
     }
   };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && scale > 1) {
       const newX = e.clientX - startPos.x;
@@ -196,10 +197,7 @@ export function ImageViewer({
       setPosition({ x: newX, y: newY });
     }
   };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleMouseUp = () => setIsDragging(false);
 
   const handleDoubleClick = () => {
     if (scale > 1) {
@@ -212,7 +210,6 @@ export function ImageViewer({
 
   const getCurrentImageUrl = () => {
     if (!currentImage) return "";
-
     return currentImage.isEncrypted && decryptedUrls[currentImage.messageId]
       ? decryptedUrls[currentImage.messageId]
       : currentImage.url;
@@ -240,13 +237,11 @@ export function ImageViewer({
           currentImage.isSender,
           currentUser.uid
         );
-
         setDecryptedImageUrl(url);
       } else {
         setDecryptedImageUrl(image);
       }
     };
-
     decryptImage();
   }, [
     currentImage?.messageId,
@@ -289,6 +284,7 @@ export function ImageViewer({
               {currentIndex + 1} / {images.length}
             </span>
           </div>
+
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -298,6 +294,7 @@ export function ImageViewer({
                 handleZoomOut();
               }}
               className="text-white"
+              title="Zoom Out"
             >
               <ZoomOut className="h-5 w-5" />
             </Button>
@@ -309,9 +306,37 @@ export function ImageViewer({
                 handleZoomIn();
               }}
               className="text-white"
+              title="Zoom In"
             >
               <ZoomIn className="h-5 w-5" />
             </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                setRotation((prev) => (prev + 90) % 360);
+              }}
+              className="text-white"
+              title="Rotate"
+            >
+              <RotateCw className="h-5 w-5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsFlipped((prev) => !prev);
+              }}
+              className="text-white"
+              title="Flip Horizontal"
+            >
+              <FlipHorizontal className="h-5 w-5" />
+            </Button>
+
             <Button
               variant="ghost"
               size="icon"
@@ -320,6 +345,7 @@ export function ImageViewer({
                 handleDownload();
               }}
               className="text-white"
+              title="Download"
             >
               <Download className="h-5 w-5" />
             </Button>
@@ -367,16 +393,19 @@ export function ImageViewer({
         >
           <motion.img
             src={decryptedImageUrl || "/placeholder.svg"}
-            alt={currentImage.fileName || "Image"}
+            alt={currentImage.messageId}
             className="max-h-[90vh] max-w-[90vw] object-contain select-none"
             style={{
-              scale,
-              x: position.x,
-              y: position.y,
-              cursor: isDragging ? "grabbing" : scale > 1 ? "grab" : "default",
+              transform: `
+                translate(${position.x}px, ${position.y}px)
+                rotate(${rotation}deg)
+                scale(${scale})
+                scaleX(${isFlipped ? -1 : 1})
+              `,
             }}
             onDoubleClick={handleDoubleClick}
             draggable={false}
+            datatype={currentImage.fileType}
           />
         </div>
 
