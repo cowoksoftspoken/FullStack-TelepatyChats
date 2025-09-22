@@ -849,8 +849,8 @@ export function ChatArea({
       }
 
       const encryptedFilename = encryptionData.isEncrypted
-        ? `telepaty_encrypted_${Date.now()}_${previewFile.file.name}`
-        : `telepaty_${Date.now()}_${previewFile.file.name}`;
+        ? `tpy_encrypted_media_${Date.now()}`
+        : `telepaty_media_${Date.now()}`;
 
       const fileRef = ref(
         storage,
