@@ -1,20 +1,20 @@
 "use client";
 
-import type React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
-  Play,
-  Pause,
-  Volume2,
-  VolumeX,
   Maximize,
+  Pause,
+  PictureInPicture,
+  Play,
+  Settings,
   SkipBack,
   SkipForward,
-  PictureInPicture,
-  Settings,
-  X,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
-import { useIsMobile } from "@/hooks/use-mobile";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
+import { VideoSettingsMenu } from "./video-settings-menu";
 
 interface VideoPlayerProps {
   fileURL: string;
@@ -36,7 +36,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const playIconTimeoutRef = useRef<number | null>(null);
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
   const lastClickTime = useRef<number>(0);
   const isMobile = useIsMobile();
@@ -123,10 +122,13 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     if (hideControlsTimeout.current) {
       clearTimeout(hideControlsTimeout.current);
     }
+
+    if (showSettingsMenu) return;
+
     hideControlsTimeout.current = setTimeout(() => {
       setShowControls(false);
       setShowPlayIcon(false);
-    }, 3000);
+    }, 5000);
   };
 
   const handleVideoClick = () => {
@@ -276,120 +278,21 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             </div>
           )}
 
-          <div
-            className={`absolute top-2 right-2 z-10 ${
-              showControls ? "opacity-100" : "opacity-0"
-            }`}
-          >
-            <button
-              onClick={toggleSettingsMenu}
-              className="text-white hover:text-purple-400 transition"
-            >
-              <Settings className="w-4 h-4 md:w-5 md:h-5" />
-            </button>
-          </div>
-          {showSettingsMenu && (
-            <div
-              className={`mt-2 bg-black/80 text-white p-4 rounded shadow-lg space-y-2 text-sm    ${
-                isMobile
-                  ? "w-full h-full text-[60%]"
-                  : "top-4 absolute right-4 z-10"
-              }`}
-            >
-              <div>
-                <div className="flex justify-between items-center py-1">
-                  <label className="block mb-2">Speed</label>
-                  {!isMobile && (
-                    <button>
-                      <X
-                        className="w-4 h-4 md:w-5 md:h-5"
-                        onClick={toggleSettingsMenu}
-                      />
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={playbackRate}
-                  onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-                  className="bg-gray-800 text-white px-2 py-1 rounded w-full"
-                >
-                  {[0.25, 0.5, 1, 1.25, 1.5, 2].map((rate) => (
-                    <option key={rate} value={rate}>
-                      {rate}x
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {!isMobile && (
-                <div className="border-t border-white/10 pt-2 text-xs space-y-1 font-mono text-gray-300">
-                  <p>
-                    <span className="text-purple-400">Resolution:</span>{" "}
-                    {videoRef.current?.videoWidth}x
-                    {videoRef.current?.videoHeight}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Time:</span>{" "}
-                    {videoRef.current?.currentTime.toFixed(1)} /{" "}
-                    {videoRef.current?.duration.toFixed(1)}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Bitrate:</span>{" "}
-                    {(videoRef.current as any)?.webkitVideoDecodedByteCount &&
-                    videoRef.current?.buffered.length
-                      ? Math.round(
-                          ((videoRef.current as any)
-                            .webkitVideoDecodedByteCount *
-                            8) /
-                            videoRef.current.buffered.end(0)
-                        ).toLocaleString()
-                      : 0}{" "}
-                    kbps
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Dropped:</span>{" "}
-                    {(videoRef.current as any)?.webkitDroppedFrameCount}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Total:</span>{" "}
-                    {(videoRef.current as any)?.webkitDecodedFrameCount}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Buffered:</span>{" "}
-                    {(() => {
-                      const b = videoRef.current?.buffered;
-                      if (!b) return "0";
-                      const ranges = [];
-                      for (let i = 0; i < b.length; i++) {
-                        ranges.push(
-                          `${b.start(i).toFixed(2)}–${b.end(i).toFixed(2)}`
-                        );
-                      }
-                      return ranges.join(", ");
-                    })()}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Speed:</span>{" "}
-                    {videoRef.current?.playbackRate}x
-                  </p>
-                  <p>
-                    <span className="text-purple-400">ReadyState:</span>{" "}
-                    {videoRef.current?.readyState}
-                  </p>
-                  <p>
-                    <span className="text-purple-400">Network:</span>{" "}
-                    {videoRef.current?.networkState}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          <VideoSettingsMenu
+            showSettingsMenu={showSettingsMenu}
+            toggleSettingsMenu={toggleSettingsMenu}
+            playbackRate={playbackRate}
+            videoRef={videoRef}
+            setPlaybackRate={setPlaybackRate}
+            isMobile={isMobile}
+          />
 
           <video
             ref={videoRef}
-            className={`w-full h-full ${
+            className={`max-w-full ${
               isFullscreen
                 ? "w-auto h-auto max-w-full max-h-screen object-contain mx-auto my-auto"
-                : "aspect-video"
+                : "aspect-video h-64 md:h-full"
             } cursor-pointer object-contain`}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
@@ -484,7 +387,22 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>
+
               <div className="flex items-center space-x-4">
+                {!isMobile && (
+                  <div
+                    className={`flex items-center space-x-1 ${
+                      showControls ? "opacity-100" : "opacity-0"
+                    }`}
+                  >
+                    <button
+                      onClick={toggleSettingsMenu}
+                      className="text-white hover:text-purple-400 transition"
+                    >
+                      <Settings className="w-4 h-4 md:w-5 md:h-5" />
+                    </button>
+                  </div>
+                )}
                 <button
                   onClick={togglePiP}
                   className={`text-white transition ${
