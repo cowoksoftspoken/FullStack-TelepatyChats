@@ -2,11 +2,11 @@
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
+  DownloadIcon,
   Maximize,
   Pause,
   PictureInPicture,
   Play,
-  Settings,
   SkipBack,
   SkipForward,
   Volume2,
@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { VideoSettingsMenu } from "./video-settings-menu";
+import { toast } from "sonner";
 
 interface VideoPlayerProps {
   fileURL: string;
@@ -39,13 +39,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
   const hideControlsTimeout = useRef<NodeJS.Timeout | null>(null);
   const lastClickTime = useRef<number>(0);
   const isMobile = useIsMobile();
-
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
-
-  const toggleSettingsMenu = () => {
-    setShowSettingsMenu((prev) => !prev);
-  };
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -99,6 +93,24 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     }
   };
 
+  const handleDragStart = (clientX: number) => {
+    setIsDragging(true);
+    updateProgressFromDrag(clientX);
+  };
+
+  const updateProgressFromDrag = (clientX: number) => {
+    if (!progressBarRef.current || !videoRef.current) return;
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const pos = Math.min(Math.max(clientX - rect.left, 0), rect.width);
+    const newProgress = (pos / rect.width) * 100;
+
+    setProgress(newProgress);
+    videoRef.current.currentTime =
+      (videoRef.current.duration * newProgress) / 100;
+  };
+
+  const handleDragEnd = () => setIsDragging(false);
+
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const progress =
@@ -122,9 +134,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     if (hideControlsTimeout.current) {
       clearTimeout(hideControlsTimeout.current);
     }
-
-    if (showSettingsMenu) return;
-
     hideControlsTimeout.current = setTimeout(() => {
       setShowControls(false);
       setShowPlayIcon(false);
@@ -237,12 +246,6 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     }
   };
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.playbackRate = playbackRate;
-    }
-  }, [playbackRate]);
-
   const skipBackward = () => {
     if (videoRef.current) {
       videoRef.current.currentTime -= 10;
@@ -254,6 +257,52 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
       videoRef.current.currentTime += 10;
     }
   };
+
+  const handleDownload = () => {
+    if (!videoRef.current) {
+      toast.error("Video not available for download");
+      return;
+    }
+    if (videoRef.current) {
+      const link = document.createElement("a");
+      link.href = videoRef.current.src;
+      link.download = link.href.split("/").pop() || "video";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      updateProgressFromDrag(e.clientX);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDragging) return;
+      updateProgressFromDrag(e.touches[0].clientX);
+    };
+
+    if (isDragging) {
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleDragEnd);
+      window.addEventListener("touchmove", handleTouchMove);
+      window.addEventListener("touchend", handleDragEnd);
+    } else {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    }
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleDragEnd);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleDragEnd);
+    };
+  }, [isDragging]);
 
   return (
     <div
@@ -278,25 +327,21 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             </div>
           )}
 
-          <VideoSettingsMenu
-            showSettingsMenu={showSettingsMenu}
-            toggleSettingsMenu={toggleSettingsMenu}
-            playbackRate={playbackRate}
-            videoRef={videoRef}
-            setPlaybackRate={setPlaybackRate}
-            isMobile={isMobile}
-          />
-
           <video
             ref={videoRef}
-            className={`max-w-full ${
+            className={`max-w-full min-w-[90%] ${
               isFullscreen
-                ? "w-auto h-auto max-w-full max-h-screen object-contain mx-auto my-auto"
+                ? "w-auto h-auto max-w-full max-h-screen mx-auto my-auto"
                 : "aspect-video h-64 md:h-full"
             } cursor-pointer object-contain`}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
+            onError={(e) => {
+              setIsLoading(false);
+              toast.error("Error loading video");
+              console.error("Video error:", e);
+            }}
             onMouseMove={showVideoControls}
             preload="metadata"
             poster="https://telepaty.vercel.app/dark_icon/android-chrome-512x512.png"
@@ -315,11 +360,22 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 cursor-pointer"
               onClick={togglePlay}
             >
-              <div className="bg-purple-400/50 hover:bg-purple-500/50 rounded-full p-4">
+              <div
+                className={`
+        bg-purple-400/50 hover:bg-purple-500/50 rounded-full transition
+        ${isMobile ? "p-2.5" : "p-4"}
+      `}
+              >
                 {isPlaying ? (
-                  <Pause className="text-white w-8 h-8" fill="currentColor" />
+                  <Pause
+                    className={`text-white ${isMobile ? "w-6 h-6" : "w-8 h-8"}`}
+                    fill="currentColor"
+                  />
                 ) : (
-                  <Play className="text-white w-8 h-8" fill="currentColor" />
+                  <Play
+                    className={`text-white ${isMobile ? "w-6 h-6" : "w-8 h-8"}`}
+                    fill="currentColor"
+                  />
                 )}
               </div>
             </div>
@@ -341,82 +397,113 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
                 className="h-full bg-purple-500 rounded-full relative"
                 style={{ width: `${progress}%` }}
               >
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-purple-300 rounded-full shadow-lg"></div>
+                <div
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-purple-300 rounded-full shadow-lg"
+                  onMouseDown={(e) => handleDragStart(e.clientX)}
+                  onTouchStart={(e) => handleDragStart(e.touches[0].clientX)}
+                ></div>
               </div>
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-1 md:space-x-4 gap-2 md:gap-0">
+              <div className="flex items-center gap-2 md:gap-4">
                 {(isFullscreen || !isMobile) && (
                   <button
                     onClick={skipBackward}
-                    className="text-white hover:text-purple-400"
+                    className={`text-white hover:text-purple-400 transition ${
+                      isMobile ? "p-1" : "p-2"
+                    }`}
                   >
-                    <SkipBack className="w-5 h-5" />
+                    <SkipBack className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
                 )}
+
                 <button
                   onClick={togglePlay}
-                  className="text-white hover:text-purple-400 p-2 backdrop-blur-md bg-purple-500/30 rounded-full"
+                  className={`text-white hover:text-purple-400 backdrop-blur-md bg-purple-500/30 rounded-full transition ${
+                    isMobile ? "p-1.5" : "p-2"
+                  }`}
                 >
                   {isPlaying ? (
-                    <Pause className="w-5 h-5" fill="currentColor" />
+                    <Pause
+                      className={isMobile ? "w-4 h-4" : "w-5 h-5"}
+                      fill="currentColor"
+                    />
                   ) : (
-                    <Play className="w-5 h-5" fill="currentColor" />
+                    <Play
+                      className={isMobile ? "w-4 h-4" : "w-5 h-5"}
+                      fill="currentColor"
+                    />
                   )}
                 </button>
+
                 {(isFullscreen || !isMobile) && (
                   <button
                     onClick={skipForward}
-                    className="text-white hover:text-purple-400"
+                    className={`text-white hover:text-purple-400 transition ${
+                      isMobile ? "p-1" : "p-2"
+                    }`}
                   >
-                    <SkipForward className="w-5 h-5" />
+                    <SkipForward className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   </button>
                 )}
+
                 <button
                   onClick={toggleMute}
-                  className="text-white hover:text-purple-400"
+                  className={`text-white hover:text-purple-400 transition ${
+                    isMobile ? "p-1" : "p-2"
+                  }`}
                 >
                   {isMuted ? (
-                    <VolumeX className="w-5 h-5" />
+                    <VolumeX className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   ) : (
-                    <Volume2 className="w-5 h-5" />
+                    <Volume2 className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                   )}
                 </button>
-                <span className="text-white text-xs md:text-sm">
+
+                <span
+                  className={`text-white ${
+                    isMobile ? "text-[10px]" : "text-xs md:text-sm"
+                  }`}
+                >
                   {formatTime(currentTime)} / {formatTime(duration)}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-4">
-                {!isMobile && (
-                  <div
-                    className={`flex items-center space-x-1 ${
-                      showControls ? "opacity-100" : "opacity-0"
-                    }`}
-                  >
-                    <button
-                      onClick={toggleSettingsMenu}
-                      className="text-white hover:text-purple-400 transition"
-                    >
-                      <Settings className="w-4 h-4 md:w-5 md:h-5" />
-                    </button>
-                  </div>
-                )}
+              <div
+                className={`flex items-center ${
+                  isMobile ? "space-x-2" : "space-x-4"
+                }`}
+              >
+                <button
+                  className={`text-white hover:text-purple-400 transition ${
+                    isMobile ? "p-1" : "p-2"
+                  }`}
+                  title="Download"
+                  onClick={handleDownload}
+                >
+                  <DownloadIcon className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
+                </button>
+
                 <button
                   onClick={togglePiP}
                   className={`text-white transition ${
                     isPiPActive ? "text-purple-400" : "hover:text-purple-400"
-                  }`}
+                  } ${isMobile ? "p-1" : "p-2"}`}
                   title="Picture-in-Picture"
                 >
-                  <PictureInPicture className="w-5 h-5" />
+                  <PictureInPicture
+                    className={isMobile ? "w-4 h-4" : "w-5 h-5"}
+                  />
                 </button>
+
                 <button
                   onClick={handleFullscreen}
-                  className="text-white hover:text-purple-400"
+                  className={`text-white hover:text-purple-400 transition ${
+                    isMobile ? "p-1" : "p-2"
+                  }`}
                 >
-                  <Maximize className="w-5 h-5" />
+                  <Maximize className={isMobile ? "w-4 h-4" : "w-5 h-5"} />
                 </button>
               </div>
             </div>

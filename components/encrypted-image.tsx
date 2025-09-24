@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, SyntheticEvent } from "react";
 import { Lock } from "lucide-react";
 import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
 import { useToast } from "@/hooks/use-toast";
@@ -105,7 +105,16 @@ export function EncryptedImage({
   ]);
 
   const handleClick = () => {
-    if (onClick) {
+    if (isLoading) return;
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Image Error",
+        description: "Cannot open image due to an error.",
+      });
+      return;
+    }
+    if (onClick && !isLoading && !error) {
       onClick();
     }
   };
@@ -114,10 +123,11 @@ export function EncryptedImage({
     setIsLoading(false);
   };
 
-  const handleImageError = () => {
+  const handleImageError = (e: SyntheticEvent<HTMLImageElement, Event>) => {
     setIsLoading(false);
     setError("Failed to load image");
     console.error("Image failed to load:", imageUrl);
+    e.currentTarget.src = "/placeholder.svg";
   };
 
   return (
