@@ -47,7 +47,6 @@ export function useWebRTCEnhanced({
   useEffect(() => {
     if (!currentUser || !db) return;
 
-    console.log("Initializing WebRTC manager...");
     webrtcManagerRef.current = initializeWebRTC(db, currentUser.uid);
 
     const unsubscribe = webrtcManagerRef.current.listenForIncomingCalls(
@@ -148,12 +147,12 @@ export function useWebRTCEnhanced({
         });
       } catch (error: any) {
         console.error("Error initiating call:", error);
-        if(error.code == "BUSY"){
+        if (error.code == "BUSY") {
           toast({
-            variant:"destructive",
+            variant: "destructive",
             title: "Call Failed",
-            description: `User is currently on another call`
-          })
+            description: `User is currently on another call`,
+          });
         } else {
           toast({
             variant: "destructive",
@@ -205,7 +204,7 @@ export function useWebRTCEnhanced({
         if (!manager) return;
 
         await manager.rejectCall(callId);
-        
+
         toast({
           title: "Call Rejected",
           description: "Call has been rejected",
@@ -223,6 +222,7 @@ export function useWebRTCEnhanced({
       if (!manager) return;
 
       await manager.endCall();
+
       setIsCallActive(false);
       setIsConnected(false);
       toast({

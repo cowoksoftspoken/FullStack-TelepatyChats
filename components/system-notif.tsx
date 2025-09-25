@@ -86,7 +86,7 @@ export default function SystemNotif({
               htmlFor="dont-show-again"
               className="text-sm font-medium text-gray-600 cursor-pointer dark:text-white"
             >
-              Don't Show Again
+              Don't show again
             </label>
           </div>
         </div>
