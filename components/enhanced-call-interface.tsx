@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "./user-avatar";
 import type { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 interface EnhancedCallInterfaceProps {
   isActive: boolean;
@@ -57,6 +58,7 @@ export function EnhancedCallInterface({
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isRemoteAudioEnabled, setIsRemoteAudioEnabled] = useState(true);
+  const [isLocalMain, setIsLocalMain] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -128,7 +130,22 @@ export function EnhancedCallInterface({
     return !isMobile && supportDisplayMedia;
   };
 
+  useEffect(() => {
+    if (!localStream && !remoteStream) return;
+
+    if (isLocalMain) {
+      if (remoteVideoRef.current)
+        remoteVideoRef.current.srcObject = localStream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = remoteStream;
+    } else {
+      if (remoteVideoRef.current)
+        remoteVideoRef.current.srcObject = remoteStream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
+    }
+  }, [isLocalMain, localStream, remoteStream]);
+
   const status = getConnectionStatus();
+  const canShare = canShareScreen();
 
   if (!isActive) return null;
 
@@ -138,7 +155,9 @@ export function EnhancedCallInterface({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm"
+        className={`fixed inset-0 z-50 ${
+          isVideo ? "bg-transparent" : "bg-black/90"
+        } backdrop-blur-sm`}
         data-json={JSON.stringify({
           from: contact.displayName,
           callId: contact.uid,
@@ -147,12 +166,68 @@ export function EnhancedCallInterface({
         })}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center justify-between p-4 bg-black/50">
+          <div
+            className={`flex items-center justify-between p-4 ${
+              isVideo
+                ? "bg-transparent absolute w-full top-0 z-50"
+                : "bg-black/50"
+            }`}
+          >
             <div className="flex items-center gap-3">
               <UserAvatar user={contact} size="sm" />
               <div>
-                <h3 className="text-white font-medium">
-                  {contact ? contact.displayName : "Unknown User"}
+                <h3 className="text-white font-medium flex items-center gap-1">
+                  <span className="text-glow">
+                    {contact ? contact.displayName : "Unknown User"}
+                  </span>
+                  {contact?.isVerified && !contact?.isAdmin && (
+                    <svg
+                      aria-label="Verified"
+                      fill="rgb(0, 149, 246)"
+                      height="15"
+                      role="img"
+                      viewBox="0 0 40 40"
+                      width="15"
+                    >
+                      <title>Verified</title>
+                      <path
+                        d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                        fillRule="evenodd"
+                      ></path>
+                    </svg>
+                  )}
+                  {contact?.isAdmin && (
+                    <svg
+                      aria-label="Afiliated Account"
+                      height="15"
+                      width="15"
+                      role="img"
+                      viewBox="0 0 40 40"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="metallicGold-verified-icon-call"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="100%"
+                          gradientUnits="userSpaceOnUse"
+                        >
+                          <stop offset="0%" stopColor="#fff7b0" />
+                          <stop offset="25%" stopColor="#ffd700" />
+                          <stop offset="50%" stopColor="#ffa500" />
+                          <stop offset="75%" stopColor="#ffd700" />
+                          <stop offset="100%" stopColor="#fff7b0" />
+                        </linearGradient>
+                      </defs>
+                      <title>Affiliated Account</title>
+                      <path
+                        d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                        fill="url(#metallicGold-verified-icon-call)"
+                        fillRule="evenodd"
+                      />
+                    </svg>
+                  )}
                 </h3>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -173,34 +248,6 @@ export function EnhancedCallInterface({
             <div className="text-right text-xs text-white/80 space-y-1">
               <div
                 className="flex items-center justify-end gap-2"
-                title="Connection"
-              >
-                <Wifi
-                  size={14}
-                  className={
-                    connectionState === "connected"
-                      ? "text-green-400"
-                      : connectionState === "connecting"
-                      ? "text-yellow-400"
-                      : "text-red-400"
-                  }
-                />
-                <span className="font-medium">:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] ${
-                    connectionState === "connected"
-                      ? "bg-green-500/20 text-green-400"
-                      : connectionState === "connecting"
-                      ? "bg-yellow-500/20 text-yellow-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {connectionState}
-                </span>
-              </div>
-
-              <div
-                className="flex items-center justify-end gap-2"
                 title="Your Stream"
               >
                 <Mic
@@ -218,7 +265,6 @@ export function EnhancedCallInterface({
                   {localStream ? "Active" : "Inactive"}
                 </span>
               </div>
-
               <div
                 className="flex items-center justify-end gap-2"
                 title="Callee Stream"
@@ -241,6 +287,14 @@ export function EnhancedCallInterface({
             </div>
           </div>
 
+          <style jsx>
+            {`
+              .text-glow {
+                text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+              }
+            `}
+          </style>
+
           <div className="flex-1 relative">
             {isVideo ? (
               <>
@@ -253,18 +307,30 @@ export function EnhancedCallInterface({
                   onLoadedMetadata={() => console.log("Remote video loaded")}
                   onError={(e) => console.error("Remote video error:", e)}
                 />
+                {!isVideoEnabled && isLocalMain && (
+                  <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
+                    <VideoOff className="h-10 w-10 text-white" />
+                  </div>
+                )}
 
-                <Card className="absolute top-4 right-4 w-48 h-36 overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/70 via-black/30 to-transparent z-10 pointer-events-none" />
+
+                <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10 pointer-events-none" />
+
+                <Card
+                  className="absolute top-[6rem] right-4 w-48 h-36 overflow-hidden"
+                  onClick={() => setIsLocalMain(!isLocalMain)}
+                >
                   <video
                     ref={localVideoRef}
                     autoPlay
                     playsInline
                     muted
-                    className="w-full h-full object-cover -scale-x-100"
+                    className="w-full h-full object-cover cursor-pointer"
                     onLoadedMetadata={() => console.log("Local video loaded")}
                     onError={(e) => console.error("Local video error:", e)}
                   />
-                  {!isVideoEnabled && (
+                  {!isVideoEnabled && !isLocalMain && (
                     <div className="absolute inset-0 bg-black/80 flex items-center justify-center">
                       <VideoOff className="h-8 w-8 text-white" />
                     </div>
@@ -313,77 +379,83 @@ export function EnhancedCallInterface({
             )}
           </div>
 
-          <div className="p-6 bg-black/50">
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant={isMuted ? "destructive" : "secondary"}
-                size="lg"
-                className="rounded-full h-14 w-14"
-                onClick={onToggleMute}
-              >
-                {isMuted ? (
-                  <MicOff className="h-6 w-6" />
-                ) : (
-                  <Mic className="h-6 w-6" />
-                )}
-              </Button>
-
-              {isVideo && (
+          <div
+            className={`p-4 sm:p-6 ${
+              isVideo
+                ? "bg-transparent absolute bottom-3 left-0 right-0 z-50"
+                : "bg-black/50"
+            }`}
+          >
+            <div className="max-w-[92%] sm:max-w-md mx-auto">
+              <div className="flex items-center justify-center gap-3 sm:gap-5">
                 <Button
-                  variant={isVideoEnabled ? "secondary" : "destructive"}
-                  size="lg"
-                  className="rounded-full h-14 w-14"
-                  onClick={onToggleVideo}
+                  variant={isMuted ? "destructive" : "secondary"}
+                  className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
+                  onClick={onToggleMute}
                 >
-                  {isVideoEnabled ? (
-                    <Video className="h-6 w-6" />
+                  {isMuted ? (
+                    <MicOff className="h-6 w-6 sm:h-7 sm:w-7" />
                   ) : (
-                    <VideoOff className="h-6 w-6" />
+                    <Mic className="h-6 w-6 sm:h-7 sm:w-7" />
                   )}
                 </Button>
-              )}
 
-              <Button
-                variant="destructive"
-                size="lg"
-                className="rounded-full h-16 w-16"
-                onClick={onEndCall}
-              >
-                <PhoneOff className="h-6 w-6" />
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="lg"
-                className="rounded-full h-14 w-14"
-                onClick={() => setIsRemoteAudioEnabled(!isRemoteAudioEnabled)}
-              >
-                {isRemoteAudioEnabled ? (
-                  <Volume2 className="h-6 w-6" />
-                ) : (
-                  <VolumeX className="h-6 w-6" />
+                {isVideo && (
+                  <Button
+                    variant={isVideoEnabled ? "secondary" : "destructive"}
+                    className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
+                    onClick={onToggleVideo}
+                  >
+                    {isVideoEnabled ? (
+                      <Video className="h-6 w-6 sm:h-7 sm:w-7" />
+                    ) : (
+                      <VideoOff className="h-6 w-6 sm:h-7 sm:w-7" />
+                    )}
+                  </Button>
                 )}
-              </Button>
 
-              {isVideo && (
                 <Button
-                  variant="secondary"
-                  size="lg"
-                  className="rounded-full h-14 w-14"
+                  variant="destructive"
+                  className="rounded-full h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]"
                   onClick={() => {
-                    if (canShareScreen()) {
-                      shareScreen();
-                    } else {
-                      toast({
-                        title: "Error",
-                        description: "Share Screen (Not supported on mobile)",
-                      });
-                    }
+                    onEndCall();
+                    setIsLocalMain(false);
                   }}
                 >
-                  <Monitor className="h-6 w-6" />
+                  <PhoneOff className="h-7 w-7 sm:h-8 sm:w-8" />
                 </Button>
-              )}
+
+                <Button
+                  variant="secondary"
+                  className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
+                  onClick={() => setIsRemoteAudioEnabled(!isRemoteAudioEnabled)}
+                >
+                  {isRemoteAudioEnabled ? (
+                    <Volume2 className="h-6 w-6 sm:h-7 sm:w-7" />
+                  ) : (
+                    <VolumeX className="h-6 w-6 sm:h-7 sm:w-7" />
+                  )}
+                </Button>
+
+                {isVideo && (
+                  <Button
+                    variant="secondary"
+                    className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
+                    onClick={() => {
+                      if (canShare) {
+                        shareScreen();
+                      } else {
+                        toast({
+                          title: "Error",
+                          description: "Share Screen (Not supported on mobile)",
+                        });
+                      }
+                    }}
+                  >
+                    <Monitor className="h-6 w-6 sm:h-7 sm:w-7" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
