@@ -9,19 +9,22 @@ export async function generateKeyPair() {
   };
 }
 
-export async function validatePrivateKey(privateKey: string){
-  await sodium.ready
+export async function validatePrivateKey(privateKey: string) {
+  await sodium.ready;
   try {
-    const keyBytes = sodium.from_base64(privateKey, sodium.base64_variants.URLSAFE_NO_PADDING);
-    if(keyBytes.length !== sodium.crypto_box_SECRETKEYBYTES){
-      return false
+    const keyBytes = sodium.from_base64(
+      privateKey,
+      sodium.base64_variants.URLSAFE_NO_PADDING
+    );
+    if (keyBytes.length !== sodium.crypto_box_SECRETKEYBYTES) {
+      return false;
     }
-     const pubKey = sodium.crypto_scalarmult_base(keyBytes);
+    const pubKey = sodium.crypto_scalarmult_base(keyBytes);
     if (pubKey.length !== sodium.crypto_box_PUBLICKEYBYTES) {
       return false;
     }
 
-    return true
+    return true;
   } catch (error) {
     return false;
   }

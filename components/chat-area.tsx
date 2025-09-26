@@ -1539,20 +1539,21 @@ export function ChatArea({
             >
               {msg.replyTo && (
                 <a
-                  className={`inline-block w-full text-xs p-2 rounded mb-2 ${
-                    msg.senderId === currentUser.uid
-                      ? "bg-slate-300/25"
-                      : "bg-background text-foreground"
-                  }`}
                   href={"#" + msg.replyTo.id}
                   id={btoa(msg.replyTo.id)}
+                  className={`block rounded-md mb-2 p-2 border-l-4 ${
+                    msg.senderId === currentUser.uid
+                      ? "border-l-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                      : "border-l-green-500 bg-green-50 dark:bg-green-900/30"
+                  }`}
                 >
-                  <div className="font-semibold">
+                  <div className="text-xs font-semibold mb-1">
                     {msg.replyTo.senderId === currentUser.uid
                       ? "You"
                       : contact.displayName}
                   </div>
-                  <div className="break-words text-ellipsis flex items-center gap-1">
+
+                  <div className="truncate text-sm text-slate-700 dark:text-slate-300 max-w-[200px] md:max-w-md">
                     {msg.replyTo.id && decryptedMessages[msg.replyTo.id]
                       ? decryptedMessages[msg.replyTo.id]
                       : msg.replyTo.isEncrypted
