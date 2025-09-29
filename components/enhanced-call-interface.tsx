@@ -12,6 +12,7 @@ import {
   Volume2,
   VolumeX,
   Wifi,
+  Droplets,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,7 +20,9 @@ import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "./user-avatar";
 import type { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { useConnectionStats } from "@/hooks/use-webrtc-enhanced";
+import StreamStatusDropdown from "./stream-status-dropdown";
+import ConnectionStatsPanel from "./connection-stats-panel";
 
 interface EnhancedCallInterfaceProps {
   isActive: boolean;
@@ -59,6 +62,8 @@ export function EnhancedCallInterface({
   const [callDuration, setCallDuration] = useState(0);
   const [isRemoteAudioEnabled, setIsRemoteAudioEnabled] = useState(true);
   const [isLocalMain, setIsLocalMain] = useState(false);
+  const [showStats, setShowStats] = useState(false);
+  const stats = useConnectionStats();
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -246,46 +251,19 @@ export function EnhancedCallInterface({
             </div>
 
             <div className="text-right text-xs text-white/80 space-y-1">
-              <div
-                className="flex items-center justify-end gap-2"
-                title="Your Stream"
-              >
-                <Mic
-                  size={14}
-                  className={localStream ? "text-green-400" : "text-red-400"}
+              <div className="absolute top-4 right-4">
+                <StreamStatusDropdown
+                  localStream={localStream}
+                  remoteStream={remoteStream}
+                  onToggleStats={() => setShowStats((prev) => !prev)}
                 />
-                <span className="font-medium">:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] ${
-                    localStream
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {localStream ? "Active" : "Inactive"}
-                </span>
-              </div>
-              <div
-                className="flex items-center justify-end gap-2"
-                title="Callee Stream"
-              >
-                <Video
-                  size={14}
-                  className={remoteStream ? "text-green-400" : "text-red-400"}
-                />
-                <span className="font-medium">:</span>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-[10px] ${
-                    remoteStream
-                      ? "bg-green-500/20 text-green-400"
-                      : "bg-red-500/20 text-red-400"
-                  }`}
-                >
-                  {remoteStream ? "Active" : "Inactive"}
-                </span>
               </div>
             </div>
           </div>
+
+          {showStats && (
+            <ConnectionStatsPanel stats={stats} setShowStats={setShowStats} />
+          )}
 
           <style jsx>
             {`

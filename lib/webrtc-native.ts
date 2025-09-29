@@ -33,6 +33,15 @@ interface ICECandidateData {
   timestamp: string;
 }
 
+export type WebRTCStats = {
+  timestamp: number;
+  rtt: number | null;
+  packetLoss: number | null;
+  videoFps: number | null;
+  videoBitrate: number | null;
+  audioBitrate: number | null;
+};
+
 class WebRTCManager {
   private peerConnection: RTCPeerConnection | null = null;
   private localStream: MediaStream | null = null;
@@ -42,6 +51,11 @@ class WebRTCManager {
   private userId: string;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
+  private lastBytes = {
+    video: 0,
+    audio: 0,
+    time: 0,
+  };
   private iceServers: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -759,6 +773,73 @@ class WebRTCManager {
     } catch (error) {
       console.error("Error ending call:", error);
     }
+  }
+
+  async getConnectionStats(): Promise<WebRTCStats> {
+    const report = await this.peerConnection?.getStats();
+
+    let rtt: number | null = null;
+    let packetsLost = 0;
+    let packetsReceived = 0;
+    let fps: number | null = null;
+    let videoBytes = 0;
+    let audioBytes = 0;
+    const now = Date.now();
+
+    report?.forEach((stat) => {
+      if (stat.type === "remote-inbound-rtp" && stat.roundTripTime) {
+        rtt = stat.roundTripTime * 1000;
+      }
+
+      if (stat.type === "inbound-rtp") {
+        if (
+          typeof stat.packetsLost === "number" &&
+          typeof stat.packetsReceived === "number"
+        ) {
+          packetsLost += stat.packetsLost;
+          packetsReceived += stat.packetsReceived;
+        }
+
+        if (stat.kind === "video" && typeof stat.framesPerSecond === "number") {
+          fps = stat.framesPerSecond;
+        }
+      }
+
+      if (stat.type === "outbound-rtp") {
+        if (stat.kind === "video" && stat.bytesSent !== undefined) {
+          videoBytes = stat.bytesSent;
+        }
+        if (stat.kind === "audio" && stat.bytesSent !== undefined) {
+          audioBytes = stat.bytesSent;
+        }
+      }
+    });
+
+    let videoBitrate = null;
+    let audioBitrate = null;
+
+    if (this.lastBytes.time > 0) {
+      const timeDiff = (now - this.lastBytes.time) / 1000;
+      videoBitrate =
+        ((videoBytes - this.lastBytes.video) * 8) / 1000 / timeDiff;
+      audioBitrate =
+        ((audioBytes - this.lastBytes.audio) * 8) / 1000 / timeDiff;
+    }
+
+    this.lastBytes = { video: videoBytes, audio: audioBytes, time: now };
+
+    const totalPackets = packetsLost + packetsReceived;
+    const packetLossPct =
+      totalPackets > 0 ? (packetsLost / totalPackets) * 100 : 0;
+
+    return {
+      timestamp: now,
+      rtt,
+      packetLoss: packetLossPct,
+      videoFps: fps,
+      videoBitrate,
+      audioBitrate,
+    };
   }
 
   private handleCallEnd(): void {

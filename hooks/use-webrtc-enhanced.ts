@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, RefObject } from "react";
 import { useFirebase } from "@/lib/firebase-provider";
 import { useToast } from "@/hooks/use-toast";
-import { initializeWebRTC, getWebRTCManager } from "@/lib/webrtc-native";
+import {
+  initializeWebRTC,
+  getWebRTCManager,
+  WebRTCStats,
+} from "@/lib/webrtc-native";
 
 interface CallData {
   callId: string;
@@ -274,4 +278,28 @@ export function useWebRTCEnhanced({
     toggleMute,
     toggleVideo,
   };
+}
+
+export function useConnectionStats(
+  $_peerConnection?: RTCPeerConnection | null
+) {
+  const [stats, setStats] = useState<WebRTCStats | null>(null);
+  const manager = getWebRTCManager();
+
+  useEffect(() => {
+    if (!manager) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await manager?.getConnectionStats();
+        setStats(data as WebRTCStats);
+      } catch (err) {
+        console.error("Failed to get WebRTC stats", err);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [manager]);
+
+  return stats;
 }
