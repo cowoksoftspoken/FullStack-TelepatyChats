@@ -7,18 +7,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Copy, Loader2, RefreshCw } from "lucide-react";
+  Copy,
+  Loader2,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  UserPlus,
+  Mail,
+  Lock,
+  User,
+} from "lucide-react";
 import { useFirebase } from "@/lib/firebase-provider";
 
 export default function RegisterPage() {
@@ -28,8 +30,8 @@ export default function RegisterPage() {
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const { auth, db, currentUser, loading } = useFirebase();
 
   useEffect(() => {
@@ -42,31 +44,29 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (!agreed) {
-      setError("You must agree to the terms and conditions.");
+      setError("You must agree to the Terms & Conditions and Privacy Policy.");
       return;
     }
 
     if (name.length < 3 || name.length > 12) {
-      setError(
-        "Name must be at least 3 characters long and up to 12 characters long."
-      );
+      setError("Display name must be between 3 and 12 characters.");
       return;
     }
 
     if (!email) {
-      setError("Email is required");
+      setError("Email is required.");
       return;
     }
 
     if (password.length < 6 || password.length > 12) {
       setError(
-        "Password must be at least 6-12 characters and contain capital letters, numbers, and special characters."
+        "Password must be 6-12 characters long and contain uppercase letters, numbers, and special characters."
       );
       return;
     }
 
     if (loading || !auth || !db) {
-      setError("Authentication service is initializing. Please try again.");
+      setError("Authentication service is still loading. Please try again.");
       return;
     }
 
@@ -97,13 +97,13 @@ export default function RegisterPage() {
       router.push("/dashboard");
     } catch (err: any) {
       if (err.code === "auth/email-already-in-use") {
-        setError("Email already in use");
+        setError("This email is already registered.");
       } else if (err.code === "auth/weak-password") {
         setError(
-          "Password must be at least 6-12 characters and contain capital letters, numbers, and special characters."
+          "Password must be 6-12 characters long and contain uppercase letters, numbers, and special characters."
         );
       } else {
-        setError("Failed to create account");
+        setError("Failed to create account. Please try again.");
       }
       console.error(err);
     } finally {
@@ -118,198 +118,247 @@ export default function RegisterPage() {
     for (let i = 0; i < length; i++) {
       password += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
     }
-
     return password;
   };
 
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Preparing registration...</span>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-lg font-medium text-foreground">
+            Preparing registration...
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-muted">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">
-            Create an account
-          </CardTitle>
-          <CardDescription>
-            Enter your information to create an account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleRegister}>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="text-sm font-medium text-red-500">{error}</div>
-            )}
-            <div className="space-y-2">
-              <label htmlFor="name" className="text-sm font-medium">
-                Name
-              </label>
-              <Input
-                id="name"
-                placeholder="Example"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                minLength={3}
-                maxLength={12}
-                required
-              />
+    <div className="min-h-screen bg-background">
+      <div className="flex min-h-screen">
+        <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+          <div className="w-full max-w-md space-y-8">
+            <div className="text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg">
+                <UserPlus className="h-8 w-8 text-primary-foreground" />
+              </div>
+              <h2 className="mt-6 text-3xl font-bold tracking-tight text-foreground">
+                Create Your Account
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Connect instantly with friends and communities
+              </p>
             </div>
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <div className="flex items-center relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  className="absolute right-10 mx-4 text-muted-foreground hover:text-primary"
-                  onClick={() => {
-                    const newPass = generatePassword();
-                    setPassword(newPass);
-                  }}
-                  title="Generate password"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="absolute right-6 mx-2 text-muted-foreground hover:text-primary"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(password);
-                  }}
-                  title="Copy to clipboard"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  className="absolute right-2 text-muted-foreground hover:text-primary"
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.03-10-9s4.477-9 10-9c1.32 0 2.58.26 3.75.725M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 3l18 18M10.586 10.586A2 2 0 0112 12a2 2 0 01-1.414 1.414M15.472 15.472A8.936 8.936 0 0112 18c-4.418 0-8-3.582-8-8 0-1.657.507-3.195 1.378-4.472M9.88 9.88a3 3 0 014.243 4.243"
-                      />
-                    </svg>
+
+            <Card className="border-0 bg-card backdrop-blur-sm shadow-2xl">
+              <CardHeader className="space-y-1 pb-4">
+                <CardTitle className="text-center text-xl font-semibold text-foreground">
+                  Account Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  {error && (
+                    <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                      {error}
+                    </div>
                   )}
-                </button>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="name"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Display Name
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="name"
+                        placeholder="Enter display name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        minLength={3}
+                        maxLength={12}
+                        required
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="email"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="password"
+                      className="text-sm font-medium text-foreground"
+                    >
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        className="pl-10 pr-24"
+                      />
+                      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center space-x-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newPass = generatePassword();
+                            setPassword(newPass);
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:text-primary transition-colors"
+                          title="Generate password"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(password);
+                          }}
+                          className="rounded p-1 text-muted-foreground hover:text-primary transition-colors"
+                          title="Copy password"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="rounded p-1 text-muted-foreground hover:text-primary transition-colors"
+                          title={
+                            showPassword ? "Hide password" : "Show password"
+                          }
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start space-x-2">
+                    <input
+                      type="checkbox"
+                      id="agree"
+                      checked={agreed}
+                      onChange={(e) => setAgreed(e.target.checked)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      required
+                    />
+                    <label
+                      htmlFor="agree"
+                      className="text-sm text-muted-foreground"
+                    >
+                      I agree to the{" "}
+                      <Link
+                        href="/terms-and-conditions"
+                        className="text-primary hover:underline"
+                      >
+                        Terms & Conditions
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        href="/privacy-policy"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                      .
+                    </label>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={formLoading || !agreed}
+                    className="w-full"
+                  >
+                    {formLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Sign Up
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">
+                      Already have an account?{" "}
+                      <Link
+                        href="/login"
+                        className="font-medium text-primary hover:underline"
+                      >
+                        Sign In
+                      </Link>
+                    </p>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="hidden lg:flex lg:flex-1 lg:items-center lg:justify-center lg:bg-primary">
+          <div className="max-w-md text-center text-primary-foreground">
+            <div className="mb-8">
+              <img
+                src="/images/register-illustration.jpg"
+                alt="Register Illustration"
+                className="mx-auto h-64 w-64 rounded-full object-cover shadow-2xl"
+              />
+            </div>
+            <h3 className="text-2xl font-bold mb-4">Join the Conversation</h3>
+            <p className="text-lg opacity-90">
+              Start chatting instantly with friends, family, and communities in
+              real-time.
+            </p>
+            <div className="mt-8 grid grid-cols-2 gap-4 text-sm">
+              <div className="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
+                <div className="text-2xl font-bold">10K+</div>
+                <div className="opacity-90">Active Users</div>
+              </div>
+              <div className="rounded-lg bg-white/10 p-4 backdrop-blur-sm">
+                <div className="text-2xl font-bold">99%</div>
+                <div className="opacity-90">User Satisfaction</div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="agree"
-                checked={agreed}
-                onChange={(e) => setAgreed(e.target.checked)}
-                className="h-4 w-4"
-                required
-              />
-              <label htmlFor="agree" className="text-sm">
-                I agree to the{" "}
-                <Link
-                  href="/terms-and-conditions"
-                  className="underline underline-offset-4 hover:text-primary"
-                >
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link
-                  href="/privacy-policy"
-                  className="underline underline-offset-4 hover:text-primary"
-                >
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full disabled:bg-muted-foreground"
-              disabled={formLoading || !agreed}
-            >
-              {formLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Register
-            </Button>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline"
-              >
-                Sign in
-              </Link>
-            </div>
-          </CardFooter>
-        </form>
-        <div className="text-balance text-sm px-4 pb-4 text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary text-center">
-          By clicking continue, you agree to our{" "}
-          <a href="/terms-and-conditions" className="text-xs">
-            Terms of Conditions
-          </a>{" "}
-          and{" "}
-          <a href="/privacy-policy" className="text-xs">
-            Privacy Policy
-          </a>
-          .
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

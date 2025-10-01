@@ -1,323 +1,59 @@
-"use client";
-
-import type React from "react";
-import {
-  AuthProvider,
-  GithubAuthProvider,
-  GoogleAuthProvider,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-} from "firebase/auth";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { db } from "@/lib/firebase";
-import { useFirebase } from "@/lib/firebase-provider";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
-
-const MAX_RETRIES = 5;
-const LOCKOUT_TIME_MS = 5 * 60 * 1000;
+import { LoginForm } from "@/components/login-form";
+import { Brain } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [formLoading, setFormLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [retryCount, setRetryCount] = useState(0);
-  const [lockedUntil, setLockedUntil] = useState<number | null>(null);
-
-  const router = useRouter();
-  const { auth, currentUser, loading } = useFirebase();
-
-  useEffect(() => {
-    const storedRetries = parseInt(
-      localStorage.getItem("login_retries") || "0",
-      10
-    );
-    const storedLockedUntil = parseInt(
-      localStorage.getItem("login_locked_until") || "0",
-      10
-    );
-
-    setRetryCount(storedRetries);
-
-    if (storedLockedUntil && storedLockedUntil > Date.now()) {
-      setLockedUntil(storedLockedUntil);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!loading && currentUser) {
-      router.push("/dashboard");
-    }
-  }, [currentUser, loading, router]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (loading || !auth) {
-      setError("Authentication service is initializing. Please try again.");
-      return;
-    }
-
-    if (lockedUntil && lockedUntil > Date.now()) {
-      const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
-      setError(
-        `Too many failed attempts. Try again in ${secondsLeft} seconds.`
-      );
-      return;
-    }
-
-    if (password.length < 6 || password.length > 12) {
-      setError("Password must be at least 6-12 characters");
-      return;
-    }
-
-    setFormLoading(true);
-    setError("");
-
-    try {
-      const res = await signInWithEmailAndPassword(auth, email, password);
-      const userRef = doc(db, "users", res.user.uid);
-      const userDoc = await getDoc(userRef);
-
-      if (!userDoc.exists()) {
-        await setDoc(userRef, {
-          uid: res.user.uid,
-          email: res.user.email,
-          displayName: res.user.displayName || "",
-          photoURL: res.user.photoURL || "",
-          provider: "email",
-          createdAt: serverTimestamp(),
-        });
-      }
-
-      localStorage.removeItem("login_retries");
-      localStorage.removeItem("login_locked_until");
-      setRetryCount(0);
-      setLockedUntil(null);
-
-      router.push("/dashboard");
-    } catch (err: any) {
-      console.error(err);
-
-      const newRetryCount = retryCount + 1;
-      setRetryCount(newRetryCount);
-      localStorage.setItem("login_retries", newRetryCount.toString());
-
-      if (newRetryCount >= MAX_RETRIES) {
-        const lockUntil = Date.now() + LOCKOUT_TIME_MS;
-        setLockedUntil(lockUntil);
-        localStorage.setItem("login_locked_until", lockUntil.toString());
-        setError("Too many failed attempts. Please try again later.");
-      } else if (err.code === "auth/invalid-credential") {
-        setError("Invalid email or password");
-      } else if (err.code === "auth/too-many-requests") {
-        setError("Too many failed login attempts. Please try again later.");
-      } else {
-        setError("Failed to login. Please try again.");
-      }
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleLoginWithProvider = async (providerName: "google" | "github") => {
-    if (!auth) return;
-
-    if (lockedUntil && lockedUntil > Date.now()) {
-      const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
-      setError(
-        `Too many failed attempts. Try again in ${secondsLeft} seconds.`
-      );
-      return;
-    }
-
-    let provider: AuthProvider | null = null;
-    if (providerName === "google") {
-      provider = new GoogleAuthProvider();
-    } else if (providerName === "github") {
-      provider = new GithubAuthProvider();
-    }
-
-    if (!provider) {
-      setError("Invalid authentication provider.");
-      return;
-    }
-
-    setFormLoading(true);
-    setError("");
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const userRef = doc(db, "users", result.user.uid);
-      const userDoc = await getDoc(userRef);
-
-      if (!userDoc.exists()) {
-        await setDoc(userRef, {
-          uid: result.user.uid,
-          email: result.user.email,
-          displayName: result.user.displayName || "",
-          photoURL: result.user.photoURL || "",
-          provider: providerName,
-          createdAt: serverTimestamp(),
-        });
-      }
-      localStorage.removeItem("login_retries");
-      localStorage.removeItem("login_locked_until");
-      setRetryCount(0);
-      setLockedUntil(null);
-
-      router.push("/dashboard");
-    } catch (err: any) {
-      console.error(err);
-      setFormLoading(false);
-      setError("Failed to sign in with provider");
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <span className="ml-2">Preparing login...</span>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-muted">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">Login</CardTitle>
-          <CardDescription>
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="text-sm font-medium text-red-500">{error}</div>
-            )}
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label htmlFor="password" className="text-sm font-medium">
-                  Password
-                </label>
+    <div className="min-h-screen flex bg-background">
+      <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
+        <div className="w-full max-w-md">
+          <LoginForm />
+        </div>
+      </div>
+
+      <div className="hidden lg:flex flex-1 relative overflow-hidden">
+        <div className="absolute inset-0 gradient-primary opacity-95" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-primary/30" />
+
+        <div className="relative z-10 flex items-center justify-center p-12">
+          <div className="text-center text-white space-y-8 max-w-lg">
+            <div className="relative">
+              <div className="w-40 h-40 mx-auto rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl">
+                <div className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-white/40 backdrop-blur-sm flex items-center justify-center">
+                    <Brain className="w-6 h-6 rounded-lg text-muted bg-white/70" />
+                  </div>
+                </div>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                }}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                required
-              />
+
+              <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm animate-pulse" />
+              <div className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm animate-pulse delay-300" />
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={
-                formLoading ||
-                ((lockedUntil && lockedUntil > Date.now()) as boolean)
-              }
-            >
-              {formLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Sign In
-            </Button>
-            <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/register"
-                className="font-medium text-primary hover:underline"
-              >
-                Register
-              </Link>
+
+            <div className="space-y-4">
+              <h2 className="text-3xl font-bold text-balance leading-tight">
+                Join <span className="text-primary">Telepaty</span> — The Future
+                of Messaging
+              </h2>
+              <p className="text-white/90 text-pretty text-lg leading-relaxed">
+                Experience seamless, real-time conversations. Connect, share,
+                and collaborate with powerful features designed for a modern
+                messaging experience.
+              </p>
             </div>
-          </CardFooter>
-        </form>
-        <div className="my-6 flex items-center px-6">
-          <hr className="flex-grow border-t border-gray-300 dark:border-gray-700" />
-          <span className="mx-4 text-sm text-muted-foreground">OR</span>
-          <hr className="flex-grow border-t border-gray-300 dark:border-gray-700" />
+
+            <div className="flex justify-center space-x-3 pt-4">
+              <div className="w-3 h-3 rounded-full bg-white/80 shadow-lg" />
+              <div className="w-3 h-3 rounded-full bg-white/50" />
+              <div className="w-3 h-3 rounded-full bg-white/50" />
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-3 px-6 pb-6">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => handleLoginWithProvider("google")}
-            disabled={!!(lockedUntil && lockedUntil > Date.now())}
-          >
-            <img
-              src="/assets/Google_logo.svg"
-              alt="Google"
-              className="mr-2 h-5 w-5"
-            />
-            Continue with Google
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={() => handleLoginWithProvider("github")}
-            disabled={!!(lockedUntil && lockedUntil > Date.now())}
-          >
-            <svg
-              className="mr-2 h-5 w-5"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M12 0a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6a3.1 3.1 0 00-1.3-1.7c-1-.6.1-.6.1-.6a2.4 2.4 0 011.7 1.2 2.4 2.4 0 003.2 1 2.4 2.4 0 01.7-1.5c-2.6-.3-5.3-1.3-5.3-5.8a4.6 4.6 0 011.2-3.2 4.2 4.2 0 01.1-3.1s1-.3 3.3 1.2a11.3 11.3 0 016 0c2.3-1.5 3.3-1.2 3.3-1.2a4.2 4.2 0 01.1 3.1 4.6 4.6 0 011.2 3.2c0 4.5-2.7 5.5-5.3 5.8a2.7 2.7 0 01.8 2.1v3.1c0 .3.2.7.8.6A12 12 0 0012 0z" />
-            </svg>
-            Continue with GitHub
-          </Button>
-        </div>
-        <div className="text-balance text-sm px-4 pb-4 text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 hover:[&_a]:text-primary text-center">
-          By clicking continue, you agree to our{" "}
-          <a href="/terms-and-conditions" className="text-xs">
-            Terms of Conditions
-          </a>{" "}
-          and{" "}
-          <a href="/privacy-policy" className="text-xs">
-            Privacy Policy
-          </a>
-          .
-        </div>
-      </Card>
+        <div className="absolute top-20 right-20 w-24 h-24 rounded-full bg-white/5 backdrop-blur-sm animate-pulse delay-700" />
+        <div className="absolute bottom-32 right-32 w-16 h-16 rounded-full bg-white/8 backdrop-blur-sm animate-pulse delay-1000" />
+        <div className="absolute top-1/2 right-12 w-8 h-8 rounded-full bg-white/6 backdrop-blur-sm animate-pulse delay-500" />
+        <div className="absolute top-1/3 right-1/4 w-4 h-4 rounded-full bg-white/10 backdrop-blur-sm animate-pulse delay-200" />
+      </div>
     </div>
   );
 }
