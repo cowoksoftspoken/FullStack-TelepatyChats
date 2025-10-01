@@ -16,8 +16,9 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { Brain, Loader2 } from "lucide-react";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
 const MAX_RETRIES = 5;
 const LOCKOUT_TIME_MS = 5 * 60 * 1000;
@@ -122,7 +123,20 @@ export function LoginForm() {
     setError("");
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const userRef = doc(db, "users", result.user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        await setDoc(userRef, {
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName || "",
+          photoURL: result.user.photoURL || "",
+          provider: providerName,
+          createdAt: serverTimestamp(),
+        });
+      }
       localStorage.removeItem("login_retries");
       localStorage.removeItem("login_locked_until");
       setRetryCount(0);
