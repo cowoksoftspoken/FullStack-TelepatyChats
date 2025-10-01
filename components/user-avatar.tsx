@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Dispatch, SetStateAction, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   HoverCard,
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Camera, Eye, Mail, Trash2, User } from "lucide-react";
+import { Camera, Eye, Link, Mail, Trash2, User } from "lucide-react";
 import type { User as UserType } from "@/types/user";
 import {
   DropdownMenu,
@@ -33,6 +33,7 @@ interface UserAvatarProps {
   enableMenu?: boolean;
   onChangePhoto?: () => void;
   onDeletePhoto?: () => void;
+  onChangePhotoFromURL?: (url: React.SetStateAction<boolean>) => void;
 }
 
 export function UserAvatar({
@@ -45,6 +46,7 @@ export function UserAvatar({
   enableMenu,
   onChangePhoto,
   onDeletePhoto,
+  onChangePhotoFromURL,
 }: UserAvatarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -114,7 +116,7 @@ export function UserAvatar({
             >
               <Eye className="h-4 w-4 text-gray-700 dark:text-gray-300" />
               <span className="text-sm text-gray-800 dark:text-gray-200">
-                Lihat Foto
+                See Photo
               </span>
             </DropdownMenuItem>
 
@@ -127,10 +129,24 @@ export function UserAvatar({
             >
               <Camera className="h-4 w-4 text-gray-700 dark:text-gray-300" />
               <span className="text-sm text-gray-800 dark:text-gray-200">
-                Ganti Foto
+                Change Photo
               </span>
             </DropdownMenuItem>
-
+            <DropdownMenuItem
+              onClick={() => {
+                if (onChangePhotoFromURL) {
+                  onChangePhotoFromURL(true);
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md 
+            hover:bg-gray-100 dark:hover:bg-neutral-800 
+            cursor-pointer transition-colors"
+            >
+              <Link className="h-4 w-4 text-gray-800 dark:text-gray-200" />
+              <span className="text-sm text-gray-800 dark:text-gray-200">
+                Change via URL
+              </span>
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={onDeletePhoto}
               className="flex items-center gap-2 px-3 py-2 rounded-md 
@@ -140,7 +156,7 @@ export function UserAvatar({
             >
               <Trash2 className="h-4 w-4 text-red-500" />
               <span className="text-sm text-red-600 dark:text-red-400 font-medium">
-                Hapus Foto
+                Delete Photo
               </span>
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -71,6 +71,7 @@ import { User } from "@/types/user";
 import { get, set } from "idb-keyval";
 import BackupKeyQR from "@/components/backup-qr";
 import { QRScannerModal } from "@/components/qr-reader-modal";
+import { ChangePhotoFromUrl } from "@/components/change-photo_from-url";
 
 export default function SettingsPage() {
   const {
@@ -102,6 +103,7 @@ export default function SettingsPage() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [qrReaderOpen, setIsQrReaderOpen] = useState<boolean>(false);
   const inputValReference = useRef<HTMLInputElement>(null);
+  const [isChangeFromURLOpen, setIsChangeFromURLOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !currentUser) {
@@ -352,6 +354,53 @@ export default function SettingsPage() {
     }
   };
 
+  const isValidUrl = (link: string) => {
+    try {
+      const parsed = new URL(link);
+      return /^https?:/.test(parsed.protocol);
+    } catch {
+      return false;
+    }
+  };
+
+  const isImageUrl = (link: string) => {
+    return /\.(jpeg|jpg|png|gif|webp)$/i.test(link);
+  };
+
+  const handleAvatarChangeFromURL = async (url: string) => {
+    if (!url) return;
+
+    if (!isValidUrl(url) || !isImageUrl(url)) {
+      toast({
+        variant: "default",
+        title: "Invalid URL",
+        description: "Please enter a valid image URL (.jpg, .png, etc)",
+      });
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      await Promise.all([
+        updateProfile(currentUser, { photoURL: url }),
+        updateDoc(doc(db, "users", currentUser.uid), {
+          photoURL: url,
+        }),
+      ]);
+      setLocalPhotoURL(url);
+      toast({
+        title: "Avatar updated",
+        description: "Profile picture updated.",
+      });
+    } catch (error) {
+      console.error("Error updating avatar: ", error);
+      setAvatarUploading(false);
+    } finally {
+      setAvatarUploading(false);
+      setIsChangeFromURLOpen(false);
+    }
+  };
+
   const handleRequestPasswordReset = async () => {
     if (!currentUser || !currentUser.email || !currentUser.emailVerified)
       return;
@@ -417,6 +466,7 @@ export default function SettingsPage() {
                   enableMenu
                   onChangePhoto={() => fileInputRef.current?.click()}
                   onDeletePhoto={handleDeletePhoto}
+                  onChangePhotoFromURL={() => setIsChangeFromURLOpen(true)}
                 />
 
                 {avatarUploading && (
@@ -787,6 +837,14 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {isChangeFromURLOpen && (
+          <ChangePhotoFromUrl
+            onSubmit={handleAvatarChangeFromURL}
+            isChangePhotoFromUrlOpen={isChangeFromURLOpen}
+            setIsChangePhotoFromUrlOpen={setIsChangeFromURLOpen}
+          />
+        )}
 
         <Card>
           <CardHeader>
