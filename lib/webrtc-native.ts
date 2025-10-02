@@ -445,7 +445,10 @@ class WebRTCManager {
       console.log("Local description set (offer)");
 
       await updateDoc(doc(this.db, "calls", callId), {
-        offer,
+        offer: {
+          type: offer.type,
+          sdp: offer.sdp,
+        },
       });
 
       await updateDoc(doc(this.db, "users", receiverId), {
@@ -623,7 +626,10 @@ class WebRTCManager {
       console.log("Local description set (answer)");
 
       await updateDoc(doc(this.db, "calls", callId), {
-        answer,
+        answer: {
+          type: answer.type,
+          sdp: answer.sdp,
+        },
         status: "accepted",
       });
 
