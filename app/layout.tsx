@@ -7,7 +7,13 @@ import { FirebaseProvider } from "@/lib/firebase-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "Arial"],
+  adjustFontFallback: true,
+  variable: "--tpy-inter-font",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://telepaty.vercel.app"),
@@ -171,7 +177,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} ${inter.variable} antialiased`}>
         <ToastProvider>
           <ThemeProvider defaultTheme="system" storageKey="zerochats-theme">
             <FirebaseProvider>
