@@ -56,6 +56,7 @@ class WebRTCManager {
     audio: 0,
     time: 0,
   };
+  private currentFacingMode: "user" | "environment" = "user";
   private iceServers: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
@@ -128,7 +129,6 @@ class WebRTCManager {
 
     pc.onicecandidate = async (event) => {
       if (event.candidate && this.currentCallId) {
-        console.log("New ICE candidate:", event.candidate);
         await this.sendICECandidate(event.candidate);
       } else if (!event.candidate) {
         console.log("ICE gathering completed");
@@ -713,6 +713,43 @@ class WebRTCManager {
     } catch (error) {
       console.error("Error rejecting call:", error);
     }
+  }
+
+  async switchCamera(): Promise<void> {
+    if (!(await this.checkHasMultipleCamera())) {
+      throw new Error("This device only have one camera.");
+    }
+
+    const sender = this.peerConnection
+      ?.getSenders()
+      .find((s) => s.track?.kind === "video");
+    console.log(this.peerConnection?.getSenders());
+    if (!sender) {
+      throw new Error("video sender not found.");
+    }
+
+    const nextFacing =
+      this.currentFacingMode === "user" ? "environment" : "user";
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: nextFacing,
+      },
+    });
+    const newTrack = newStream.getVideoTracks()[0];
+    if (!newTrack) {
+      throw new Error(`Facing camera ${nextFacing} not available`);
+    }
+    await sender.replaceTrack(newTrack);
+    this.currentFacingMode = nextFacing;
+    console.info(`Camera switched to ${nextFacing}`);
+  }
+
+  private async checkHasMultipleCamera(): Promise<boolean> {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(
+      (device) => device.kind === "videoinput"
+    );
+    return videoInputs.length < 1;
   }
 
   async endCall(): Promise<void> {

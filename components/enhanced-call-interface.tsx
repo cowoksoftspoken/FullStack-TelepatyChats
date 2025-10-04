@@ -1,28 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  PhoneOff,
-  Mic,
-  MicOff,
-  Video,
-  VideoOff,
-  Monitor,
-  Volume2,
-  VolumeX,
-  Wifi,
-  Droplets,
-} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { UserAvatar } from "./user-avatar";
-import type { User } from "@/types/user";
 import { toast } from "@/hooks/use-toast";
 import { useConnectionStats } from "@/hooks/use-webrtc-enhanced";
-import StreamStatusDropdown from "./stream-status-dropdown";
+import type { User } from "@/types/user";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Mic,
+  MicOff,
+  Monitor,
+  PhoneOff,
+  RotateCw,
+  Video,
+  VideoOff,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import ConnectionStatsPanel from "./connection-stats-panel";
+import StreamStatusDropdown from "./stream-status-dropdown";
+import { UserAvatar } from "./user-avatar";
 
 interface EnhancedCallInterfaceProps {
   isActive: boolean;
@@ -39,6 +38,7 @@ interface EnhancedCallInterfaceProps {
   onToggleMute: () => void;
   onToggleVideo: () => void;
   shareScreen: () => void;
+  switchCamera: () => void;
 }
 
 export function EnhancedCallInterface({
@@ -56,6 +56,7 @@ export function EnhancedCallInterface({
   onToggleMute,
   onToggleVideo,
   shareScreen,
+  switchCamera,
 }: EnhancedCallInterfaceProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -64,6 +65,7 @@ export function EnhancedCallInterface({
   const [isLocalMain, setIsLocalMain] = useState(false);
   const [showStats, setShowStats] = useState(false);
   const stats = useConnectionStats();
+  const [hasTwoCameras, setHasTwoCameras] = useState(false);
 
   useEffect(() => {
     if (localVideoRef.current && localStream) {
@@ -92,6 +94,20 @@ export function EnhancedCallInterface({
       if (interval) clearInterval(interval);
     };
   }, [isConnected]);
+
+  useEffect(() => {
+    const checkCameras = async () => {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter((d) => d.kind === "videoinput");
+        setHasTwoCameras(videoInputs.length > 1);
+      } catch (err) {
+        console.error("Gagal cek kamera:", err);
+        setHasTwoCameras(false);
+      }
+    };
+    checkCameras();
+  }, []);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -415,7 +431,17 @@ export function EnhancedCallInterface({
                   )}
                 </Button>
 
-                {isVideo && (
+                {hasTwoCameras && (
+                  <Button
+                    variant="secondary"
+                    className="rounded-full h-14 w-14 sm:h-16 sm:w-16"
+                    onClick={() => switchCamera()}
+                  >
+                    <RotateCw className="h-6 w-6 sm:h-7 sm:w-7 hover:rotate-180" />
+                  </Button>
+                )}
+
+                {isVideo && canShare && (
                   <Button
                     variant="secondary"
                     className="rounded-full h-14 w-14 sm:h-16 sm:w-16"

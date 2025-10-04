@@ -220,6 +220,20 @@ export function useWebRTCEnhanced({
     [toast]
   );
 
+  const handleSwitchCamera = useCallback(async () => {
+    const manager = getWebRTCManager();
+    if (!manager) return;
+    try {
+      await manager.switchCamera();
+    } catch (err) {
+      toast({
+        variant: "default",
+        title: "Error",
+        description: (err as Error).message,
+      });
+    }
+  }, []);
+
   const handleCallEnd = useCallback(async () => {
     try {
       const manager = getWebRTCManager();
@@ -277,6 +291,7 @@ export function useWebRTCEnhanced({
     handleCallEnd,
     toggleMute,
     toggleVideo,
+    handleSwitchCamera,
   };
 }
 

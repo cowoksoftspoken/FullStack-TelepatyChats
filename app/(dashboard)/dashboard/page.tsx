@@ -67,6 +67,7 @@ export default function DashboardPage() {
     toggleMute,
     toggleVideo,
     toggleShareScreen,
+    handleSwitchCamera,
   } = useWebRTCEnhanced({
     currentUser,
     onIncomingCall: async (callData: CallData | null) => {
@@ -433,6 +434,7 @@ export default function DashboardPage() {
             onEndCall={handleEndCall}
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
+            switchCamera={handleSwitchCamera}
           />
         )}
 
