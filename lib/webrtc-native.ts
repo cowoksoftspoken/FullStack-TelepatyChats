@@ -726,12 +726,17 @@ class WebRTCManager {
     if (!sender) {
       throw new Error("video sender not found.");
     }
-
     const nextFacing =
       this.currentFacingMode === "user" ? "environment" : "user";
+
+    const oldTrack = sender.track;
+    oldTrack?.stop();
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+
     const newStream = await navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: nextFacing,
+        facingMode: { exact: nextFacing },
       },
     });
     const newTrack = newStream.getVideoTracks()[0];
@@ -739,6 +744,10 @@ class WebRTCManager {
       throw new Error(`Facing camera ${nextFacing} not available`);
     }
     await sender.replaceTrack(newTrack);
+
+    this.localStream = newStream;
+    this.dispatchStreamEvent("localstream", newStream);
+
     this.currentFacingMode = nextFacing;
     console.info(`Camera switched to ${nextFacing}`);
   }
@@ -761,6 +770,7 @@ class WebRTCManager {
           console.log(`Stopped ${track.kind} track`);
         });
         this.localStream = null;
+        this.currentFacingMode = "user";
       }
 
       if (this.peerConnection) {
