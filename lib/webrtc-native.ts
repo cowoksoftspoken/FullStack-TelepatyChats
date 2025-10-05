@@ -723,7 +723,6 @@ class WebRTCManager {
     const sender = this.peerConnection
       ?.getSenders()
       .find((s) => s.track?.kind === "video");
-    console.log(this.peerConnection?.getSenders());
     if (!sender) {
       throw new Error("video sender not found.");
     }
@@ -749,7 +748,7 @@ class WebRTCManager {
     const videoInputs = devices.filter(
       (device) => device.kind === "videoinput"
     );
-    return videoInputs.length < 1;
+    return videoInputs.length > 1;
   }
 
   async endCall(): Promise<void> {
