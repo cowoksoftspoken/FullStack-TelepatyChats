@@ -68,12 +68,6 @@ export function EnhancedCallInterface({
   const [hasTwoCameras, setHasTwoCameras] = useState(false);
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-    }
-  }, [remoteStream]);
-
-  useEffect(() => {
     let interval: NodeJS.Timeout;
 
     if (isConnected) {
