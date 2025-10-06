@@ -47,7 +47,7 @@ export function ChangePhotoFromUrl({
         <DialogHeader>
           <DialogTitle>Change Photo</DialogTitle>
           <DialogDescription>
-            Masukkan URL gambar untuk mengganti foto kamu.
+            Enter a valid image URL for change your avatar
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-2">
