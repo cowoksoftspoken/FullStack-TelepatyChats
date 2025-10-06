@@ -2,6 +2,8 @@
 
 import React, { Dispatch, SetStateAction } from "react";
 import { WebRTCStats } from "@/lib/webrtc-native";
+import { formatTimestamp } from "@/lib/utils";
+import { stat } from "fs";
 
 type Props = {
   stats: WebRTCStats | null;
@@ -82,6 +84,13 @@ export default function ConnectionStatsPanel({ stats, setShowStats }: Props) {
           max={20}
           unit="s"
           color="bg-yellow-400"
+        />
+        <StatRow
+          label="TimeStamp"
+          value={formatTimestamp(
+            stats.timestamp,
+            Intl.DateTimeFormat().resolvedOptions().timeZone
+          )}
         />
       </div>
     </div>
