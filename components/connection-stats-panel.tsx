@@ -3,7 +3,6 @@
 import React, { Dispatch, SetStateAction } from "react";
 import { WebRTCStats } from "@/lib/webrtc-native";
 import { formatTimestamp } from "@/lib/utils";
-import { stat } from "fs";
 
 type Props = {
   stats: WebRTCStats | null;
@@ -16,7 +15,7 @@ export default function ConnectionStatsPanel({ stats, setShowStats }: Props) {
   const totalBitrate = (stats.videoBitrate ?? 0) + (stats.audioBitrate ?? 0);
 
   return (
-    <div className="absolute top-4 left-4 z-50 bg-black/80 text-white text-xs rounded-md p-3 w-[320px] shadow-lg font-mono">
+    <div className="absolute top-4 left-4 z-50 bg-black/80 text-white text-xs rounded-md p-3 w-[330px] shadow-lg font-mono">
       <div className="flex justify-between mb-2">
         <span>Connection Stats</span>
         <span

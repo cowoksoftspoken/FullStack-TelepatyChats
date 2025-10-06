@@ -13,7 +13,6 @@ import {
   Monitor,
   PhoneOff,
   RotateCw,
-  ShieldCheck,
   Video,
   VideoOff,
   Volume2,
@@ -67,12 +66,6 @@ export function EnhancedCallInterface({
   const [showStats, setShowStats] = useState(false);
   const stats = useConnectionStats();
   const [hasTwoCameras, setHasTwoCameras] = useState(false);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) {
-      localVideoRef.current.srcObject = localStream;
-    }
-  }, [localStream]);
 
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
