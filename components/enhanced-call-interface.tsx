@@ -90,7 +90,7 @@ export function EnhancedCallInterface({
         const videoInputs = devices.filter((d) => d.kind === "videoinput");
         setHasTwoCameras(videoInputs.length > 1);
       } catch (err) {
-        console.error("Gagal cek kamera:", err);
+        console.error("failed to check camera:", err);
         setHasTwoCameras(false);
       }
     };
