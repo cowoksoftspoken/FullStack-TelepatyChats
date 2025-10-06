@@ -1,3 +1,33 @@
+/**
+ * -----------------------------------------------------------------------------
+ *  Project   : WebRTC Core Library
+ *  Author    : Inggrit Setya Budi
+ *  File      : webrtc-native.ts
+ *  Created   : 2025-10-06
+ *
+ *  Description:
+ *    Core WebRTC manager class using TypeScript and Firestore signaling.
+ *    Handles peer connection, media streams, ICE candidates, call states,
+ *    screen sharing, and connection statistics.
+ *
+ *  License: GPLv3
+ *    Copyright (c) 2025 Inggrit Setya Budi
+ *
+ *    This program is free software: you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation, either version 3 of the License, or
+ *    (at your option) any later version.
+ *
+ *    This program is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ *
+ *    You should have received a copy of the GNU General Public License
+ *    along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * -----------------------------------------------------------------------------
+ */
+
 "use client";
 
 import {
@@ -40,6 +70,9 @@ export type WebRTCStats = {
   videoFps: number | null;
   videoBitrate: number | null;
   audioBitrate: number | null;
+  videoCodec?: string | null;
+  jitter?: number | null;
+  resolution?: { w: number; h: number } | null;
 };
 
 class WebRTCManager {
@@ -836,7 +869,17 @@ class WebRTCManager {
     let fps: number | null = null;
     let videoBytes = 0;
     let audioBytes = 0;
+    let videoCodec: string | null = null;
+    let jitter: number | null = null;
+    let resolution: { w: number; h: number } | null = null;
     const now = Date.now();
+
+    const codecsById = new Map<string, any>();
+    report?.forEach((stat) => {
+      if (stat.type === "codec") {
+        codecsById.set(stat.id, stat);
+      }
+    });
 
     report?.forEach((stat) => {
       if (stat.type === "remote-inbound-rtp" && stat.roundTripTime) {
@@ -852,8 +895,20 @@ class WebRTCManager {
           packetsReceived += stat.packetsReceived;
         }
 
-        if (stat.kind === "video" && typeof stat.framesPerSecond === "number") {
-          fps = stat.framesPerSecond;
+        if (stat.kind === "video") {
+          if (typeof stat.framesPerSecond === "number") {
+            fps = stat.framesPerSecond;
+          }
+
+          const codecId = (stat as any).codecId;
+          const codec = codecId ? codecsById.get(codecId) : null;
+          if (codec) {
+            videoCodec = codec.mimeType || codec.name || null;
+          }
+
+          if (typeof (stat as any).jitter === "number") {
+            jitter = (stat as any).jitter * 1000;
+          }
         }
       }
 
@@ -863,6 +918,22 @@ class WebRTCManager {
         }
         if (stat.kind === "audio" && stat.bytesSent !== undefined) {
           audioBytes = stat.bytesSent;
+        }
+      }
+
+      if (stat.type === "track" && (stat as any).frameWidth) {
+        resolution = {
+          w: (stat as any).frameWidth,
+          h: (stat as any).frameHeight,
+        };
+      }
+
+      if (stat.type === "inbound-rtp" && (stat as any).kind === "video") {
+        if ((stat as any).frameWidth && (stat as any).frameHeight) {
+          resolution = {
+            w: (stat as any).frameWidth,
+            h: (stat as any).frameHeight,
+          };
         }
       }
     });
@@ -891,6 +962,9 @@ class WebRTCManager {
       videoFps: fps,
       videoBitrate,
       audioBitrate,
+      videoCodec,
+      jitter,
+      resolution,
     };
   }
 

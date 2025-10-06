@@ -13,6 +13,7 @@ import {
   Monitor,
   PhoneOff,
   RotateCw,
+  ShieldCheck,
   Video,
   VideoOff,
   Volume2,

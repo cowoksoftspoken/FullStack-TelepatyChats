@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Settings, Mic, Video, BarChart2 } from "lucide-react";
+import { Settings, Mic, Video, BarChart2, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 
 export default function StreamStatusDropdown({
@@ -80,6 +80,23 @@ export default function StreamStatusDropdown({
                 {remoteStream ? "Active" : "Inactive"}
               </span>
             </div>
+          </div>
+        </DropdownMenuLabel>
+
+        <DropdownMenuLabel className="flex justify-center">
+          <div
+            className="flex items-center gap-2 px-3 py-1 
+               rounded-full backdrop-blur-md 
+               bg-white/10 border border-white/20 
+               shadow-md"
+          >
+            <ShieldCheck size={14} className="text-emerald-400" />
+            <span
+              className="text-xs font-semibold text-emerald-300 tracking-wide"
+              title="This call is End-to-end Encrypted"
+            >
+              End-to-end Encrypted
+            </span>
           </div>
         </DropdownMenuLabel>
 

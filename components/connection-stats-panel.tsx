@@ -34,12 +34,28 @@ export default function ConnectionStatsPanel({ stats, setShowStats }: Props) {
           label="Packet Loss"
           value={`${stats.packetLoss?.toFixed(2)} %`}
         />
+        <StatRow
+          label="Jitter"
+          value={stats.jitter ? `${stats.jitter.toFixed(0)} ms` : "-"}
+        />
+        <StatRow
+          label="Resolution"
+          value={
+            stats.resolution
+              ? `${stats.resolution.w}x${stats.resolution.h}`
+              : "-"
+          }
+        />
         <StatRow label="Video FPS" value={stats.videoFps ?? "-"} />
         <StatRow
           label="Video Bitrate"
           value={
             stats.videoBitrate ? `${stats.videoBitrate.toFixed(0)} kbps` : "-"
           }
+        />
+        <StatRow
+          label="Video Codecs"
+          value={stats.videoCodec ? `${stats.videoCodec}` : "-"}
         />
         <StatRow
           label="Audio Bitrate"
