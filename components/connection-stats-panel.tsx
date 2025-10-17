@@ -98,9 +98,13 @@ export default function ConnectionStatsPanel({ stats, setShowStats }: Props) {
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex justify-between">
-      <span>{label}:</span>
-      <span>{value}</span>
+    <div className="flex text-left justify-between">
+      <span className="w-[100px] shrink-0" title={label}>
+        {label}:
+      </span>
+      <span className="whitespace-pre-wrap break-words pl-2" title={`${value}`}>
+        {value}
+      </span>
     </div>
   );
 }
@@ -123,13 +127,16 @@ function StatBar({
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <span>{label}:</span>
-        <span>
+        <span title={label}>{label}:</span>
+        <span title={`${value.toFixed(0)} ${unit}`}>
           {value.toFixed(0)} {unit}
         </span>
       </div>
       <div className="h-2 w-full bg-gray-700 rounded">
         <div
+          data-current-value={value}
+          aria-valuenow={value}
+          title={`${width.toFixed(2)}%`}
           className={`h-2 rounded ${color}`}
           style={{ width: `${width}%` }}
         ></div>
