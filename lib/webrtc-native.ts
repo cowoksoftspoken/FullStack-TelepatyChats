@@ -270,23 +270,18 @@ class WebRTCManager {
       if (!params.encodings) params.encodings = [{}];
 
       if (type === "relay") {
-        params.encodings[0].maxBitrate = 32 * 1000;
-        console.log("Using TURN server, adjusting audio bitrate to 32kbps");
+        params.encodings[0].maxBitrate = 48 * 1000;
+        console.log("Using TURN server, adjusting audio bitrate to 48kbps");
         try {
-          await sender.track?.applyConstraints({ sampleRate: 16000 });
+          await sender.track?.applyConstraints({ sampleRate: 24000 });
         } catch (err) {
           console.warn("Failed to apply audio constraints:", err);
         }
       } else {
-        params.encodings[0].maxBitrate = 64 * 1000;
+        params.encodings[0].maxBitrate = 100 * 1000;
         console.log(
-          "Using direct connection, adjusting audio bitrate to 64kbps"
+          "Using direct connection, adjusting audio bitrate to 100kbps"
         );
-        try {
-          await sender.track?.applyConstraints({ sampleRate: 44100 });
-        } catch (err) {
-          console.warn("Failed to apply audio constraints:", err);
-        }
       }
 
       await sender.setParameters(params);
@@ -309,7 +304,9 @@ class WebRTCManager {
 
       if (type === "relay") {
         params.encodings[0].maxBitrate = 300 * 1000;
-        console.log("Using TURN server, adjusting video bitrate to 300kbps");
+        console.log(
+          "Using TURN server, adjusting video bitrate to 300kbps, 480p @20fps"
+        );
         try {
           await sender.track?.applyConstraints({
             width: 640,
@@ -320,9 +317,9 @@ class WebRTCManager {
           console.warn("Failed to apply video constraints:", err);
         }
       } else {
-        params.encodings[0].maxBitrate = 1500 * 1000;
+        params.encodings[0].maxBitrate = 2000 * 1000;
         console.log(
-          "Using direct connection, adjusting video bitrate to 1.5Mbps"
+          "Using direct connection, adjusting video bitrate to 2 Mbps, 1080p @30fps"
         );
         try {
           await sender.track?.applyConstraints({
