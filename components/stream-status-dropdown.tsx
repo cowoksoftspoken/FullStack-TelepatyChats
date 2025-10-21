@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Settings, Mic, Video, BarChart2, ShieldCheck } from "lucide-react";
 import { useState } from "react";
+import { Button } from "./ui/button";
 
 export default function StreamStatusDropdown({
   localStream,
@@ -23,12 +24,13 @@ export default function StreamStatusDropdown({
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button
-          className="p-2 rounded-full bg-black/40 hover:bg-black/60 transition-colors"
+        <Button
+          variant="ghost"
+          className="rounded-full hover:bg-white/10 "
           title="Settings"
         >
           <Settings size={18} className="text-white" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent

@@ -42,6 +42,7 @@ export default function DashboardPage() {
     callData: CallData;
     caller: User | null;
   } | null>(null);
+  const [isCallMinimized, setIsCallMinimized] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [active, setIsChatActive] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -435,6 +436,8 @@ export default function DashboardPage() {
             onToggleMute={toggleMute}
             onToggleVideo={toggleVideo}
             switchCamera={handleSwitchCamera}
+            isMinimized={isCallMinimized}
+            setIsMinimized={setIsCallMinimized}
           />
         )}
 
