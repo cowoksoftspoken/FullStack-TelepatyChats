@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     siteName: "Telepaty",
     images: [
       {
-        url: "/dark_icon/android-chrome-192x192.png",
+        url: "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
         width: 1200,
         height: 630,
         alt: "Telepaty Logo",
@@ -46,64 +46,66 @@ export const metadata: Metadata = {
     title: "Telepaty - Real-time messaging app",
     description:
       "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    images: ["/dark_icon/android-chrome-192x192.png"],
+    images: [
+      "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
+    ],
   },
   icons: {
     icon: [
       {
-        url: "/light_icon/favicon-16x16.png",
+        url: "https://telepaty.vercel.app/light_icon/favicon-16x16.png",
         type: "image/png",
         sizes: "16x16",
       },
       {
-        url: "/light_icon/favicon-32x32.png",
+        url: "https://telepaty.vercel.app/light_icon/favicon-32x32.png",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "/light_icon/android-chrome-192x192.png",
+        url: "https://telepaty.vercel.app/light_icon/android-chrome-192x192.png",
         type: "image/png",
         sizes: "192x192",
       },
       {
-        url: "/light_icon/android-chrome-512x512.png",
+        url: "https://telepaty.vercel.app/light_icon/android-chrome-512x512.png",
         type: "image/png",
         sizes: "512x512",
       },
       {
-        url: "/light_icon/apple-touch-icon.png",
+        url: "https://telepaty.vercel.app/light_icon/apple-touch-icon.png",
         type: "image/png",
         sizes: "180x180",
       },
 
       {
-        url: "/dark_icon/favicon-16x16.png",
+        url: "https://telepaty.vercel.app/dark_icon/favicon-16x16.png",
         type: "image/png",
         sizes: "16x16",
       },
       {
-        url: "/dark_icon/favicon-32x32.png",
+        url: "https://telepaty.vercel.app/dark_icon/favicon-32x32.png",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "/dark_icon/android-chrome-192x192.png",
+        url: "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
         type: "image/png",
         sizes: "192x192",
       },
       {
-        url: "/dark_icon/android-chrome-512x512.png",
+        url: "https://telepaty.vercel.app/dark_icon/android-chrome-512x512.png",
         type: "image/png",
         sizes: "512x512",
       },
       {
-        url: "/dark_icon/apple-touch-icon.png",
+        url: "https://telepaty.vercel.app/dark_icon/apple-touch-icon.png",
         type: "image/png",
         sizes: "180x180",
       },
     ],
-    shortcut: "/light_icon/favicon.ico",
-    apple: "/dark_icon/apple-touch-icon.png",
+    shortcut: "https://telepaty.vercel.app/light_icon/favicon.ico",
+    apple: "https://telepaty.vercel.app/dark_icon/apple-touch-icon.png",
   },
   manifest: "/manifest/site.webmanifest",
 };
