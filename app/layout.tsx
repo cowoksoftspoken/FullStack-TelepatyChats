@@ -128,28 +128,28 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="/light_icon/favicon-16x16.png"
+          href="https://telepaty.vercel.app/light_icon/favicon-16x16.png"
           media="(prefers-color-scheme: light)"
           type="image/png"
           sizes="16x16"
         />
         <link
           rel="icon"
-          href="/light_icon/favicon-32x32.png"
+          href="https://telepaty.vercel.app/light_icon/favicon-32x32.png"
           media="(prefers-color-scheme: light)"
           type="image/png"
           sizes="32x32"
         />
         <link
           rel="icon"
-          href="/dark_icon/favicon-16x16.png"
+          href="https://telepaty.vercel.app/dark_icon/favicon-16x16.png"
           media="(prefers-color-scheme: dark)"
           type="image/png"
           sizes="16x16"
         />
         <link
           rel="icon"
-          href="/dark_icon/favicon-32x32.png"
+          href="https://telepaty.vercel.app/dark_icon/favicon-32x32.png"
           media="(prefers-color-scheme: dark)"
           type="image/png"
           sizes="32x32"
@@ -157,7 +157,7 @@ export default function RootLayout({
 
         <link
           rel="shortcut icon"
-          href="/light_icon/favicon.ico"
+          href="https://telepaty.vercel.app/light_icon/favicon.ico"
           type="image/x-icon"
         />
         <script
