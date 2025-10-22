@@ -1,23 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useFirebase } from "@/lib/firebase-provider";
 import {
-  generateKeyPair,
-  exportPublicKey,
-  exportPrivateKey,
-  importPublicKey,
-  importPrivateKey,
-  generateMessageKey,
-  encryptMessage,
-  decryptMessage,
-  encryptKey,
   decryptKey,
-  arrayBufferToBase64,
+  decryptMessage,
   encryptedBuffer,
+  encryptKey,
+  encryptMessage,
+  exportPrivateKey,
+  exportPublicKey,
+  generateKeyPair,
+  generateMessageKey,
+  importPrivateKey,
+  importPublicKey,
 } from "@/utils/encryption";
-import { set, get } from "idb-keyval";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { get, set } from "idb-keyval";
+import { useEffect, useState } from "react";
 
 export function useEncryption(currentUser: any) {
   const { db } = useFirebase();
@@ -187,6 +186,37 @@ export function useEncryption(currentUser: any) {
     }
   };
 
+  const decryptLastMessageFromContact = async (
+    lastMessage: string,
+    encryptedKeyForSelf: string,
+    encryptedKey: string,
+    isSender: boolean,
+    iv: string
+  ) => {
+    if (!isInitialized || !privateKey) {
+      throw new Error(
+        "Encryption not initialized or private key not available"
+      );
+    }
+    try {
+      const keyToDecrypt = isSender
+        ? encryptedKeyForSelf || encryptedKey
+        : encryptedKey;
+
+      const messageKey = await decryptKey(keyToDecrypt, privateKey, publicKey!);
+      const decryptedMessage = await decryptMessage(
+        lastMessage,
+        iv,
+        messageKey
+      );
+
+      return decryptedMessage;
+    } catch (error) {
+      console.error("Error decrypting last message:", error);
+      return "Locked Message 🔒";
+    }
+  };
+
   const encryptFile = async (
     file: File,
     contactId: string
@@ -258,5 +288,6 @@ export function useEncryption(currentUser: any) {
     encryptMessageForContact,
     decryptMessageFromContact,
     encryptFile,
+    decryptLastMessageFromContact,
   };
 }

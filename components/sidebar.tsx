@@ -73,8 +73,19 @@ export function Sidebar({
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const [lastMessageTimestamps, setLastMessageTimestamps] = useState<
-    Record<string, string>
+  const [lastMessage, setLastMessage] = useState<
+    Record<
+      string,
+      {
+        type: string;
+        encryptedText: string;
+        encryptedKey: string;
+        isSender: boolean;
+        encryptedKeyForSelf: string;
+        iv: string;
+        timestamp: string;
+      }
+    >
   >({});
 
   useEffect(() => {
@@ -116,9 +127,17 @@ export function Sidebar({
           return onSnapshot(q, (snapshot) => {
             if (!snapshot.empty) {
               const lastMessage = snapshot.docs[0].data();
-              setLastMessageTimestamps((prev) => ({
+              setLastMessage((prev) => ({
                 ...prev,
-                [contactId]: lastMessage.timestamp,
+                [contactId]: {
+                  type: lastMessage.type,
+                  encryptedText: lastMessage.encryptedText,
+                  encryptedKeyForSelf: lastMessage.encryptedKeyForSelf,
+                  encryptedKey: lastMessage.encryptedKey,
+                  isSender: lastMessage.senderId === currentUser.uid,
+                  iv: lastMessage.iv,
+                  timestamp: lastMessage.timestamp,
+                },
               }));
             }
           });
@@ -309,8 +328,8 @@ export function Sidebar({
 
   const filteredAndSortedContacts = useMemo(() => {
     return filteredContacts.slice().sort((a, b) => {
-      const timestampA = lastMessageTimestamps[a.uid] || "";
-      const timestampB = lastMessageTimestamps[b.uid] || "";
+      const timestampA = lastMessage[a.uid] || "";
+      const timestampB = lastMessage[b.uid] || "";
 
       if (!timestampA && !timestampB) {
         return a.displayName.localeCompare(b.displayName);
@@ -319,9 +338,12 @@ export function Sidebar({
       if (!timestampA) return 1;
       if (!timestampB) return -1;
 
-      return new Date(timestampB).getTime() - new Date(timestampA).getTime();
+      return (
+        new Date(timestampB.timestamp).getTime() -
+        new Date(timestampA.timestamp).getTime()
+      );
     });
-  }, [filteredContacts, lastMessageTimestamps]);
+  }, [filteredContacts, lastMessage]);
 
   useEffect(() => {
     const usersData = async () => {
@@ -511,6 +533,8 @@ export function Sidebar({
                     handleDeleteContact={handleDeleteContact}
                     initiateCall={initiateCall}
                     toast={toast}
+                    lastMessage={lastMessage[contact.uid]}
+                    currentUser={currentUser}
                   />
                 );
               })
