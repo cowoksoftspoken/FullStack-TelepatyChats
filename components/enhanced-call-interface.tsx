@@ -8,8 +8,12 @@ import { useConnectionStats } from "@/hooks/use-webrtc-enhanced";
 import type { User } from "@/types/user";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  BarChart2,
+  ChartLine,
+  Lock,
   Mic,
   MicOff,
+  Minimize,
   Monitor,
   PhoneOff,
   RotateCw,
@@ -17,14 +21,9 @@ import {
   VideoOff,
   Volume2,
   VolumeX,
-  Minus,
-  Minimize,
-  Settings,
-  Lock,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import ConnectionStatsPanel from "./connection-stats-panel";
-import StreamStatusDropdown from "./stream-status-dropdown";
 import { UserAvatar } from "./user-avatar";
 
 interface EnhancedCallInterfaceProps {
@@ -451,7 +450,14 @@ export function EnhancedCallInterface({
               `}
             </style>
 
-            <div className="flex bg-black/30 rounded-full">
+            <div className="flex bg-black/30 items-center rounded-full">
+              <div
+                className="rounded-full p-3 hover:bg-white/10 cursor-default"
+                title="Secure Call (E2E Encrypted)"
+              >
+                <Lock className="h-[1.1rem] w-[1.1rem] text-green-600" />
+              </div>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -460,11 +466,14 @@ export function EnhancedCallInterface({
               >
                 <Minimize className="h-5 w-5 text-white" />
               </Button>
-              <StreamStatusDropdown
-                localStream={localStream}
-                remoteStream={remoteStream}
-                onToggleStats={() => setShowStats((prev) => !prev)}
-              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full hover:bg-white/10"
+                onClick={() => setShowStats(!showStats)}
+              >
+                <BarChart2 className="h-5 w-5 text-white" />
+              </Button>
             </div>
           </div>
 

@@ -60,6 +60,8 @@ export function ContactItem({
         return;
       }
 
+      const prefix = lastMessage.isSender ? "You: " : "";
+
       if (lastMessage.type !== "text") {
         const lastMessageTypes: Record<string, string> = {
           image: "📷 Photo",
@@ -67,7 +69,10 @@ export function ContactItem({
           audio: "🎧 Audio",
           file: "📁 File",
         };
-        setPreview(lastMessageTypes[lastMessage.type] || "Locked message 🔒");
+        setPreview(
+          `${prefix}${lastMessageTypes[lastMessage.type]}` ||
+            "Locked message 🔒"
+        );
         return;
       }
 
@@ -79,7 +84,6 @@ export function ContactItem({
           lastMessage.isSender,
           lastMessage.iv
         );
-        const prefix = lastMessage.isSender ? "You: " : "";
         const text = decrypted || "Locked message 🔒";
         setPreview(`${prefix}${text}`);
       } catch (e) {
