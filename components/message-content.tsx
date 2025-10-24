@@ -1,15 +1,15 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo } from "react";
-import { EncryptedImage } from "./encrypted-image";
-import { EncryptedVideo } from "./encrypted-video";
+import type { Message } from "@/types/message";
+import { Globe, MapPin } from "lucide-react";
+import { useMemo } from "react";
+import { CollapsedText } from "./collapsed-text";
 import { EncryptedAudio } from "./encrypted-audio";
 import { EncryptedFile } from "./encrypted-file";
-import { YoutubeEmbed } from "./yt-embed";
+import { EncryptedImage } from "./encrypted-image";
+import { EncryptedVideo } from "./encrypted-video";
 import MapPreview from "./map-preview";
-import { Globe, MapPin } from "lucide-react";
-import type { Message } from "@/types/message";
-import { CollapsedText } from "./collapsed-text";
+import { YoutubeEmbed } from "./yt-embed";
 
 interface MessageContentProps {
   msg: Message;

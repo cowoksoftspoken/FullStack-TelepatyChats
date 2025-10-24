@@ -74,6 +74,10 @@ export function EnhancedCallInterface({
   const [showStats, setShowStats] = useState(false);
   const stats = useConnectionStats();
   const [hasTwoCameras, setHasTwoCameras] = useState(false);
+  const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const dataArrayRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -129,6 +133,64 @@ export function EnhancedCallInterface({
       if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
     }
   }, [isLocalMain, localStream, remoteStream, isMinimized]);
+
+  useEffect(() => {
+    if (!remoteStream) return;
+
+    const audioCtx = new AudioContext();
+    const analyser = audioCtx.createAnalyser();
+    const source = audioCtx.createMediaStreamSource(remoteStream);
+    source.connect(analyser);
+    analyser.fftSize = 256;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const canvas = waveformCanvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const baseRadius = 65;
+    const barLength = 15;
+    const barWidth = 2;
+    const color = "rgba(0,255,100,0.8)";
+
+    const draw = () => {
+      requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < bufferLength; i++) {
+        const angle = (i / bufferLength) * Math.PI * 2;
+        const amplitude = (dataArray[i] / 255) * barLength;
+        const innerRadius = baseRadius - amplitude / 2;
+        const outerRadius = baseRadius + amplitude / 2;
+
+        const x1 = centerX + innerRadius * Math.cos(angle);
+        const y1 = centerY + innerRadius * Math.sin(angle);
+        const x2 = centerX + outerRadius * Math.cos(angle);
+        const y2 = centerY + outerRadius * Math.sin(angle);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = barWidth;
+        ctx.stroke();
+      }
+    };
+
+    draw();
+
+    return () => {
+      audioCtx.close().catch(() => {});
+    };
+  }, [remoteStream, isMinimized]);
 
   const status = getStatus();
 
@@ -532,8 +594,14 @@ export function EnhancedCallInterface({
             ) : (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
-                  <div className="w-32 h-32 mx-auto px-4 mb-2">
-                    <UserAvatar user={contact} size="lg" />
+                  <div className="relative w-40 h-40 mx-auto mb-3 flex items-center justify-center">
+                    <canvas
+                      ref={waveformCanvasRef}
+                      className="absolute inset-0 w-full h-full pointer-events-none z-0"
+                    />
+                    <div className="relative z-10">
+                      <UserAvatar user={contact} size="lg" />
+                    </div>
                   </div>
                   <h2 className="text-2xl font-semibold text-white mb-2">
                     {contact.displayName}
