@@ -20,6 +20,18 @@ export const metadata: Metadata = {
   title: "Telepaty - Real-time messaging app",
   description:
     "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
+  keywords: [
+    "chat app",
+    "messaging",
+    "video calls",
+    "voice calls",
+    "encrypted messaging",
+    "telepaty chat",
+    "location sharing",
+    "real-time messages",
+    "social chat app",
+    "private communication",
+  ],
   openGraph: {
     title: "Telepaty - Real-time messaging app",
     description:
@@ -28,27 +40,26 @@ export const metadata: Metadata = {
     siteName: "Telepaty",
     images: [
       {
-        url: "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
-        width: 1200,
-        height: 630,
-        alt: "Telepaty Logo",
+        url: "https://telepaty.vercel.app/favicon_dark.jpg",
+        width: 1024,
+        height: 1024,
+        alt: "Telepaty Dark Mode Logo",
       },
     ],
     type: "website",
   },
   other: {
-    releaseDate: "2024-07-23",
     author: "Inggrit Setya Budi",
-    version: "2.16.8",
+    encryption: "End-to-End Encryption (E2EE)",
+    privacy:
+      "User data stored securely with encryption and never shared with third parties",
   },
   twitter: {
     card: "summary_large_image",
     title: "Telepaty - Real-time messaging app",
     description:
       "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    images: [
-      "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
-    ],
+    images: ["https://telepaty.vercel.app/favicon_dark.jpg"],
   },
   icons: {
     icon: [
@@ -108,12 +119,22 @@ export const metadata: Metadata = {
     apple: "https://telepaty.vercel.app/dark_icon/apple-touch-icon.png",
   },
   manifest: "/manifest/site.webmanifest",
+  category: "communication",
+  applicationName: "Telepaty",
+  appleWebApp: {
+    capable: true,
+    title: "Telepaty",
+    statusBarStyle: "default",
+  },
+  referrer: "origin-when-cross-origin",
+  robots:
+    "index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1",
 };
 
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#121212" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
   colorScheme: "light dark",
 };
@@ -171,10 +192,21 @@ export default function RootLayout({
               operatingSystem: "Web",
               author: {
                 "@type": "Person",
-                name: metadata.other?.author ?? "Telepaty Team",
+                name: metadata.other?.author ?? "Inggrit Setya Budi",
               },
-              releaseDate: metadata.other?.releaseDate ?? "2024-07-23",
-              version: metadata.other?.version ?? "2.15.8",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "USD",
+              },
+              featureList: [
+                "Real-time chat & media sharing",
+                "Voice & video calls",
+                "End-to-end encryption",
+                "Location sharing",
+                "Stories & status updates",
+              ],
+              image: "https://telepaty.vercel.app/favicon_dark.jpg",
             }),
           }}
         />
