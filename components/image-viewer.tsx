@@ -266,6 +266,7 @@ export function ImageViewer({
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
         onClick={onClose}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 bg-black/40 z-10">
           <div className="flex items-center">

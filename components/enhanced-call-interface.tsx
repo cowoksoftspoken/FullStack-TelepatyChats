@@ -42,7 +42,6 @@ interface EnhancedCallInterfaceProps {
   onToggleVideo: () => void;
   shareScreen: () => void;
   switchCamera: () => void;
-  // new
   isMinimized: boolean;
   setIsMinimized: (val: boolean) => void;
 }
@@ -75,9 +74,6 @@ export function EnhancedCallInterface({
   const stats = useConnectionStats();
   const [hasTwoCameras, setHasTwoCameras] = useState(false);
   const waveformCanvasRef = useRef<HTMLCanvasElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const dataArrayRef = useRef<Uint8Array | null>(null);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

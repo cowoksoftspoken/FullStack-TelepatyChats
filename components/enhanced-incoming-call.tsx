@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Phone, PhoneOff, Video } from "lucide-react";
 
@@ -22,6 +22,8 @@ export function EnhancedIncomingCall({
   onAccept,
   onReject,
 }: EnhancedIncomingCallProps) {
+  const [isAccepting, setIsAccepting] = useState(false);
+
   useEffect(() => {
     const audioContext = new (window.AudioContext ||
       (window as any).webkitAudioContext)();
@@ -56,6 +58,18 @@ export function EnhancedIncomingCall({
       }
     };
   }, []);
+
+  const handleAccept = async () => {
+    if (isAccepting) return;
+    setIsAccepting(true);
+    try {
+      await Promise.resolve(onAccept());
+    } catch (error) {
+      setIsAccepting(false);
+    } finally {
+      setIsAccepting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -207,7 +221,8 @@ export function EnhancedIncomingCall({
             <Button
               size="lg"
               className="rounded-full h-16 w-16 bg-green-500 hover:bg-green-600"
-              onClick={onAccept}
+              onClick={handleAccept}
+              disabled={isAccepting}
             >
               {isVideo ? (
                 <Video className="h-6 w-6" />

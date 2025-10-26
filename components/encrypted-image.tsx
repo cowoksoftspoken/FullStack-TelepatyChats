@@ -140,6 +140,7 @@ export function EncryptedImage({
         onLoad={handleImageLoad}
         datatype={fileType}
         onError={handleImageError}
+        onContextMenu={(e) => e.preventDefault()}
       />
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-md">
