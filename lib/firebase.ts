@@ -5,7 +5,8 @@ import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAOkE27nXxkipOczHekDsaoS3tXpqWOIEo",
-  authDomain: "react-chat-98ca7.firebaseapp.com",
+  // authDomain: "react-chat-98ca7.firebaseapp.com",
+  authDomain: "auth.telepaty.my.id",
   databaseURL: "https://react-chat-98ca7-default-rtdb.firebaseio.com",
   projectId: "react-chat-98ca7",
   storageBucket: "react-chat-98ca7.appspot.com",
