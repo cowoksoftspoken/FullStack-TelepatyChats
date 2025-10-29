@@ -1,7 +1,7 @@
 [
   {
-    "origin": ["https://telepaty.vercel.app", "http://localhost:3000"],
-    "responseHeader": ["Content-Type", "x-goog-meta-foo"],
+    "origin": ["https://chat.telepaty.my.id", "http://localhost:3000"],
+    "responseHeader": ["Content-Type", "Authorization", "x-goog-meta-foo"],
     "method": ["GET", "HEAD", "OPTIONS", "PUT", "POST", "DELETE"],
     "maxAgeSeconds": 3600
   }

@@ -16,7 +16,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://telepaty.vercel.app"),
+  metadataBase: new URL("https://chat.telepaty.my.id"),
   title: "Telepaty - Real-time messaging app",
   description:
     "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
@@ -36,11 +36,11 @@ export const metadata: Metadata = {
     title: "Telepaty - Real-time messaging app",
     description:
       "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    url: "https://telepaty.vercel.app",
+    url: "https://chat.telepaty.my.id",
     siteName: "Telepaty",
     images: [
       {
-        url: "https://telepaty.vercel.app/favicon_dark.jpg",
+        url: "https://chat.telepaty.my.id/favicon_dark.jpg",
         width: 1024,
         height: 1024,
         alt: "Telepaty Dark Mode Logo",
@@ -59,64 +59,64 @@ export const metadata: Metadata = {
     title: "Telepaty - Real-time messaging app",
     description:
       "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
-    images: ["https://telepaty.vercel.app/favicon_dark.jpg"],
+    images: ["https://chat.telepaty.my.id/favicon_dark.jpg"],
   },
   icons: {
     icon: [
       {
-        url: "https://telepaty.vercel.app/light_icon/favicon-16x16.png",
+        url: "https://chat.telepaty.my.id/light_icon/favicon-16x16.png",
         type: "image/png",
         sizes: "16x16",
       },
       {
-        url: "https://telepaty.vercel.app/light_icon/favicon-32x32.png",
+        url: "https://chat.telepaty.my.id/light_icon/favicon-32x32.png",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "https://telepaty.vercel.app/light_icon/android-chrome-192x192.png",
+        url: "https://chat.telepaty.my.id/light_icon/android-chrome-192x192.png",
         type: "image/png",
         sizes: "192x192",
       },
       {
-        url: "https://telepaty.vercel.app/light_icon/android-chrome-512x512.png",
+        url: "https://chat.telepaty.my.id/light_icon/android-chrome-512x512.png",
         type: "image/png",
         sizes: "512x512",
       },
       {
-        url: "https://telepaty.vercel.app/light_icon/apple-touch-icon.png",
+        url: "https://chat.telepaty.my.id/light_icon/apple-touch-icon.png",
         type: "image/png",
         sizes: "180x180",
       },
 
       {
-        url: "https://telepaty.vercel.app/dark_icon/favicon-16x16.png",
+        url: "https://chat.telepaty.my.id/dark_icon/favicon-16x16.png",
         type: "image/png",
         sizes: "16x16",
       },
       {
-        url: "https://telepaty.vercel.app/dark_icon/favicon-32x32.png",
+        url: "https://chat.telepaty.my.id/dark_icon/favicon-32x32.png",
         type: "image/png",
         sizes: "32x32",
       },
       {
-        url: "https://telepaty.vercel.app/dark_icon/android-chrome-192x192.png",
+        url: "https://chat.telepaty.my.id/dark_icon/android-chrome-192x192.png",
         type: "image/png",
         sizes: "192x192",
       },
       {
-        url: "https://telepaty.vercel.app/dark_icon/android-chrome-512x512.png",
+        url: "https://chat.telepaty.my.id/dark_icon/android-chrome-512x512.png",
         type: "image/png",
         sizes: "512x512",
       },
       {
-        url: "https://telepaty.vercel.app/dark_icon/apple-touch-icon.png",
+        url: "https://chat.telepaty.my.id/dark_icon/apple-touch-icon.png",
         type: "image/png",
         sizes: "180x180",
       },
     ],
-    shortcut: "https://telepaty.vercel.app/light_icon/favicon.ico",
-    apple: "https://telepaty.vercel.app/dark_icon/apple-touch-icon.png",
+    shortcut: "https://chat.telepaty.my.id/light_icon/favicon.ico",
+    apple: "https://chat.telepaty.my.id/dark_icon/apple-touch-icon.png",
   },
   manifest: "/manifest/site.webmanifest",
   category: "communication",
@@ -149,28 +149,28 @@ export default function RootLayout({
       <head>
         <link
           rel="icon"
-          href="https://telepaty.vercel.app/light_icon/favicon-16x16.png"
+          href="https://chat.telepaty.my.id/light_icon/favicon-16x16.png"
           media="(prefers-color-scheme: light)"
           type="image/png"
           sizes="16x16"
         />
         <link
           rel="icon"
-          href="https://telepaty.vercel.app/light_icon/favicon-32x32.png"
+          href="https://chat.telepaty.my.id/light_icon/favicon-32x32.png"
           media="(prefers-color-scheme: light)"
           type="image/png"
           sizes="32x32"
         />
         <link
           rel="icon"
-          href="https://telepaty.vercel.app/dark_icon/favicon-16x16.png"
+          href="https://chat.telepaty.my.id/dark_icon/favicon-16x16.png"
           media="(prefers-color-scheme: dark)"
           type="image/png"
           sizes="16x16"
         />
         <link
           rel="icon"
-          href="https://telepaty.vercel.app/dark_icon/favicon-32x32.png"
+          href="https://chat.telepaty.my.id/dark_icon/favicon-32x32.png"
           media="(prefers-color-scheme: dark)"
           type="image/png"
           sizes="32x32"
@@ -178,7 +178,7 @@ export default function RootLayout({
 
         <link
           rel="shortcut icon"
-          href="https://telepaty.vercel.app/light_icon/favicon.ico"
+          href="https://chat.telepaty.my.id/light_icon/favicon.ico"
           type="image/x-icon"
         />
         <script
@@ -206,7 +206,7 @@ export default function RootLayout({
                 "Location sharing",
                 "Stories & status updates",
               ],
-              image: "https://telepaty.vercel.app/favicon_dark.jpg",
+              image: "https://chat.telepaty.my.id/favicon_dark.jpg",
             }),
           }}
         />
