@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: "Telepaty - Real-time messaging app",
   description:
     "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
+  alternates: {
+    canonical: "https://chat.telepaty.my.id",
+  },
   keywords: [
     "chat app",
     "messaging",
