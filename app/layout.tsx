@@ -17,7 +17,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://chat.telepaty.my.id"),
-  title: "Telepaty - Real-time messaging app",
+  title: "Telepaty",
   description:
     "Telepaty is a feature-rich real-time messaging app with location sharing, image & video messaging, voice and video calls, stories, and more — all protected with end-to-end encryption (E2EE).",
   alternates: {

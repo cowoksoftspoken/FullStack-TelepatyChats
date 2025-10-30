@@ -215,10 +215,6 @@ export default function DashboardPage() {
     };
   }, [currentUser, db]);
 
-  document.title = `${
-    currentUser?.displayName ? currentUser?.displayName : "Unknown"
-  }'s Session - TelepatyChats`;
-
   useEffect(() => {
     if (!currentUser) return;
     const q = query(
