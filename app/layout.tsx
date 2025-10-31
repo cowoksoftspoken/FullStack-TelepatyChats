@@ -51,6 +51,9 @@ export const metadata: Metadata = {
     ],
     type: "website",
   },
+  verification: {
+    google: "Cut03wOQr5AZwqpBOpSI4G3Ne1R8q3CTcJCK4-Kv-l8",
+  },
   other: {
     author: "Inggrit Setya Budi",
     encryption: "End-to-End Encryption (E2EE)",
