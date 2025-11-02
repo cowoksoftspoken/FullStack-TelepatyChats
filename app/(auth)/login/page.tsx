@@ -15,26 +15,29 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-primary/30" />
 
         <div className="relative z-10 flex items-center justify-center p-12">
-          <div className="text-center text-white space-y-8 max-w-lg">
+          <div className="text-center space-y-8 max-w-lg">
             <div className="relative">
-              <div className="w-40 h-40 mx-auto rounded-3xl bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl">
-                <div className="w-24 h-24 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                  <div className="w-12 h-12 rounded-xl bg-white/40 backdrop-blur-sm flex items-center justify-center">
-                    <Brain className="w-6 h-6 rounded-lg text-muted bg-white/70" />
+              <div className="w-40 h-40 mx-auto rounded-3xl bg-black/10 dark:bg-white/10 backdrop-blur-md flex items-center justify-center shadow-2xl">
+                <div className="w-24 h-24 rounded-2xl bg-black/10 dark:bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-black/20 dark:bg-white/40 backdrop-blur-sm flex items-center justify-center gradient-primary">
+                    <Brain className="w-6 h-6 rounded-lg text-muted dark:bg-white/70 bg-black/10" />
                   </div>
                 </div>
               </div>
 
-              <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm animate-pulse" />
-              <div className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-white/15 backdrop-blur-sm animate-pulse delay-300" />
+              <div className="absolute -top-4 -right-4 w-8 h-8 rounded-full bg-black/10 dark:bg-white/20 backdrop-blur-sm animate-pulse" />
+              <div className="absolute -bottom-2 -left-2 w-6 h-6 rounded-full bg-black/5 dark:bg-white/15 backdrop-blur-sm animate-pulse delay-300" />
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-3xl font-bold text-balance leading-tight">
-                Join <span className="text-primary">Telepaty</span> — The Future
-                of Messaging
+              <h2 className="text-3xl font-bold text-balance leading-tight text-gray-900/20 dark:text-white/90">
+                Join{" "}
+                <span className="dark:text-primary text-black/30">
+                  Telepaty
+                </span>{" "}
+                — The Future of Messaging
               </h2>
-              <p className="text-white/90 text-pretty text-lg leading-relaxed">
+              <p className="dark:text-white/90 text-black/30 text-pretty text-lg leading-relaxed">
                 Experience seamless, real-time conversations. Connect, share,
                 and collaborate with powerful features designed for a modern
                 messaging experience.

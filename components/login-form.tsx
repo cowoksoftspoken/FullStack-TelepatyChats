@@ -19,12 +19,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { auth, db } from "@/lib/firebase";
 import { Brain, Loader2 } from "lucide-react";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { useFirebase } from "@/lib/firebase-provider";
 
 const MAX_RETRIES = 5;
 const LOCKOUT_TIME_MS = 5 * 60 * 1000;
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
+  const { currentUser, loading } = useFirebase();
   const [password, setPassword] = useState("");
   const [formLoading, setFormLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,6 +34,12 @@ export function LoginForm() {
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
 
   const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && currentUser) {
+      router.push("/dashboard");
+    }
+  }, [currentUser, loading, router]);
 
   useEffect(() => {
     const storedRetries = Number.parseInt(

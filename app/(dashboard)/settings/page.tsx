@@ -364,7 +364,7 @@ export default function SettingsPage() {
   };
 
   const isImageUrl = (link: string) => {
-    return /\.(jpeg|jpg|png|gif|webp)$/i.test(link);
+    return /\.(?:jpeg|jpg|png|gif|webp)(?:[?#]|$)/i.test(link);
   };
 
   const handleAvatarChangeFromURL = async (url: string) => {
