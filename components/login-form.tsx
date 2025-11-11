@@ -60,6 +60,11 @@ export function LoginForm() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!email.includes("@gmail.com") || !email.includes("@yahoo.com")) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     if (lockedUntil && lockedUntil > Date.now()) {
       const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
       setError(
