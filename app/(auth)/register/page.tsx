@@ -43,6 +43,11 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!email.includes("@gmail.com") || !email.includes("@yahoo.com")) {
+      setError("Please use a valid email address.");
+      return;
+    }
+
     if (!agreed) {
       setError("You must agree to the Terms & Conditions and Privacy Policy.");
       return;
