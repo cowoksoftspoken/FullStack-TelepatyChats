@@ -3,30 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, CopyCheck, Globe, Lock } from "lucide-react";
-import { useRouter } from "next/navigation";
 import React from "react";
-
-const BLOCKED_AGENTS = [
-  "Instagram",
-  "FBAN",
-  "FBAV",
-  "Line",
-  "Twitter",
-  "TikTok",
-  "Snapchat",
-];
 
 export default function UnsupportedBrowserPage() {
   const [isCopied, setIsCopied] = React.useState(false);
-  const router = useRouter();
-
-  React.useEffect(() => {
-    const ua = navigator.userAgent || "";
-    const isBlocked = BLOCKED_AGENTS.some((agent) => ua.includes(agent));
-    if (!isBlocked) {
-      router.replace("/");
-    }
-  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted px-4">
