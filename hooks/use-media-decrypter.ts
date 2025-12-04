@@ -1,4 +1,7 @@
-// useMediaDecrypter.ts
+// this is a new media decrypter 
+// enhanced version with cache management
+
+
 "use client";
 
 import { get } from "idb-keyval";
