@@ -1,142 +1,96 @@
-"use client";
+// This file has been deprecated. Please use hooks/use-media-decrypter.ts instead.
+// The code below is kept for reference purposes only.
+// If you need to refer to the old implementation, you can find it here:
+// ---------------------------------------------------------------------------------------
 
-import { useState, useEffect, useRef } from "react";
-import {
-  base64ToArrayBuffer,
-  decryptedBuffer,
-  decryptKey,
-  importPrivateKey,
-  importPublicKey,
-} from "@/utils/encryption";
-import { get } from "idb-keyval";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+// "use client";
 
-export function useDecryptedMedia() {
-  const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>(
-    {}
-  );
-  const pendingDecryptions = useRef<Record<string, Promise<string>>>({});
+// import { db } from "@/lib/firebase";
+// import {
+//   decryptedBuffer,
+//   decryptKey,
+//   importPrivateKey,
+//   importPublicKey,
+// } from "@/utils/encryption";
+// import { doc, getDoc } from "firebase/firestore";
+// import { get } from "idb-keyval";
+// import { useEffect, useState } from "react";
 
-  useEffect(() => {
-    return () => {
-      Object.values(decryptedUrls).forEach((url) => {
-        if (url.startsWith("blob:")) {
-          URL.revokeObjectURL(url);
-        }
-      });
-    };
-  }, [decryptedUrls]);
+// const globalDecryptedCache = new Map<string, string>();
+// const pendingDecryptions: Record<string, Promise<string>> = {};
 
-  const decryptAndCreateBlobUrl = async (
-    messageId: string,
-    fileURL: string,
-    fileIsEncrypted: boolean,
-    fileEncryptedKey: string,
-    fileEncryptedKeyForSelf: string,
-    fileIv: string,
-    fileType: string,
-    isSender: boolean,
-    currentUserId: string
-  ): Promise<string> => {
-    if (!fileIsEncrypted) {
-      return fileURL;
-    }
+// export function useDecryptedMedia() {
+//   const [decryptedUrls, setDecryptedUrls] = useState<Record<string, string>>(
+//     {}
+//   );
 
-    if (decryptedUrls[messageId] && decryptedUrls[messageId] === fileURL) {
-      return decryptedUrls[messageId];
-    }
+//   useEffect(() => {
+//     return () => {
+//       globalDecryptedCache.forEach((url) => URL.revokeObjectURL(url));
+//       globalDecryptedCache.clear();
+//     };
+//   }, []);
 
-    if (
-      Object.prototype.hasOwnProperty.call(
-        pendingDecryptions.current,
-        messageId
-      )
-    ) {
-      return pendingDecryptions.current[messageId];
-    }
+//   const decryptAndCreateBlobUrl = async (
+//     messageId: string,
+//     fileURL: string,
+//     fileIsEncrypted: boolean,
+//     fileEncryptedKey: string,
+//     fileEncryptedKeyForSelf: string,
+//     fileIv: string,
+//     fileType: string,
+//     isSender: boolean,
+//     currentUserId: string
+//   ): Promise<string> => {
+//     if (!fileIsEncrypted) return fileURL;
 
-    const decryptionPromise = (async () => {
-      try {
-        const response = await fetch(fileURL);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch file: ${response.status} ${response.statusText}`
-          );
-        }
+//     if (globalDecryptedCache.has(messageId))
+//       return globalDecryptedCache.get(messageId)!;
 
-        const encryptedBlob = await response.blob();
+//     if (decryptedUrls[messageId]) {
+//       const url = decryptedUrls[messageId];
+//       globalDecryptedCache.set(messageId, url);
+//       return url;
+//     }
+//     if (messageId in pendingDecryptions) return pendingDecryptions[messageId];
 
-        const keyData = isSender ? fileEncryptedKeyForSelf : fileEncryptedKey;
-        const iv = fileIv;
+//     const promise = (async () => {
+//       try {
+//         const res = await fetch(fileURL);
+//         const encryptedBlob = await res.blob();
+//         const buffer = await encryptedBlob.arrayBuffer();
 
-        if (!keyData || !iv) {
-          console.error("Missing encryption data for media");
-          return fileURL;
-        }
+//         const keyData = isSender ? fileEncryptedKeyForSelf : fileEncryptedKey;
+//         const privKeyString = await get(
+//           `encryption_private_key_${currentUserId}`
+//         );
+//         const privateKey = await importPrivateKey(privKeyString);
 
-        const privKeyString =
-          typeof window !== "undefined"
-            ? await get(`encryption_private_key_${currentUserId}`)
-            : null;
-        if (!privKeyString) {
-          console.error("Private key not found in localStorage");
-          return fileURL;
-        }
+//         const userDoc = await getDoc(doc(db, "userKeys", currentUserId));
+//         const publicKey = await importPublicKey(userDoc.data()!.publicKey);
 
-        const privateKey = await importPrivateKey(privKeyString);
-        const userDocKeys = await getDoc(doc(db, "userKeys", currentUserId));
-        if (!userDocKeys.exists()) {
-          console.error("Public key not found in Firestore");
-          return fileURL;
-        }
-        const importedPublicKey = await importPublicKey(
-          userDocKeys?.data()?.publicKey
-        );
-        const messageKey = await decryptKey(
-          keyData,
-          privateKey,
-          importedPublicKey
-        );
+//         const messageKey = await decryptKey(keyData, privateKey, publicKey);
+//         const decryptedBuf = await decryptedBuffer(buffer, messageKey, fileIv);
+//         const uint8 = new Uint8Array(decryptedBuf);
 
-        const encryptedBuffer = await encryptedBlob.arrayBuffer();
+//         const blobUrl = URL.createObjectURL(
+//           new Blob([uint8], { type: fileType || "application/octet-stream" })
+//         );
 
-        const decryptedBuffered = await decryptedBuffer(
-          encryptedBuffer,
-          messageKey,
-          fileIv
-        );
+//         globalDecryptedCache.set(messageId, blobUrl);
+//         setDecryptedUrls((prev) => ({ ...prev, [messageId]: blobUrl }));
 
-        const decryptedBlob = new Blob([decryptedBuffered.slice(0)], {
-          type: fileType || "application/octet-stream",
-        });
+//         return blobUrl;
+//       } catch {
+//         return fileURL;
+//       } finally {
+//         delete pendingDecryptions[messageId];
+//       }
+//     })();
 
-        const blobUrl = URL.createObjectURL(decryptedBlob);
+//     pendingDecryptions[messageId] = promise;
+//     return promise;
+//   };
 
-        setDecryptedUrls((prev) => ({ ...prev, [messageId]: blobUrl }));
-
-        return blobUrl;
-      } catch (error) {
-        console.error("Error decrypting media:", error);
-        return fileURL;
-      } finally {
-        if (
-          Object.prototype.hasOwnProperty.call(
-            pendingDecryptions.current,
-            messageId
-          )
-        ) {
-          delete pendingDecryptions.current[messageId];
-        }
-      }
-    })();
-
-    pendingDecryptions.current[messageId] = decryptionPromise;
-    return decryptionPromise;
-  };
-
-  return {
-    decryptedUrls,
-    decryptAndCreateBlobUrl,
-  };
-}
+//   return { decryptedUrls, decryptAndCreateBlobUrl };
+// }

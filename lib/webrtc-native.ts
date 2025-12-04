@@ -1,14 +1,14 @@
 /**
  * -----------------------------------------------------------------------------
- *  Project   : WebRTC Core Library
+ *  Project   : WebRTC Native - A TypeScript WebRTC Manager with Firestore Signaling
  *  Author    : Inggrit Setya Budi
- *  File      : webrtc-native.ts
  *  Created   : 2025-10-06
  *
  *  Description:
  *    Core WebRTC manager class using TypeScript and Firestore signaling.
  *    Handles peer connection, media streams, ICE candidates, call states,
  *    screen sharing, and connection statistics.
+ *
  *
  *  License: GPLv3
  *    Copyright (c) 2025 Inggrit Setya Budi
@@ -31,19 +31,19 @@
 "use client";
 
 import {
-  doc,
-  setDoc,
-  onSnapshot,
-  updateDoc,
-  deleteDoc,
-  getDoc,
-  type Firestore,
-  collection,
   addDoc,
-  query,
-  where,
-  orderBy,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
   getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  type Firestore,
 } from "firebase/firestore";
 
 interface CallData {

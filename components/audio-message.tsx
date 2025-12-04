@@ -194,7 +194,12 @@ export function AudioMessage({
         isDark ? "bg-muted-foreground/20" : "bg-primary text-primary-foreground"
       } ${className} ${isSmallScreen ? "px-2 py-2" : "p-3"}`}
     >
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        data-msg-id={messageId}
+      />
 
       <div
         className={`flex ${

@@ -20,9 +20,14 @@ import { motion, AnimatePresence } from "framer-motion";
 interface VideoPlayerProps {
   fileURL: string;
   onLoad?: (videoElement: HTMLVideoElement | null) => void;
+  messageId: string;
 }
 
-export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
+export default function VideoPlayer({
+  fileURL,
+  onLoad,
+  messageId,
+}: VideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -100,7 +105,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
-      videoRef.current.currentTime = 0.1;
+      // videoRef.current.currentTime = 0.1;
     }
   };
 
@@ -340,6 +345,7 @@ export default function VideoPlayer({ fileURL, onLoad }: VideoPlayerProps) {
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onClick={handleVideoClick}
+            data-msg-id={messageId}
             onError={(e) => {
               setIsLoading(false);
               toast.error("Error loading video");

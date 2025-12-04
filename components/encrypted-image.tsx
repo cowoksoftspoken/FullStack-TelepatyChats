@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, SyntheticEvent } from "react";
+import { useState, useEffect, SyntheticEvent } from "react";
 import { Lock } from "lucide-react";
-import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+// import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
 import { useToast } from "@/hooks/use-toast";
+import { useMediaDecrypter } from "@/hooks/use-media-decrypter";
 
 interface EncryptedImageProps {
   messageId: string;
@@ -34,75 +35,92 @@ export function EncryptedImage({
   onClick,
   onReady,
 }: EncryptedImageProps) {
-  const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
+  // const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { decrypt } = useMediaDecrypter();
   const [imageUrl, setImageUrl] = useState<string>("/placeholder.svg");
   const { toast } = useToast();
-  const hasAttemptedDecryption = useRef(false);
+  // const hasAttemptedDecryption = useRef(false);
 
   useEffect(() => {
-    const decryptImage = async () => {
-      if (!fileIsEncrypted || hasAttemptedDecryption.current) return;
+    decrypt({
+      messageId,
+      fileURL,
+      fileIsEncrypted,
+      fileEncryptedKey,
+      fileEncryptedKeyForSelf,
+      fileIv,
+      fileType,
+      isSender,
+      currentUserId,
+    }).then((url) => {
+      setImageUrl(url);
+    });
+  }, []);
 
-      hasAttemptedDecryption.current = true;
-      setIsLoading(true);
+  // useEffect(() => {
+  //   const decryptImage = async () => {
+  //     if (!fileIsEncrypted || hasAttemptedDecryption.current) return;
 
-      try {
-        const url = await decryptAndCreateBlobUrl(
-          messageId,
-          fileURL,
-          fileIsEncrypted,
-          fileEncryptedKey,
-          fileEncryptedKeyForSelf,
-          fileIv,
-          fileType || "image/jpeg",
-          isSender,
-          currentUserId
-        );
+  //     hasAttemptedDecryption.current = true;
+  //     setIsLoading(true);
 
-        setImageUrl(url);
-        onReady?.(url);
-        setIsLoading(false);
-      } catch (err) {
-        console.error("Error in decryptImage:", err);
-        setError("Failed to decrypt image");
-        setIsLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Decryption Error",
-          description: "Failed to decrypt image. Please try again.",
-        });
-      }
-    };
+  //     try {
+  //       const url = await decryptAndCreateBlobUrl(
+  //         messageId,
+  //         fileURL,
+  //         fileIsEncrypted,
+  //         fileEncryptedKey,
+  //         fileEncryptedKeyForSelf,
+  //         fileIv,
+  //         fileType || "image/jpeg",
+  //         isSender,
+  //         currentUserId
+  //       );
 
-    if (!fileIsEncrypted) {
-      setImageUrl(fileURL || "/placeholder.svg");
-      onReady?.(fileURL || "/placeholder.svg");
-      setIsLoading(false);
-    } else {
-      const cachedUrl = decryptedUrls[messageId];
-      if (cachedUrl) {
-        setImageUrl(cachedUrl);
-        setIsLoading(false);
-      } else {
-        decryptImage();
-      }
-    }
-  }, [
-    messageId,
-    fileURL,
-    fileIsEncrypted,
-    fileEncryptedKey,
-    fileEncryptedKeyForSelf,
-    fileIv,
-    fileType,
-    isSender,
-    currentUserId,
-    decryptAndCreateBlobUrl,
-    decryptedUrls,
-    toast,
-  ]);
+  //       setImageUrl(url);
+  //       onReady?.(url);
+  //       setIsLoading(false);
+  //     } catch (err) {
+  //       console.error("Error in decryptImage:", err);
+  //       setError("Failed to decrypt image");
+  //       setIsLoading(false);
+  //       toast({
+  //         variant: "destructive",
+  //         title: "Decryption Error",
+  //         description: "Failed to decrypt image. Please try again.",
+  //       });
+  //     }
+  //   };
+
+  //   if (!fileIsEncrypted) {
+  //     setImageUrl(fileURL || "/placeholder.svg");
+  //     onReady?.(fileURL || "/placeholder.svg");
+  //     setIsLoading(false);
+  //   } else {
+  //     const cachedUrl = decryptedUrls[messageId];
+  //     if (cachedUrl) {
+  //       setImageUrl(cachedUrl);
+  //       setIsLoading(false);
+  //     } else {
+  //       decryptImage();
+  //     }
+  //   }
+  // }, [
+  //   messageId,
+  //   fileURL,
+  //   fileIsEncrypted,
+  //   fileEncryptedKey,
+  //   fileEncryptedKeyForSelf,
+  //   fileIv,
+  //   fileType,
+  //   isSender,
+  //   currentUserId,
+  //   decryptAndCreateBlobUrl,
+  //   decryptedUrls,
+  //   toast,
+  // ]);
 
   const handleClick = () => {
     if (isLoading) return;
@@ -136,6 +154,7 @@ export function EncryptedImage({
         src={imageUrl || "/placeholder.svg"}
         alt={fileName ? btoa(fileName) : "Image"}
         className="w-full rounded-md max-h-60 object-cover cursor-pointer"
+        data-msg-id={messageId}
         onClick={handleClick}
         onLoad={handleImageLoad}
         datatype={fileType}

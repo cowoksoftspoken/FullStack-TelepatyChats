@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Lock } from "lucide-react";
-import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+// import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+import { useMediaDecrypter } from "@/hooks/use-media-decrypter";
 import { AudioMessage } from "./audio-message";
 
 interface EncryptedAudioProps {
@@ -34,75 +35,100 @@ export function EncryptedAudio({
   currentUserId,
   isDark = false,
 }: EncryptedAudioProps) {
-  const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
+  // const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
   const [isLoading, setIsLoading] = useState(fileIsEncrypted);
   const [error, setError] = useState<string | null>(null);
+  const { decrypt } = useMediaDecrypter();
   const [audioUrl, setAudioUrl] = useState<string>("");
-  const hasInitialized = useRef(false);
-  const isDecrypting = useRef(false);
-
-  const initializeAudio = useCallback(async () => {
-    if (hasInitialized.current || isDecrypting.current) return;
-
-    if (!fileIsEncrypted) {
-      setAudioUrl(fileURL);
-      setIsLoading(false);
-      hasInitialized.current = true;
-      return;
-    }
-
-    // cek jika sudah di decrypt
-    const cachedUrl = decryptedUrls[messageId];
-    if (cachedUrl) {
-      setAudioUrl(cachedUrl);
-      setIsLoading(false);
-      hasInitialized.current = true;
-      return;
-    }
-
-    isDecrypting.current = true;
-    setIsLoading(true);
-
-    try {
-      const url = await decryptAndCreateBlobUrl(
-        messageId,
-        fileURL,
-        fileIsEncrypted,
-        fileEncryptedKey,
-        fileEncryptedKeyForSelf,
-        fileIv,
-        fileType || "audio/webm",
-        isSender,
-        currentUserId
-      );
-      setAudioUrl(url);
-      setError(null);
-    } catch (err) {
-      console.error("Error decrypting audio:", err);
-      setError("Failed to decrypt audio");
-      setAudioUrl(fileURL);
-    } finally {
-      setIsLoading(false);
-      isDecrypting.current = false;
-      hasInitialized.current = true;
-    }
-  }, [
-    messageId,
-    fileURL,
-    fileIsEncrypted,
-    fileEncryptedKey,
-    fileEncryptedKeyForSelf,
-    fileIv,
-    fileType,
-    isSender,
-    currentUserId,
-    decryptAndCreateBlobUrl,
-    decryptedUrls,
-  ]);
+  // const hasInitialized = useRef(false);
+  // const isDecrypting = useRef(false);
 
   useEffect(() => {
-    initializeAudio();
-  }, [initializeAudio]);
+    setIsLoading(true);
+    decrypt({
+      messageId,
+      fileURL,
+      fileIsEncrypted,
+      fileEncryptedKey,
+      fileEncryptedKeyForSelf,
+      fileIv,
+      fileType,
+      isSender,
+      currentUserId,
+    })
+      .then((url) => {
+        setAudioUrl(url);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        setError("Decryption failed");
+        setAudioUrl(fileURL);
+        setIsLoading(false);
+      });
+  }, []);
+
+  // const initializeAudio = useCallback(async () => {
+  //   if (hasInitialized.current || isDecrypting.current) return;
+
+  //   if (!fileIsEncrypted) {
+  //     setAudioUrl(fileURL);
+  //     setIsLoading(false);
+  //     hasInitialized.current = true;
+  //     return;
+  //   }
+
+  //   // cek jika sudah di decrypt
+  //   const cachedUrl = decryptedUrls[messageId];
+  //   if (cachedUrl) {
+  //     setAudioUrl(cachedUrl);
+  //     setIsLoading(false);
+  //     hasInitialized.current = true;
+  //     return;
+  //   }
+
+  //   isDecrypting.current = true;
+  //   setIsLoading(true);
+
+  //   try {
+  //     const url = await decryptAndCreateBlobUrl(
+  //       messageId,
+  //       fileURL,
+  //       fileIsEncrypted,
+  //       fileEncryptedKey,
+  //       fileEncryptedKeyForSelf,
+  //       fileIv,
+  //       fileType || "audio/webm",
+  //       isSender,
+  //       currentUserId
+  //     );
+  //     setAudioUrl(url);
+  //     setError(null);
+  //   } catch (err) {
+  //     console.error("Error decrypting audio:", err);
+  //     setError("Failed to decrypt audio");
+  //     setAudioUrl(fileURL);
+  //   } finally {
+  //     setIsLoading(false);
+  //     isDecrypting.current = false;
+  //     hasInitialized.current = true;
+  //   }
+  // }, [
+  //   messageId,
+  //   fileURL,
+  //   fileIsEncrypted,
+  //   fileEncryptedKey,
+  //   fileEncryptedKeyForSelf,
+  //   fileIv,
+  //   fileType,
+  //   isSender,
+  //   currentUserId,
+  //   decryptAndCreateBlobUrl,
+  //   decryptedUrls,
+  // ]);
+
+  // useEffect(() => {
+  //   initializeAudio();
+  // }, [initializeAudio]);
 
   if (isLoading || !audioUrl) {
     return (
