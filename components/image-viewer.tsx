@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Message } from "@/types/message";
-import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+// import { useDecryptedMedia } from "@/hooks/use-decrypted-media";
+import { useMediaDecrypter } from "@/hooks/use-media-decrypter";
 
 interface ImageViewerProps {
   isOpen: boolean;
@@ -77,7 +78,8 @@ export function ImageViewer({
   const [isFlipped, setIsFlipped] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
+  // const { decryptedUrls, decryptAndCreateBlobUrl } = useDecryptedMedia();
+  const { decrypt } = useMediaDecrypter();
   const [decryptedImageUrl, setDecryptedImageUrl] = useState<string | null>(
     null
   );
@@ -162,10 +164,11 @@ export function ImageViewer({
 
   const handleDownload = () => {
     if (!currentImage) return;
-    const imageUrl =
-      currentImage.isEncrypted && decryptedUrls[currentImage.messageId]
-        ? decryptedUrls[currentImage.messageId]
-        : currentImage.url;
+    // const imageUrl =
+    //   currentImage.isEncrypted && decryptedUrls[currentImage.messageId]
+    //     ? decryptedUrls[currentImage.messageId]
+    //     : currentImage.url;
+    const imageUrl = decryptedImageUrl || currentImage.url;
     const link = document.createElement("a");
     const customFilename = `tpy_${Date.now()}.${currentImage.fileName
       ?.split(".")
@@ -210,9 +213,10 @@ export function ImageViewer({
 
   const getCurrentImageUrl = () => {
     if (!currentImage) return "";
-    return currentImage.isEncrypted && decryptedUrls[currentImage.messageId]
-      ? decryptedUrls[currentImage.messageId]
-      : currentImage.url;
+    return currentImage?.isEncrypted &&
+      decryptedImageCache?.[currentImage.messageId]
+      ? decryptedImageCache[currentImage.messageId]
+      : currentImage?.url;
   };
 
   useEffect(() => {
@@ -226,35 +230,24 @@ export function ImageViewer({
       }
 
       if (currentImage?.isEncrypted) {
-        const url = await decryptAndCreateBlobUrl(
-          currentImage.messageId,
-          image,
-          currentImage.isEncrypted,
-          currentImage.encryptedKey as string,
-          currentImage.encryptedKeyForSelf as string,
-          currentImage.iv as string,
-          currentImage.fileType as string,
-          currentImage.isSender,
-          currentUser.uid
-        );
+        const url = await decrypt({
+          messageId: currentImage.messageId,
+          fileURL: image,
+          fileIsEncrypted: currentImage.isEncrypted,
+          fileEncryptedKey: currentImage.encryptedKey as string,
+          fileEncryptedKeyForSelf: currentImage.encryptedKeyForSelf as string,
+          fileIv: currentImage.iv as string,
+          fileType: currentImage.fileType as string,
+          isSender: currentImage.isSender,
+          currentUserId: currentUser.uid,
+        });
         setDecryptedImageUrl(url);
       } else {
         setDecryptedImageUrl(image);
       }
     };
     decryptImage();
-  }, [
-    currentImage?.messageId,
-    currentImage?.url,
-    currentImage?.isEncrypted,
-    currentImage?.encryptedKey,
-    currentImage?.encryptedKeyForSelf,
-    currentImage?.iv,
-    currentImage?.fileType,
-    currentImage?.isSender,
-    currentIndex,
-    currentUser.uid,
-  ]);
+  }, [currentImage, decrypt, currentUser.uid, decryptedImageCache]);
 
   if (!isOpen || !currentImage) return null;
 

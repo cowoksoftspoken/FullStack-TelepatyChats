@@ -7,7 +7,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   onSnapshot,
   query,
   updateDoc,
@@ -18,7 +17,6 @@ import {
   ArrowLeft,
   FileText,
   Loader2,
-  Lock,
   MapPin,
   MoreVertical,
   Phone,
@@ -28,7 +26,7 @@ import {
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
@@ -50,21 +48,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useEncryption } from "@/hooks/use-encryption";
 import { useToast } from "@/hooks/use-toast";
+import useUserStatus from "@/hooks/use-user-status";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
-import { AudioMessage } from "./audio-message";
+import normalizeName from "@/utils/normalizename";
+import { AudioPreview } from "./audio-preview";
 import { CameraDialog } from "./camera-dialog";
 import ContactStatus from "./contact-status";
+import { ImageViewer } from "./image-viewer";
+import { MessageContent } from "./message-content";
 import MessageInput from "./message-input";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
-import { MessageContent } from "./message-content";
-import { ImageViewer } from "./image-viewer";
-import normalizeName from "@/utils/normalizename";
-import useUserStatus from "@/hooks/use-user-status";
-import { AudioPreview } from "./audio-preview";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -91,7 +88,7 @@ export function ChatArea({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
-  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  // const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
     contact.uid,
     currentUser?.uid
@@ -126,14 +123,14 @@ export function ChatArea({
   } | null>(null);
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [audioPreviewDuration, setAudioPreviewDuration] = useState<
-    number | null
-  >(null);
+  // const [audioPreviewDuration, setAudioPreviewDuration] = useState<
+  //   number | null
+  // >(null);
   const [contactIsTyping, setContactIsTyping] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
-  const prevCount = useRef(0);
+  // const prevCount = useRef(0);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [isCameraDialogOpen, setIsCameraDialogOpen] = useState(false);
@@ -196,10 +193,14 @@ export function ChatArea({
       });
 
       setMessages(messageList);
-      if (prevCount.current > messageList.length) {
+      // if (prevCount.current > messageList.length) {
+      //   scrollToBottom();
+      // }
+      // prevCount.current = messageList.length;
+
+      setTimeout(() => {
         scrollToBottom();
-      }
-      prevCount.current = messageList.length;
+      }, 100);
     });
 
     return () => unsubscribe();
@@ -774,7 +775,7 @@ export function ChatArea({
 
       const audio = new Audio(url);
       audio.onloadedmetadata = () => {
-        setAudioPreviewDuration(Math.round(audio.duration));
+        // setAudioPreviewDuration(Math.round(audio.duration));
         setPreviewFile({
           file,
           type,
@@ -953,7 +954,7 @@ export function ChatArea({
       setPreviewFile(null);
       setCaption("");
       setReplyTo(null);
-      setAudioPreviewDuration(null);
+      // setAudioPreviewDuration(null);
     } catch (error) {
       console.error("Error uploading file:", error);
       toast({
@@ -1018,7 +1019,7 @@ export function ChatArea({
         } catch (err) {
           console.error("Error sending audio:", err);
         }
-        setAudioChunks([]);
+        // setAudioChunks([]);
         setIsRecording(false);
         setRecordingTime(0);
         stream.getTracks().forEach((track) => track.stop());
@@ -1032,7 +1033,7 @@ export function ChatArea({
       };
 
       setMediaRecorder(recorder);
-      setAudioChunks([]);
+      // setAudioChunks([]);
       recorder.start();
       setIsRecording(true);
 
@@ -1080,7 +1081,7 @@ export function ChatArea({
       }
       setIsRecording(false);
       setRecordingTime(0);
-      setAudioChunks([]);
+      // setAudioChunks([]);
     }
   };
 
@@ -1740,7 +1741,10 @@ export function ChatArea({
         shadow-sm transition-all duration-300
         animate-in fade-in-80 zoom-in-90"
                 >
-                  <VideoPlayer fileURL={previewFile.preview} />
+                  <VideoPlayer
+                    fileURL={previewFile.preview}
+                    messageId={String(Math.random() * 100)}
+                  />
                 </div>
               </div>
             )}
