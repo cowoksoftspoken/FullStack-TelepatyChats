@@ -10,13 +10,12 @@ import {
   ImageIcon,
   Lock,
   MapPin,
-  Mic,
   Music,
   Plus,
   SendHorizontal,
   Smile,
+  Mic,
 } from "lucide-react";
-import type React from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { useTheme } from "@/components/theme-provider";
@@ -36,7 +35,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
 
 interface MessageInputProps {
   currentUser: User;
@@ -81,11 +79,13 @@ export default function MessageInput({
   const isTypingRef = useRef(false);
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const stopTypingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const [message, setMessage] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleInput = (e: React.FormEvent<HTMLInputElement>) => {
-    setMessage(e.currentTarget.value);
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setMessage(e.target.value);
   };
 
   const handleEmojiSelect = (emoji: any) => {
@@ -93,13 +93,34 @@ export default function MessageInput({
   };
 
   useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 120);
+      textareaRef.current.style.height = `${newHeight}px`;
+    }
+  }, [message]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (message.trim()) {
+        sendMessage(message);
+        setMessage("");
+      }
+    }
+  };
+
+  useEffect(() => {
     if (!currentUser || !contact) return;
+
     const chatId = [currentUser.uid, contact.uid].sort().join("_");
     const typingStatusRef = doc(db, "typingStatus", chatId);
     const isTyping = message.trim().length > 0;
+
     if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     if (stopTypingTimeoutRef.current)
       clearTimeout(stopTypingTimeoutRef.current);
+
     if (isTyping) {
       debounceTimeoutRef.current = setTimeout(() => {
         if (!isTypingRef.current) {
@@ -131,6 +152,7 @@ export default function MessageInput({
         }).catch(() => {});
       }
     }
+
     return () => {
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
       if (stopTypingTimeoutRef.current)
@@ -147,7 +169,7 @@ export default function MessageInput({
           setMessage("");
         }
       }}
-      className="p-3 flex items-center bg-transparent border-t dark:bg-[#151516]"
+      className="p-3 flex items-end bg-transparent border-t dark:bg-[#151516]"
     >
       <input
         type="file"
@@ -178,14 +200,14 @@ export default function MessageInput({
         onChange={(e) => handleFileSelect(e, "file")}
       />
 
-      <div className="flex items-center w-full gap-1 rounded-full bg-white/20 dark:bg-black/30 backdrop-blur-sm border border-[#151516]/20 dark:border-white/5 p-1 transition-all duration-300 focus-within:ring-2 focus-within:ring-[#151516] dark:focus-within:shadow-white dark:focus-within:shadow-md">
+      <div className="flex items-end w-full gap-1 rounded-[26px] bg-white/20 dark:bg-black/30 backdrop-blur-sm border border-[#151516]/20 dark:border-white/5 p-1 transition-all duration-300 focus-within:ring-2 focus-within:ring-[#151516] dark:focus-within:shadow-white dark:focus-within:shadow-md">
         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+              className="h-10 w-10 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors mb-[1px]"
               disabled={isBlocked}
             >
               <Plus
@@ -195,6 +217,7 @@ export default function MessageInput({
               />
             </Button>
           </DropdownMenuTrigger>
+
           <DropdownMenuContent
             align="start"
             className="w-56 p-2 mb-2 bg-white dark:bg-[#1f1f1f] rounded-xl shadow-lg border border-gray-200 dark:border-white/10"
@@ -208,46 +231,51 @@ export default function MessageInput({
                 <DropdownMenuSeparator className="my-1" />
               </>
             )}
+
             <DropdownMenuItem
               onClick={() => imageInputRef?.current?.click()}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 cursor-pointer transition-colors"
             >
               <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/40">
                 <ImageIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <span>Image</span>
             </DropdownMenuItem>
+
             <DropdownMenuItem
               onClick={() => videoInputRef?.current?.click()}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 cursor-pointer transition-colors"
             >
               <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/40">
                 <Film className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <span>Video</span>
             </DropdownMenuItem>
+
             <DropdownMenuItem
               onClick={() => audioInputRef?.current?.click()}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 cursor-pointer transition-colors"
             >
               <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/40">
                 <Music className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               </div>
               <span>Audio</span>
             </DropdownMenuItem>
+
             <DropdownMenuItem
               onClick={() => fileInputRef?.current?.click()}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/30 cursor-pointer transition-colors"
             >
               <div className="p-2 rounded-full bg-yellow-100 dark:bg-yellow-900/40">
                 <File className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               </div>
               <span>File</span>
             </DropdownMenuItem>
+
             <DropdownMenuItem
-              disabled={isGettingLocation}
               onClick={handleShareLocation}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50 cursor-pointer"
+              disabled={isGettingLocation}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 cursor-pointer transition-colors disabled:opacity-50"
             >
               <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/40">
                 <MapPin className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -256,9 +284,10 @@ export default function MessageInput({
                 {isGettingLocation ? "Getting location..." : "Location"}
               </span>
             </DropdownMenuItem>
+
             <DropdownMenuItem
               onClick={() => setIsCameraDialogOpen(true)}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors cursor-pointer"
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-pink-100 dark:hover:bg-pink-900/30 cursor-pointer transition-colors"
             >
               <div className="p-2 rounded-full bg-pink-100 dark:bg-pink-900/40">
                 <Camera className="h-4 w-4 text-pink-600 dark:text-pink-400" />
@@ -274,12 +303,13 @@ export default function MessageInput({
               type="button"
               variant="ghost"
               size="icon"
-              className="h-5 w-5 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+              className="h-10 w-10 rounded-full flex-shrink-0 hover:bg-white/20 dark:hover:bg-white/10 transition-colors mb-[1px]"
               disabled={isBlocked}
             >
               <Smile className="h-5 w-5 text-black dark:text-white" />
             </Button>
           </PopoverTrigger>
+
           <PopoverContent
             side="top"
             align="end"
@@ -293,21 +323,23 @@ export default function MessageInput({
           </PopoverContent>
         </Popover>
 
-        <Input
+        <textarea
+          ref={textareaRef}
           value={message}
-          onInput={handleInput}
-          placeholder={isBlocked ? "Cannot send messages" : "Type a message..."}
-          className="flex-1 bg-transparent !outline-none !border-none !ring-0 text-sm h-9 px-2 text-black dark:text-white placeholder:text-gray-600 dark:placeholder:text-gray-400"
+          onChange={handleInput}
+          onKeyDown={handleKeyDown}
+          rows={1}
           disabled={isBlocked}
-          autoComplete="off"
+          placeholder={isBlocked ? "Cannot send messages" : "Type a message..."}
+          className="flex-1 bg-transparent !outline-none !border-none !ring-0 text-sm px-2 py-3 text-black dark:text-white placeholder:text-gray-600 dark:placeholder:text-gray-400 resize-none min-h-[44px] max-h-[150px] overflow-y-auto leading-5"
         />
 
         {message.trim() && !isRecording ? (
           <Button
             type="submit"
             size="icon"
-            className="h-10 w-10 rounded-full flex-shrink-0 bg-transparents hover:bg-white/20 dark:hover:bg-white/10 dark:text-white text-black shadow-md flex items-center justify-center transition-transform"
             disabled={isBlocked}
+            className="h-10 w-10 rounded-full flex-shrink-0 bg-transparent hover:bg-white/20 dark:hover:bg-white/10 dark:text-white text-black shadow-md flex items-center justify-center transition-transform mb-[1px]"
           >
             <SendHorizontal className="h-5 w-5" />
           </Button>
@@ -315,9 +347,9 @@ export default function MessageInput({
           <Button
             type="button"
             size="icon"
-            className="h-10 w-10 rounded-full flex-shrink-0 bg-transparent hover:bg-white/20 dark:hover:bg-white/10 text-black dark:text-white flex items-center justify-center transition-colors"
-            onMouseDown={startRecording}
             disabled={isBlocked || isRecording}
+            onMouseDown={startRecording}
+            className="h-10 w-10 rounded-full flex-shrink-0 bg-transparent hover:bg-white/20 dark:hover:bg-white/10 text-black dark:text-white flex items-center justify-center transition-colors mb-[1px]"
           >
             <Mic className="h-5 w-5" />
           </Button>

@@ -11,10 +11,13 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
   ArrowLeft,
+  Check,
+  CheckCircle2,
   FileText,
   Loader2,
   MapPin,
@@ -62,6 +65,18 @@ import MessageInput from "./message-input";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
+import { formatDateLabel } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { set } from "idb-keyval";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -88,6 +103,15 @@ export function ChatArea({
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isSelectionMode = selectedIds.size > 0;
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    message: Message;
+  } | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   // const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
   const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
     contact.uid,
@@ -111,9 +135,9 @@ export function ChatArea({
     decryptMessageFromContact,
     encryptFile,
   } = useEncryption(currentUser);
-  const [decryptedImageCache, setDecryptedImageCache] = useState<
-    Record<string, string>
-  >({});
+  // const [decryptedImageCache, setDecryptedImageCache] = useState<
+  //   Record<string, string>
+  // >({});
   const [previewFile, setPreviewFile] = useState<{
     file: File;
     type: "image" | "video" | "file" | "audio";
@@ -172,6 +196,100 @@ export function ChatArea({
 
     return () => unsubscribe();
   }, [currentUser, contact, db]);
+
+  const toggleSelection = (messageId: string) => {
+    setSelectedIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(messageId)) {
+        newSet.delete(messageId);
+      } else {
+        newSet.add(messageId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, msg: Message) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, message: msg });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent, msg: Message) => {
+    const touch = e.touches[0];
+    longPressTimerRef.current = setTimeout(() => {
+      setContextMenu({ x: touch.clientX, y: touch.clientY, message: msg });
+    }, 500);
+  };
+
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  };
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    window.addEventListener("click", handleClick);
+    return () => window.removeEventListener("click", handleClick);
+  }, []);
+
+  const startSelection = (messageId: string) => {
+    setSelectedIds(new Set([messageId]));
+    setContextMenu(null);
+  };
+
+  const cancelSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    const deletableIds = Array.from(selectedIds).filter((id) => {
+      const msg = messages.find((m) => m.id === id);
+      return msg && msg.senderId === currentUser.uid;
+    });
+
+    if (deletableIds.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Action Denied",
+        description: "You can only delete your own messages.",
+      });
+      setIsDeleteAlertOpen(false);
+      return;
+    }
+
+    try {
+      const batch = writeBatch(db);
+
+      deletableIds.forEach((id) => {
+        const msgRef = doc(db, "messages", id);
+        batch.delete(msgRef);
+      });
+
+      await batch.commit();
+
+      const skippedCount = selectedIds.size - deletableIds.length;
+      const descText =
+        skippedCount > 0
+          ? `Deleted ${deletableIds.length} messages. (${skippedCount} others were skipped)`
+          : `Successfully deleted ${deletableIds.length} messages.`;
+
+      toast({
+        title: "Deleted",
+        description: descText,
+      });
+
+      setSelectedIds(new Set());
+      setIsDeleteAlertOpen(false);
+    } catch (error) {
+      console.error("Bulk delete failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete messages.",
+      });
+    }
+  };
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -1305,9 +1423,9 @@ export function ChatArea({
     const message = imageMessages[messageIndex];
     const decryptedCaption = getMessageText(message);
     setCurrentImageIndex(messageIndex);
-    const cachedBlobUrl = decryptedImageCache[message.id] || null;
+    // const cachedBlobUrl = decryptedImageCache[message.id] || null;
     setCurrentViewingImage({
-      url: cachedBlobUrl || message.fileURL || "",
+      url: message.fileURL || "",
       messageId: message.id,
       fileName: message.fileName,
       isEncrypted: message.fileIsEncrypted || false,
@@ -1340,135 +1458,159 @@ export function ChatArea({
   return (
     <div className="flex flex-1 flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b dark:bg-[#1c1c1d]">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsMobileMenuOpen?.(true)}
-            className="md:hidden cursor-pointer"
-          >
-            <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
-          </button>
+        {isSelectionMode ? (
+          <div className="flex items-center justify-between w-full animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={cancelSelection}>
+                <X className="h-6 w-6" />
+              </Button>
+              <span className="font-semibold text-lg">
+                {selectedIds.size} Selected
+              </span>
+            </div>
 
-          <UserAvatar
-            user={contact}
-            isBlocked={isBlocked || isUserBlockedByContact}
-          />
-          <div>
-            <div className="flex items-center gap-1">
-              <p className="font-medium">
-                {normalizeName(contact.displayName)}
-              </p>
-              {contact.isVerified &&
-                !isBlocked &&
-                !isUserBlockedByContact &&
-                !contact.isAdmin && (
-                  <svg
-                    aria-label="Verified"
-                    fill="rgb(0, 149, 246)"
-                    height="15"
-                    role="img"
-                    viewBox="0 0 40 40"
-                    width="15"
-                  >
-                    <title>Verified</title>
-                    <path
-                      d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
-                      fillRule="evenodd"
-                    ></path>
-                  </svg>
-                )}
-              {contact.isAdmin && !isBlocked && !isUserBlockedByContact && (
-                <svg
-                  aria-label="Afiliated Account"
-                  height="15"
-                  width="15"
-                  role="img"
-                  viewBox="0 0 40 40"
-                >
-                  <defs>
-                    <linearGradient
-                      id="metallicGold-verified-icon"
-                      x1="0%"
-                      y1="0%"
-                      x2="100%"
-                      y2="100%"
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop offset="0%" stopColor="#fff7b0" />
-                      <stop offset="25%" stopColor="#ffd700" />
-                      <stop offset="50%" stopColor="#ffa500" />
-                      <stop offset="75%" stopColor="#ffd700" />
-                      <stop offset="100%" stopColor="#fff7b0" />
-                    </linearGradient>
-                  </defs>
-                  <title>Affiliated Account</title>
-                  <path
-                    d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
-                    fill="url(#metallicGold-verified-icon)"
-                    fillRule="evenodd"
-                  />
-                </svg>
-              )}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <ContactStatus
-                isBlocked={isBlocked || isUserBlockedByContact}
-                contact={contact}
-                onlineStatus={isOnline}
-                isAdmin={contact.isAdmin}
-                isVerified={contact.isVerified}
-                contactIsTyping={contactIsTyping}
-              />
-            </div>
+            <Button
+              variant="destructive"
+              size="icon"
+              onClick={() => setIsDeleteAlertOpen(true)}
+              className="rounded-full w-10 h-10"
+            >
+              <Trash2 className="h-5 w-5" />
+            </Button>
           </div>
-        </div>
-        <div className="flex md:gap-2 gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={isBlocked || isUserBlockedByContact}
-            title="Start voice call"
-            onClick={() => {
-              if (isOnline && !isBlocked && !isUserBlockedByContact) {
-                initiateCall(false);
-              } else {
-                toast({
-                  variant: "destructive",
-                  title: "Cannot start call",
-                  description: "User is offline.",
-                });
-              }
-            }}
-          >
-            <Phone className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Start video call"
-            disabled={isBlocked || isUserBlockedByContact}
-            onClick={() => {
-              if (isOnline && !isBlocked && !isUserBlockedByContact) {
-                initiateCall(true);
-              } else {
-                toast({
-                  variant: "destructive",
-                  title: "Cannot start call",
-                  description: "User is offline.",
-                });
-              }
-            }}
-          >
-            <Video className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            title="Open user profile"
-            onClick={() => setIsUserProfileOpen(true)}
-          >
-            <MoreVertical className="h-5 w-5" />
-          </Button>
-        </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsMobileMenuOpen?.(true)}
+                className="md:hidden cursor-pointer"
+              >
+                <ArrowLeft className="h-6 w-6 dark:text-white text-black" />
+              </button>
+
+              <UserAvatar
+                user={contact}
+                isBlocked={isBlocked || isUserBlockedByContact}
+              />
+              <div>
+                <div className="flex items-center gap-1">
+                  <p className="font-medium">
+                    {normalizeName(contact.displayName)}
+                  </p>
+                  {contact.isVerified &&
+                    !isBlocked &&
+                    !isUserBlockedByContact &&
+                    !contact.isAdmin && (
+                      <svg
+                        aria-label="Verified"
+                        fill="rgb(0, 149, 246)"
+                        height="15"
+                        role="img"
+                        viewBox="0 0 40 40"
+                        width="15"
+                      >
+                        <title>Verified</title>
+                        <path
+                          d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                          fillRule="evenodd"
+                        ></path>
+                      </svg>
+                    )}
+                  {contact.isAdmin && !isBlocked && !isUserBlockedByContact && (
+                    <svg
+                      aria-label="Afiliated Account"
+                      height="15"
+                      width="15"
+                      role="img"
+                      viewBox="0 0 40 40"
+                    >
+                      <defs>
+                        <linearGradient
+                          id="metallicGold-verified-icon"
+                          x1="0%"
+                          y1="0%"
+                          x2="100%"
+                          y2="100%"
+                          gradientUnits="userSpaceOnUse"
+                        >
+                          <stop offset="0%" stopColor="#fff7b0" />
+                          <stop offset="25%" stopColor="#ffd700" />
+                          <stop offset="50%" stopColor="#ffa500" />
+                          <stop offset="75%" stopColor="#ffd700" />
+                          <stop offset="100%" stopColor="#fff7b0" />
+                        </linearGradient>
+                      </defs>
+                      <title>Affiliated Account</title>
+                      <path
+                        d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
+                        fill="url(#metallicGold-verified-icon)"
+                        fillRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ContactStatus
+                    isBlocked={isBlocked || isUserBlockedByContact}
+                    contact={contact}
+                    onlineStatus={isOnline}
+                    isAdmin={contact.isAdmin}
+                    isVerified={contact.isVerified}
+                    contactIsTyping={contactIsTyping}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex md:gap-2 gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isBlocked || isUserBlockedByContact}
+                title="Start voice call"
+                onClick={() => {
+                  if (isOnline && !isBlocked && !isUserBlockedByContact) {
+                    initiateCall(false);
+                  } else {
+                    toast({
+                      variant: "destructive",
+                      title: "Cannot start call",
+                      description: "User is offline.",
+                    });
+                  }
+                }}
+              >
+                <Phone className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Start video call"
+                disabled={isBlocked || isUserBlockedByContact}
+                onClick={() => {
+                  if (isOnline && !isBlocked && !isUserBlockedByContact) {
+                    initiateCall(true);
+                  } else {
+                    toast({
+                      variant: "destructive",
+                      title: "Cannot start call",
+                      description: "User is offline.",
+                    });
+                  }
+                }}
+              >
+                <Video className="h-5 w-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Open user profile"
+                onClick={() => setIsUserProfileOpen(true)}
+              >
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {isBlocked ||
@@ -1523,108 +1665,240 @@ export function ChatArea({
           </div>
         </div>
 
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`flex ${
-              msg.senderId === currentUser.uid ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-[85%] md:max-w-[70%] rounded-lg px-3 py-2 ${
-                msg.senderId === currentUser.uid
-                  ? "dark:bg-[#131418] bg-slate-200"
-                  : "dark:bg-muted bg-slate-100"
-              }`}
-              id={msg.id}
-            >
-              {msg.replyTo && (
-                <a
-                  href={"#" + msg.replyTo.id}
-                  id={btoa(msg.replyTo.id)}
-                  className={`block rounded-md mb-2 p-2 border-l-4 ${
-                    msg.senderId === currentUser.uid
-                      ? "border-l-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                      : "border-l-green-500 bg-green-50 dark:bg-green-900/30"
-                  }`}
-                >
-                  <div className="text-xs font-semibold mb-1">
-                    {msg.replyTo.senderId === currentUser.uid
-                      ? "You"
-                      : contact.displayName}
-                  </div>
+        {messages.map((msg, index) => {
+          const isSender = msg.senderId === currentUser.uid;
+          const isFirstInSequence =
+            index === 0 || messages[index - 1].senderId !== msg.senderId;
 
-                  <div className="truncate text-sm text-slate-700 dark:text-slate-300 max-w-[200px] md:max-w-md">
-                    {msg.replyTo.id && decryptedMessages[msg.replyTo.id]
-                      ? decryptedMessages[msg.replyTo.id]
-                      : msg.replyTo.isEncrypted
-                      ? msg.replyTo.encryptedText
-                        ? "[Encrypted message]"
-                        : msg.replyTo.text || "[Encrypted message]"
-                      : msg.replyTo.text || "[Message unavailable]"}
-                  </div>
-                </a>
-              )}
+          const cornerStyle = isFirstInSequence
+            ? isSender
+              ? "rounded-tr-none"
+              : "rounded-tl-none"
+            : "";
 
-              <MessageContent
-                msg={msg}
-                messageText={getMessageText(msg)}
-                currentUserId={currentUser.uid}
-                theme={theme}
-                onImageClick={(messageId) => handleOpenImageViewer(messageId)}
-                setDecryptedImageCache={setDecryptedImageCache}
-              />
+          const isSelected = selectedIds.has(msg.id);
 
-              <div className="flex items-center justify-between text-xs opacity-70 mt-1">
-                <div className="flex items-center">
-                  <span>
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+          const interactionProperty = isSelectionMode
+            ? { onClick: () => toggleSelection(msg.id) }
+            : {
+                onContextMenu: (e: any) => handleContextMenu(e, msg),
+                onTouchStart: (e: any) => handleTouchStart(e, msg),
+                onTouchEnd: handleTouchEnd,
+                onTouchMove: handleTouchEnd,
+              };
+
+          const marginTop = isFirstInSequence ? "mt-2" : "mt-0.5";
+          const dateLabel = formatDateLabel(msg.timestamp);
+          const prevDateLabel =
+            index > 0 ? formatDateLabel(messages[index - 1].timestamp) : null;
+          const showDateHeader = dateLabel !== prevDateLabel;
+
+          return (
+            <div key={msg.id} className="flex flex-col w-full">
+              {showDateHeader && (
+                <div className="flex justify-center my-4 sticky top-2 z-10">
+                  <span className="bg-gray-200 dark:bg-[#1f1f1f] text-xs font-medium px-3 py-1 rounded-full text-gray-600 dark:text-gray-300 shadow-sm opacity-90 backdrop-blur-sm border dark:border-white/5">
+                    {dateLabel}
                   </span>
-                  {renderSeenIndicator(msg)}
                 </div>
+              )}
+              <div
+                className={`flex ${
+                  msg.senderId === currentUser.uid
+                    ? "justify-end"
+                    : "justify-start"
+                } ${marginTop} _${index + 1}+_`}
+              >
+                {isSelectionMode && (
+                  <div
+                    onClick={() => toggleSelection(msg.id)}
+                    className={`flex items-center justify-center px-3 cursor-pointer animate-in fade-in zoom-in duration-200 ${
+                      isSender ? "order-first" : "order-last"
+                    }`}
+                  >
+                    <div
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? "bg-indigo-500 border-indigo-500"
+                          : "border-gray-400 bg-transparent hover:border-indigo-400"
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                    </div>
+                  </div>
+                )}
+                <div
+                  {...interactionProperty}
+                  className={`relative max-w-[85%] md:max-w-[70%] break-words rounded-lg px-3 py-2 ${cornerStyle} ${
+                    msg.senderId === currentUser.uid
+                      ? "dark:bg-[#131418] bg-slate-200"
+                      : "dark:bg-muted bg-slate-100"
+                  }
+                     ${
+                       isSelected
+                         ? "bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-500 z-10"
+                         : isSender
+                         ? "dark:bg-[#131418] bg-slate-200"
+                         : "dark:bg-muted bg-slate-100"
+                     }
+                      ${
+                        isSelectionMode ? "cursor-pointer hover:opacity-90" : ""
+                      }
+                      ${
+                        contextMenu?.message?.id === msg.id
+                          ? "ring-2 ring-indigo-500/50"
+                          : ""
+                      } 
+                  `}
+                  id={msg.id}
+                >
+                  {isFirstInSequence &&
+                    (isSender ? (
+                      <div
+                        className={`absolute top-0 -right-[12px] w-[12px] h-[15px] bg-slate-200 dark:bg-[#131418] [clip-path:polygon(0_0,100%_0,0_100%)] ${
+                          isSelected
+                            ? "bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-500 z-10"
+                            : isSender
+                            ? "dark:bg-[#131418] bg-slate-200"
+                            : "dark:bg-muted bg-slate-100"
+                        }
+                      ${
+                        isSelectionMode ? "cursor-pointer hover:opacity-90" : ""
+                      }
+                      ${
+                        contextMenu?.message?.id === msg.id
+                          ? "ring-2 ring-indigo-500/50"
+                          : ""
+                      } `}
+                      />
+                    ) : (
+                      <div
+                        className={`absolute top-0 -left-[12px] w-[12px] h-[15px] bg-slate-100 dark:bg-muted [clip-path:polygon(0_0,100%_0,100%_100%)] ${
+                          isSelected
+                            ? "bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-500 z-10"
+                            : isSender
+                            ? "dark:bg-[#131418] bg-slate-200"
+                            : "dark:bg-muted bg-slate-100"
+                        }
+                      ${
+                        isSelectionMode ? "cursor-pointer hover:opacity-90" : ""
+                      }
+                      ${
+                        contextMenu?.message?.id === msg.id
+                          ? "ring-2 ring-indigo-500/50"
+                          : ""
+                      } `}
+                      />
+                    ))}
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="12" cy="12" r="1"></circle>
-                        <circle cx="19" cy="12" r="1"></circle>
-                        <circle cx="5" cy="12" r="1"></circle>
-                      </svg>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setReplyTo(msg)}>
-                      <Reply className="mr-2 h-4 w-4" />
-                      Reply
-                    </DropdownMenuItem>
-                    {msg.senderId === currentUser.uid && (
-                      <DropdownMenuItem onClick={() => deleteMessage(msg.id)}>
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  {msg.replyTo && (
+                    <a
+                      href={"#" + msg.replyTo.id}
+                      id={btoa(msg.replyTo.id)}
+                      className={`block rounded-md mb-2 p-2 border-l-4 ${
+                        msg.senderId === currentUser.uid
+                          ? "border-l-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                          : "border-l-green-500 bg-green-50 dark:bg-green-900/30"
+                      }`}
+                    >
+                      <div className="text-xs font-semibold mb-1">
+                        {msg.replyTo.senderId === currentUser.uid
+                          ? "You"
+                          : contact.displayName}
+                      </div>
+
+                      <div className="truncate text-sm text-slate-700 dark:text-slate-300 max-w-[200px] md:max-w-md">
+                        {msg.replyTo.id && decryptedMessages[msg.replyTo.id]
+                          ? decryptedMessages[msg.replyTo.id]
+                          : msg.replyTo.isEncrypted
+                          ? msg.replyTo.encryptedText
+                            ? "[Encrypted message]"
+                            : msg.replyTo.text || "[Encrypted message]"
+                          : msg.replyTo.text || "[Message unavailable]"}
+                      </div>
+                    </a>
+                  )}
+
+                  <MessageContent
+                    msg={msg}
+                    messageText={getMessageText(msg)}
+                    currentUserId={currentUser.uid}
+                    theme={theme}
+                    onImageClick={(messageId) =>
+                      handleOpenImageViewer(messageId)
+                    }
+                    // setDecryptedImageCache={setDecryptedImageCache}
+                  />
+
+                  <div className="flex items-center justify-between text-xs opacity-70 mt-1">
+                    <div className="flex items-center">
+                      <span>
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {renderSeenIndicator(msg)}
+                    </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <circle cx="12" cy="12" r="1"></circle>
+                            <circle cx="19" cy="12" r="1"></circle>
+                            <circle cx="5" cy="12" r="1"></circle>
+                          </svg>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setReplyTo(msg)}>
+                          <Reply className="mr-2 h-4 w-4" />
+                          Reply
+                        </DropdownMenuItem>
+                        {msg.senderId === currentUser.uid && (
+                          <DropdownMenuItem
+                            onClick={() => deleteMessage(msg.id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
+
+      {contextMenu && (
+        <div className="bg-white dark:bg-[#1f1f1f]/50 rounded-t-md shadow-xl border dark:border-white/10 p-1 flex flex-col min-w-[140px] overflow-hidden">
+          <button
+            onClick={() => startSelection(contextMenu.message.id)}
+            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-white/5 flex items-center gap-2 text-gray-700 dark:text-gray-200"
+          >
+            <CheckCircle2 className="h-4 w-4" /> Select Message
+          </button>
+        </div>
+      )}
 
       {replyTo && (
         <div className="px-4 py-2 border-t flex items-center justify-between dark:bg-[#151516]">
@@ -1954,10 +2228,69 @@ export function ChatArea({
           setCurrentIndex={setCurrentImageIndex}
           setCurrentViewingImage={setCurrentViewingImage}
           currentUser={currentUser}
-          decryptedImageCache={decryptedImageCache}
+          // decryptedImageCache={decryptedImageCache}
           getMessageText={getMessageText}
         />
       )}
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent className="rounded-xl bg-white dark:bg-black/80 border dark:border-white/10 w-[90%] max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Messages?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const myMessagesCount = Array.from(selectedIds).filter(
+                  (id) =>
+                    messages.find((m) => m.id === id)?.senderId ===
+                    currentUser.uid
+                ).length;
+
+                const othersCount = selectedIds.size - myMessagesCount;
+
+                if (myMessagesCount === 0) {
+                  return "You selected messages that belong to others. You cannot delete them.";
+                }
+
+                return (
+                  <span>
+                    Are you sure? You are about to permanently delete{" "}
+                    <span className="font-bold text-red-500">
+                      {myMessagesCount} message{myMessagesCount > 1 ? "s" : ""}
+                    </span>
+                    {othersCount > 0 && (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        ({othersCount} other message{othersCount > 1 ? "s" : ""}{" "}
+                        will be ignored)
+                      </span>
+                    )}
+                    . This action cannot be undone.
+                  </span>
+                );
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-lg border-none hover:bg-gray-100 dark:hover:bg-white/10">
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={
+                Array.from(selectedIds).some(
+                  (id) =>
+                    messages.find((m) => m.id === id)?.senderId ===
+                    currentUser.uid
+                ) === false
+              }
+              className="bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Delete for Everyone
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

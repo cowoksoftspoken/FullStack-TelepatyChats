@@ -53,7 +53,7 @@ interface ImageViewerProps {
   ) => void;
   setCurrentIndex: (index: number) => void;
   currentUser: any;
-  decryptedImageCache?: Record<string, string>;
+  // decryptedImageCache?: Record<string, string>;
   getMessageText: (msg: Message) => string;
 }
 
@@ -66,7 +66,7 @@ export function ImageViewer({
   setCurrentIndex,
   currentUser,
   setCurrentViewingImage,
-  decryptedImageCache,
+  // decryptedImageCache,
   getMessageText,
 }: ImageViewerProps) {
   const [scale, setScale] = useState(1);
@@ -142,10 +142,10 @@ export function ImageViewer({
 
   const updateCurrentImage = (index: number) => {
     const newImage = images[index];
-    const cachedBlob = decryptedImageCache?.[newImage.id];
+    // const cachedBlob = decryptedImageCache?.[newImage.id];
     const decryptedCaption = getMessageText(newImage);
     setCurrentViewingImage({
-      url: cachedBlob || newImage.fileURL || "",
+      url: newImage.fileURL || "",
       messageId: newImage.id,
       fileName: newImage.fileName,
       isEncrypted: newImage.fileIsEncrypted || false,
@@ -213,10 +213,7 @@ export function ImageViewer({
 
   const getCurrentImageUrl = () => {
     if (!currentImage) return "";
-    return currentImage?.isEncrypted &&
-      decryptedImageCache?.[currentImage.messageId]
-      ? decryptedImageCache[currentImage.messageId]
-      : currentImage?.url;
+    return currentImage.url;
   };
 
   useEffect(() => {
@@ -224,10 +221,10 @@ export function ImageViewer({
       const image = getCurrentImageUrl();
       setDecryptedImageUrl(null);
 
-      if (currentImage?.url && currentImage.url.startsWith("blob:")) {
-        setDecryptedImageUrl(currentImage.url);
-        return;
-      }
+      // if (currentImage?.url && currentImage.url.startsWith("blob:")) {
+      //   setDecryptedImageUrl(currentImage.url);
+      //   return;
+      // }
 
       if (currentImage?.isEncrypted) {
         const url = await decrypt({
@@ -247,7 +244,7 @@ export function ImageViewer({
       }
     };
     decryptImage();
-  }, [currentImage, decrypt, currentUser.uid, decryptedImageCache]);
+  }, [currentImage, decrypt, currentUser.uid]);
 
   if (!isOpen || !currentImage) return null;
 

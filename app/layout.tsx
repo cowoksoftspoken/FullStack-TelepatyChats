@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { FirebaseProvider } from "@/lib/firebase-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
+import { Roboto } from "next/font/google";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -13,6 +14,14 @@ const inter = Inter({
   fallback: ["system-ui", "Arial"],
   adjustFontFallback: true,
   variable: "--tpy-inter-font",
+});
+
+const roboto = Roboto({
+  subsets: ["latin"],
+  display: "swap",
+  fallback: ["system-ui", "Arial"],
+  adjustFontFallback: true,
+  variable: "--tpy-roboto-font",
 });
 
 export const metadata: Metadata = {
@@ -151,7 +160,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${inter.variable} ${roboto.variable} scroll-smooth`}
+      suppressHydrationWarning
+    >
       <head>
         <link
           rel="icon"
@@ -217,7 +230,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} ${inter.variable} antialiased`}>
+      <body className={`font-inter antialiased`}>
         <ToastProvider>
           <ThemeProvider defaultTheme="system" storageKey="zerochats-theme">
             <FirebaseProvider>

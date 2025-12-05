@@ -3,7 +3,7 @@
 import type { Message } from "@/types/message";
 import { Globe, MapPin } from "lucide-react";
 import { useMemo } from "react";
-import { CollapsedText } from "./collapsed-text";
+import { MarkdownCollapsedText } from "./markdown-collapsed-text";
 import { EncryptedAudio } from "./encrypted-audio";
 import { EncryptedFile } from "./encrypted-file";
 import { EncryptedImage } from "./encrypted-image";
@@ -17,9 +17,9 @@ interface MessageContentProps {
   currentUserId: string;
   theme: string;
   onImageClick?: (url: string) => void;
-  setDecryptedImageCache?: React.Dispatch<
-    React.SetStateAction<Record<string, string>>
-  >;
+  // setDecryptedImageCache?: React.Dispatch<
+  //   React.SetStateAction<Record<string, string>>
+  // >;
 }
 
 export function MessageContent({
@@ -28,8 +28,8 @@ export function MessageContent({
   currentUserId,
   theme,
   onImageClick,
-  setDecryptedImageCache,
-}: MessageContentProps) {
+}: // setDecryptedImageCache,
+MessageContentProps) {
   const youtubeId = useMemo(() => {
     if (msg.type === "text") {
       const regex =
@@ -40,25 +40,25 @@ export function MessageContent({
     return null;
   }, [msg.type, messageText]);
 
-  const processedText = useMemo(() => {
-    if (msg.type === "text") {
-      const urlPattern =
-        /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
-      const youtubeRegex =
-        /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  // const processedText = useMemo(() => {
+  //   if (msg.type === "text") {
+  //     const urlPattern =
+  //       /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
+  //     const youtubeRegex =
+  //       /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 
-      if (urlPattern.test(messageText)) {
-        return messageText.replace(urlPattern, (url) => {
-          if (youtubeRegex.test(url)) {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube</a>`;
-          } else {
-            return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
-          }
-        });
-      }
-    }
-    return messageText;
-  }, [msg.type, messageText]);
+  //     if (urlPattern.test(messageText)) {
+  //       return messageText.replace(urlPattern, (url) => {
+  //         if (youtubeRegex.test(url)) {
+  //           return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">YouTube</a>`;
+  //         } else {
+  //           return `<a href="${url}" class="text-indigo-500 underline max-w-full" target="_blank" rel="noopener noreferrer" role="button">${url}</a>`;
+  //         }
+  //       });
+  //     }
+  //   }
+  //   return messageText;
+  // }, [msg.type, messageText]);
 
   const handleImageClick = () => {
     if (onImageClick) {
@@ -82,15 +82,15 @@ export function MessageContent({
             isSender={msg.senderId === currentUserId}
             currentUserId={currentUserId}
             onClick={handleImageClick}
-            onReady={(blobURL) => {
-              setDecryptedImageCache?.((prev) => {
-                if (prev[msg.id] === blobURL) return prev;
-                return {
-                  ...prev,
-                  [msg.id]: blobURL,
-                };
-              });
-            }}
+            // onReady={(blobURL) => {
+            //   setDecryptedImageCache?.((prev) => {
+            //     if (prev[msg.id] === blobURL) return prev;
+            //     return {
+            //       ...prev,
+            //       [msg.id]: blobURL,
+            //     };
+            //   });
+            // }}
           />
           {messageText !== msg.fileName && (
             <div className="mt-1 text-sm flex items-center gap-1">
@@ -203,8 +203,8 @@ export function MessageContent({
       return (
         <>
           {youtubeId && <YoutubeEmbed videoId={youtubeId} />}
-          <div className="flex w-full items-center gap-1">
-            <CollapsedText text={processedText} />
+          <div className="w-full mt-1">
+            <MarkdownCollapsedText text={messageText} />
           </div>
         </>
       );

@@ -63,9 +63,9 @@ export default function VideoPlayer({
     document.addEventListener("fullscreenchange", handleFullscreenChange);
     document.addEventListener("enterpictureinpicture", handlePiPChange);
     document.addEventListener("leavepictureinpicture", handlePiPChange);
-    // videoRef.current?.addEventListener("contextmenu", (e) => {
-    //   e.preventDefault();
-    // });
+    videoRef.current?.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
     return () => {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       document.removeEventListener("enterpictureinpicture", handlePiPChange);
@@ -105,7 +105,7 @@ export default function VideoPlayer({
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
       setIsLoading(false);
-      // videoRef.current.currentTime = 0.1;
+      videoRef.current.currentTime = 0.1;
     }
   };
 

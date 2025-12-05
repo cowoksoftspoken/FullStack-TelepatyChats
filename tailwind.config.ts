@@ -9,6 +9,10 @@ const config: Config = {
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
+    fontFamily: {
+      roboto: ["var(--tpy-roboto-font)"],
+      inter: ["var(--tpy-inter-font)"],
+    },
     extend: {
       colors: {
         background: "hsl(var(--background))",

@@ -46,3 +46,30 @@ export function formatTimestamp(
   const tzLabel = tzMap[timeZone] ?? timeZone;
   return `${formatter.format(date)} (${tzLabel})`;
 }
+
+export function formatDateLabel(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  const diff = now.getTime() - date.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  const isToday = diff < dayMs && date.getDate() === now.getDate();
+  const isYesterday = diff < dayMs * 2 && date.getDate() === now.getDate() - 1;
+
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+    });
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
