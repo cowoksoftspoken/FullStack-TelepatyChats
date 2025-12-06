@@ -60,6 +60,7 @@
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
     "react-easy-crop": "^5.5.0",
+    "react-google-recaptcha-v3": "^1.11.0",
     "react-hook-form": "^7.54.1",
     "react-markdown": "^10.1.0",
     "react-qr-barcode-scanner": "^2.1.8",

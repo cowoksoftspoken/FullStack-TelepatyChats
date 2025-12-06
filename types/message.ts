@@ -40,6 +40,12 @@ export interface Message {
   };
   accuracy?: number;
 
+  // edited
+  isEdited?: boolean;
+
+  // Reactions
+  reactions?: Record<string, string[]>;
+
   // Text
   isEncrypted: boolean;
   encryptedText: string;

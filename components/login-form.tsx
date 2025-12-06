@@ -14,12 +14,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { auth, db } from "@/lib/firebase";
-import { Brain, Loader2 } from "lucide-react";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useFirebase } from "@/lib/firebase-provider";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { Brain, Loader2 } from "lucide-react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 
 const MAX_RETRIES = 5;
 const LOCKOUT_TIME_MS = 5 * 60 * 1000;
@@ -32,6 +33,8 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [retryCount, setRetryCount] = useState(0);
   const [lockedUntil, setLockedUntil] = useState<number | null>(null);
+
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const router = useRouter();
 
@@ -71,11 +74,22 @@ export function LoginForm() {
       return;
     }
 
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    if (!emailRegex.test(email)) {
+      setError("Invalid email format.");
+      return;
+    }
+
     if (lockedUntil && lockedUntil > Date.now()) {
       const secondsLeft = Math.ceil((lockedUntil - Date.now()) / 1000);
       setError(
         `Too many failed attempts. Try again in ${secondsLeft} seconds.`
       );
+      return;
+    }
+
+    if (!executeRecaptcha) {
+      setError("reCAPTCHA not yet available");
       return;
     }
 
@@ -88,6 +102,29 @@ export function LoginForm() {
     setError("");
 
     try {
+      const token = await executeRecaptcha("login_form");
+
+      const verifyResponse = await fetch("/api/verify-recaptcha", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token }),
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyData.success || verifyData.score < 0.5) {
+        setError("reCAPTCHA verification failed. Please try again.");
+        setFormLoading(false);
+        return;
+      }
+
+      // if (verifyData) {
+      //   console.log("reCAPTCHA verification response:", verifyData);
+      //   return; // Debugging line to check the response
+      // }
+
       await signInWithEmailAndPassword(auth, email, password);
 
       localStorage.removeItem("login_retries");

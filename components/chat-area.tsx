@@ -22,6 +22,7 @@ import {
   Loader2,
   MapPin,
   MoreVertical,
+  Pencil,
   Phone,
   Reply,
   Send,
@@ -53,19 +54,23 @@ import { useEncryption } from "@/hooks/use-encryption";
 import { useToast } from "@/hooks/use-toast";
 import useUserStatus from "@/hooks/use-user-status";
 import { useFirebase } from "@/lib/firebase-provider";
+import {
+  EXTENDED_REACTIONS,
+  formatAccuracy,
+  formatDateLabel,
+  toggleReaction,
+} from "@/lib/utils";
 import type { Message } from "@/types/message";
 import type { User } from "@/types/user";
 import normalizeName from "@/utils/normalizename";
 import { AudioPreview } from "./audio-preview";
 import { CameraDialog } from "./camera-dialog";
 import ContactStatus from "./contact-status";
+import { EditMessageDialog } from "./edit-message-dialog";
 import { ImageViewer } from "./image-viewer";
 import { MessageContent } from "./message-content";
 import MessageInput from "./message-input";
-import { UserAvatar } from "./user-avatar";
-import { UserProfilePopup } from "./user-profile-popup";
-import VideoPlayer from "./video-message";
-import { formatAccuracy, formatDateLabel } from "@/lib/utils";
+import { ReactionDisplay } from "./reactions-display";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,8 +81,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "./ui/alert-dialog";
-import { set } from "idb-keyval";
-import { text } from "stream/consumers";
+import { UserAvatar } from "./user-avatar";
+import { UserProfilePopup } from "./user-profile-popup";
+import VideoPlayer from "./video-message";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -108,6 +114,11 @@ export function ChatArea({
     null
   );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingMessage, setEditingMessage] = useState<{
+    msg: Message;
+    initialText: string;
+  } | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
   const isSelectionMode = selectedIds.size > 0;
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -1417,6 +1428,59 @@ export function ChatArea({
     }
   };
 
+  const handleSaveEdit = async (messageId: string, newText: string) => {
+    setIsSavingEdit(true);
+
+    try {
+      const messageRef = doc(db, "messages", messageId);
+
+      let updateData: any = {
+        isEdited: true,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (isInitialized && currentUser && contact) {
+        const encryptedData = await encryptMessageForContact(
+          newText,
+          currentUser.uid
+        );
+
+        if (encryptedData.isEncrypted) {
+          updateData = {
+            ...updateData,
+            encryptedText: encryptedData.encryptedText,
+            encryptedKey: encryptedData.encryptedKeyForContact,
+            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+            iv: encryptedData.iv,
+            text: "総",
+          };
+        } else {
+          updateData.text = newText;
+        }
+      } else {
+        updateData.text = newText;
+      }
+
+      await updateDoc(messageRef, updateData);
+      if (isInitialized) {
+        setDecryptedMessages((prev) => ({
+          ...prev,
+          [messageId]: newText,
+        }));
+      }
+
+      toast({ description: "Message updated successfully." });
+    } catch (error) {
+      console.error("Error updating message:", error);
+      toast({
+        variant: "destructive",
+        description: "Failed to update message.",
+      });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   useEffect(() => {
     if (!currentUser || !contact || messages.length === 0) return;
 
@@ -1887,6 +1951,11 @@ export function ChatArea({
                     // setDecryptedImageCache={setDecryptedImageCache}
                   />
 
+                  <ReactionDisplay
+                    message={msg}
+                    currentUserUid={currentUser.uid}
+                  />
+
                   <div className="flex items-center justify-between text-xs opacity-70 mt-1">
                     <div className="flex items-center">
                       <span>
@@ -1895,6 +1964,11 @@ export function ChatArea({
                           minute: "2-digit",
                         })}
                       </span>
+                      {msg.isEdited && (
+                        <span className="text-[10px] italic opacity-80">
+                          (edited)
+                        </span>
+                      )}
                       {renderSeenIndicator(msg)}
                     </div>
 
@@ -1922,11 +1996,66 @@ export function ChatArea({
                           </svg>
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent
+                        align={isSender ? "end" : "start"}
+                        className="w-72"
+                      >
+                        <div className="p-2">
+                          <p className="text-xs text-muted-foreground mb-2 px-1">
+                            Reactions
+                          </p>
+
+                          <div className="grid grid-cols-7 gap-1 h-32 overflow-y-auto scrollbar-thin pr-1">
+                            {EXTENDED_REACTIONS.map((emoji, index) => {
+                              const isActive = msg.reactions?.[emoji]?.includes(
+                                currentUser.uid
+                              );
+
+                              return (
+                                <button
+                                  key={index}
+                                  data-tpy-emoji={emoji}
+                                  data-tpy-emoji-index={index}
+                                  data-tpy-emoji-name={`reactions._${emoji}_`}
+                                  onClick={() =>
+                                    toggleReaction(msg, currentUser.uid, emoji)
+                                  }
+                                  className={`text-xl h-8 w-8 rounded flex items-center justify-center transition-colors hover:bg-accent ${
+                                    isActive
+                                      ? "bg-indigo-100 dark:bg-indigo-900 border border-indigo-500/50"
+                                      : ""
+                                  }`}
+                                >
+                                  {emoji}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
                         <DropdownMenuItem onClick={() => setReplyTo(msg)}>
                           <Reply className="mr-2 h-4 w-4" />
                           Reply
                         </DropdownMenuItem>
+
+                        {msg.senderId === currentUser.uid &&
+                          msg.type === "text" && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                const currentText =
+                                  decryptedMessages[msg.id] || msg.text || "";
+                                setEditingMessage({
+                                  msg: msg,
+                                  initialText: currentText,
+                                });
+                              }}
+                              className="cursor-pointer"
+                            >
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+
                         {msg.senderId === currentUser.uid && (
                           <DropdownMenuItem
                             onClick={() => deleteMessage(msg.id)}
@@ -2347,6 +2476,14 @@ export function ChatArea({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <EditMessageDialog
+        isOpen={!!editingMessage}
+        message={editingMessage?.msg || null}
+        initialText={editingMessage?.initialText || ""}
+        onClose={() => setEditingMessage(null)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 }

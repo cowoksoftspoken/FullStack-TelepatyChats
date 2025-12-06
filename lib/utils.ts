@@ -1,5 +1,8 @@
+import { doc, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { db } from "./firebase";
+import type { Message } from "@/types/message";
 
 const tzMap: Record<string, string> = {
   "Asia/Jakarta": "Jakarta Time",
@@ -83,3 +86,154 @@ export function formatAccuracy(acc: number) {
 
   return `${Math.round(acc / 1000)} km`;
 }
+
+export const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🔥"];
+
+export const EXTENDED_REACTIONS = [
+  "👍",
+  "👎",
+  "❤️",
+  "💔",
+  "😂",
+  "🤣",
+  "🥹",
+  "😇",
+  "🙂",
+  "🙃",
+  "😉",
+  "😍",
+  "🥰",
+  "😘",
+  "😋",
+  "😛",
+  "🤔",
+  "🫡",
+  "🤨",
+  "😐",
+  "😑",
+  "😶",
+  "🙄",
+  "😏",
+  "😣",
+  "😥",
+  "😮",
+  "😯",
+  "😪",
+  "😫",
+  "🥱",
+  "😴",
+  "😌",
+  "😛",
+  "😜",
+  "😝",
+  "🤤",
+  "😒",
+  "😓",
+  "😔",
+  "😕",
+  "🫤",
+  "🙃",
+  "🫠",
+  "🤑",
+  "😲",
+  "☹️",
+  "🙁",
+  "😖",
+  "😞",
+  "😟",
+  "😤",
+  "😢",
+  "😭",
+  "😦",
+  "😧",
+  "😨",
+  "😩",
+  "🤯",
+  "😬",
+  "😮‍💨",
+  "😰",
+  "😱",
+  "🥵",
+  "🥶",
+  "😳",
+  "🤪",
+  "😵",
+  "🥴",
+  "😠",
+  "😡",
+  "🤬",
+  "😷",
+  "🤒",
+  "🤕",
+  "🤢",
+  "🤮",
+  "🤧",
+  "🥳",
+  "🥴",
+  "🥺",
+  "🤠",
+  "🤡",
+  "🤥",
+  "🤫",
+  "🤭",
+  "🫣",
+  "🧐",
+  "🤓",
+  "😈",
+  "👿",
+  "👹",
+  "👺",
+  "💀",
+  "☠️",
+  "👻",
+  "👽",
+  "👾",
+  "🤖",
+  "💩",
+  "🔥",
+  "✨",
+  "🌟",
+  "💫",
+  "💥",
+  "💯",
+  "💢",
+  "🙏",
+  "🤝",
+  "👀",
+];
+
+export const toggleReaction = async (
+  message: Message,
+  userId: string,
+  emoji: string
+) => {
+  if (!message.id || !userId) return;
+
+  const messageRef = doc(db, "messages", message.id);
+
+  const currentReactions = message.reactions || {};
+  const usersWhoReacted = currentReactions[emoji] || [];
+  const hasReacted = usersWhoReacted.includes(userId);
+
+  try {
+    if (hasReacted) {
+      await updateDoc(messageRef, {
+        [`reactions.${emoji}`]: arrayRemove(userId),
+      });
+    } else {
+      await updateDoc(messageRef, {
+        [`reactions.${emoji}`]: arrayUnion(userId),
+      });
+    }
+  } catch (error) {
+    console.error("Error updating reaction:", error);
+    throw error;
+  }
+};
+
+export const getReactionCount = (
+  reactions: Record<string, string[]> | undefined
+) => {
+  if (!reactions) return 0;
+  return Object.values(reactions).reduce((acc, curr) => acc + curr.length, 0);
+};
