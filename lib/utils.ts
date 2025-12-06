@@ -73,3 +73,13 @@ export function formatDateLabel(dateString: string) {
     year: "numeric",
   });
 }
+
+export function formatAccuracy(acc: number) {
+  if (!acc) return "Unavailable";
+
+  if (acc < 1000) return `${Math.round(acc)} m`;
+
+  if (acc < 1000000) return `${(acc / 1000).toFixed(1)} km`;
+
+  return `${Math.round(acc / 1000)} km`;
+}

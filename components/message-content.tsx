@@ -10,6 +10,7 @@ import { EncryptedImage } from "./encrypted-image";
 import { EncryptedVideo } from "./encrypted-video";
 import MapPreview from "./map-preview";
 import { YoutubeEmbed } from "./yt-embed";
+import { LocationMessage } from "./location-message";
 
 interface MessageContentProps {
   msg: Message;
@@ -20,6 +21,7 @@ interface MessageContentProps {
   // setDecryptedImageCache?: React.Dispatch<
   //   React.SetStateAction<Record<string, string>>
   // >;
+  decryptedLocation?: { lat: number; lng: number } | undefined;
 }
 
 export function MessageContent({
@@ -28,6 +30,7 @@ export function MessageContent({
   currentUserId,
   theme,
   onImageClick,
+  decryptedLocation,
 }: // setDecryptedImageCache,
 MessageContentProps) {
   const youtubeId = useMemo(() => {
@@ -123,31 +126,27 @@ MessageContentProps) {
       );
 
     case "location":
-      return (
-        <div className="mt-1 w-full">
-          <div className="rounded-xl w-full p-2 dark:bg-muted-foreground/20 bg-muted">
-            <MapPreview lat={msg.location?.lat} lng={msg.location?.lng} />
-            <a
-              href={`https://maps.google.com/maps?q=${msg.location?.lat},${msg.location?.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 text-sm hover:underline mt-2 flex items-center"
-            >
-              <Globe className="mr-2 h-4 w-4" /> Location Details
-            </a>
-            {msg.accuracy && (
-              <p className="mt-1 text-sm flex items-center dark:text-yellow-400">
-                <MapPin className="h-4 w-4 mr-2" />
-                Accuracy {msg.accuracy}m
-              </p>
-            )}
+      const finalLocationPriority = msg.isEncrypted
+        ? decryptedLocation
+        : msg.location;
+
+      if (!finalLocationPriority) {
+        return (
+          <div className="mt-1 w-full p-2 bg-muted rounded-xl border border-dashed flex items-center gap-2">
+            <div className="h-4 w-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
+            <span className="text-xs text-muted-foreground">
+              Decrypting location...
+            </span>
           </div>
-          {messageText && (
-            <div className="mt-4 text-sm flex items-center gap-1">
-              <p>{messageText}</p>
-            </div>
-          )}
-        </div>
+        );
+      }
+
+      return (
+        <LocationMessage
+          msg={msg}
+          finalLocationPriority={finalLocationPriority}
+          messageText={messageText}
+        />
       );
 
     case "audio":

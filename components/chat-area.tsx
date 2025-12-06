@@ -65,7 +65,7 @@ import MessageInput from "./message-input";
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
-import { formatDateLabel } from "@/lib/utils";
+import { formatAccuracy, formatDateLabel } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +77,7 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 import { set } from "idb-keyval";
+import { text } from "stream/consumers";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -95,6 +96,9 @@ export function ChatArea({
   const [messages, setMessages] = useState<Message[]>([]);
   const [decryptedMessages, setDecryptedMessages] = useState<
     Record<string, string>
+  >({});
+  const [decryptedLocationMessages, setDecryptedLocationMessages] = useState<
+    Record<string, { lat: number; lng: number }>
   >({});
   const [expanded, setExpanded] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -328,43 +332,62 @@ export function ChatArea({
     if (!isInitialized || messages.length === 0) return;
 
     const decryptMessages = async () => {
-      const newDecryptedMessages: Record<string, string> = {
-        ...decryptedMessages,
-      };
+      const newDecryptedMessages = { ...decryptedMessages };
+      const newDecryptedLocationMessages = { ...decryptedLocationMessages };
+
       let hasNewDecryptions = false;
 
       for (const msg of messages) {
+        const isSender = msg.senderId === currentUser.uid;
+
         if (
-          newDecryptedMessages[msg.id] ||
-          !msg.isEncrypted ||
-          !msg.encryptedText ||
-          !msg.encryptedKey ||
-          !msg.iv
+          msg.isEncrypted &&
+          msg.encryptedText &&
+          msg.encryptedKey &&
+          msg.iv &&
+          !newDecryptedMessages[msg.id]
         ) {
-          continue;
+          try {
+            const decrypted = await decryptMessageFromContact(
+              msg.encryptedText,
+              msg.encryptedKey,
+              msg.encryptedKeyForSelf,
+              msg.iv,
+              isSender
+            );
+
+            newDecryptedMessages[msg.id] = decrypted;
+            hasNewDecryptions = true;
+          } catch (err) {
+            console.error(`Error decrypting message ${msg.id}:`, err);
+            newDecryptedMessages[msg.id] = "Locked message";
+            hasNewDecryptions = true;
+          }
         }
 
-        try {
-          const isSender = msg.senderId === currentUser.uid;
+        if (
+          msg.type === "location" &&
+          msg.encryptedLocation &&
+          msg.locationKey &&
+          msg.locationIv &&
+          !newDecryptedLocationMessages[msg.id]
+        ) {
+          try {
+            const decryptedJSON = await decryptMessageFromContact(
+              msg.encryptedLocation,
+              msg.locationKey,
+              msg.locationKeyForSelf,
+              msg.locationIv,
+              isSender
+            );
 
-          const decryptedText = await decryptMessageFromContact(
-            msg.encryptedText,
-            msg.encryptedKey,
-            msg.encryptedKeyForSelf,
-            msg.iv,
-            isSender
-          );
-
-          newDecryptedMessages[msg.id] = decryptedText;
-          hasNewDecryptions = true;
-        } catch (error) {
-          console.error(`Error decrypting message ${msg.id}:`, error);
-          newDecryptedMessages[msg.id] = "Locked message - unable to decrypt";
-          hasNewDecryptions = true;
+            newDecryptedLocationMessages[msg.id] = JSON.parse(decryptedJSON);
+            hasNewDecryptions = true;
+          } catch (err) {
+            console.error(`Error decrypting location ${msg.id}:`, err);
+          }
         }
-      }
 
-      for (const msg of messages) {
         if (
           msg.replyTo &&
           msg.replyTo.isEncrypted &&
@@ -374,23 +397,21 @@ export function ChatArea({
           !newDecryptedMessages[`reply_${msg.id}`]
         ) {
           try {
-            const isSender = msg.replyTo.senderId === currentUser.uid;
+            const replyIsSender = msg.replyTo.senderId === currentUser.uid;
 
-            const decryptedReplyText = await decryptMessageFromContact(
+            const decryptedReply = await decryptMessageFromContact(
               msg.replyTo.encryptedText,
               msg.replyTo.encryptedKey,
               msg.replyTo.encryptedKeyForSelf,
               msg.replyTo.iv,
-              isSender
+              replyIsSender
             );
 
-            newDecryptedMessages[`reply_${msg.id}`] = decryptedReplyText;
+            newDecryptedMessages[`reply_${msg.id}`] = decryptedReply;
             hasNewDecryptions = true;
-          } catch (error) {
-            console.error(
-              `Error decrypting reply in message ${msg.id}:`,
-              error
-            );
+          } catch (err) {
+            console.error(`Error decrypting reply ${msg.id}:`, err);
+
             newDecryptedMessages[`reply_${msg.id}`] =
               "Locked message - unable to decrypt";
             hasNewDecryptions = true;
@@ -400,6 +421,7 @@ export function ChatArea({
 
       if (hasNewDecryptions) {
         setDecryptedMessages(newDecryptedMessages);
+        setDecryptedLocationMessages(newDecryptedLocationMessages);
       }
     };
 
@@ -409,6 +431,7 @@ export function ChatArea({
     isInitialized,
     currentUser,
     decryptedMessages,
+    decryptedLocationMessages,
     decryptMessageFromContact,
   ]);
 
@@ -543,35 +566,68 @@ export function ChatArea({
         isSeen: false,
         type: "location",
         accuracy,
-        location: {
-          lat: location.lat,
-          lng: location.lng,
-        },
         replyTo: replyToData,
       };
 
       if (isInitialized) {
-        const encryptedData = await encryptMessageForContact(
-          locationText,
-          contact.uid
-        );
+        // @Deprecated: Using Promise.all to encrypt captions and coordinates in parallel
+        // const encryptedData = await encryptMessageForContact(
+        //   locationText,
+        //   contact.uid
+        // );
+        // const encryptedCoordsData = await encryptMessageForContact(
+        //   coordsPayload,
+        //   contact.uid
+        // )
 
-        if (encryptedData.isEncrypted) {
-          messageData = {
-            ...messageData,
-            isEncrypted: true,
-            encryptedText: encryptedData.encryptedText,
-            encryptedKey: encryptedData.encryptedKeyForContact,
-            encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
-            iv: encryptedData.iv,
-          };
-        } else {
-          messageData.isEncrypted = false;
-          messageData.text = locationText;
-        }
+        const coordsPayload = JSON.stringify({
+          lat: location.lat,
+          lng: location.lng,
+        });
+
+        const [encryptedCaptionsData, encryptedLocationData] =
+          await Promise.all([
+            encryptMessageForContact(locationText, contact.uid),
+            encryptMessageForContact(coordsPayload, contact.uid),
+          ]);
+
+        messageData = {
+          ...messageData,
+          isEncrypted: true,
+          encryptedText: encryptedCaptionsData.encryptedText,
+          encryptedKey: encryptedCaptionsData.encryptedKeyForContact,
+          encryptedKeyForSelf: encryptedCaptionsData.encryptedKeyForSelf,
+          iv: encryptedCaptionsData.iv,
+          text: "📍 Location",
+
+          encryptedLocation: encryptedLocationData.encryptedText,
+          locationKey: encryptedLocationData.encryptedKeyForContact,
+          locationKeyForSelf: encryptedLocationData.encryptedKeyForSelf,
+          locationIv: encryptedLocationData.iv,
+
+          location: null,
+        };
+
+        //   if (encryptedData.isEncrypted) {
+        //     messageData = {
+        //       ...messageData,
+        //       isEncrypted: true,
+        //       encryptedText: encryptedData.encryptedText,
+        //       encryptedKey: encryptedData.encryptedKeyForContact,
+        //       encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
+        //       iv: encryptedData.iv,
+        //     };
+        //   } else {
+        //     messageData.isEncrypted = false;
+        //     messageData.text = locationText;
+        //   }
       } else {
         messageData.isEncrypted = false;
         messageData.text = locationText;
+        messageData.location = {
+          lat: location.lat,
+          lng: location.lng,
+        };
       }
 
       await addDoc(collection(db, "messages"), messageData);
@@ -1628,8 +1684,8 @@ export function ChatArea({
             (theme === "system" &&
               typeof window !== "undefined" &&
               window.matchMedia("(prefers-color-scheme: dark)").matches)
-              ? "https://i.ibb.co.com/m5p2Ttrf/wp-132-dark.jpg"
-              : "https://i.ibb.co.com/qLvfqFLR/wp-132.jpg"
+              ? "/tpy_chat_bg.jpg"
+              : "/tpy_chat_bg_l.jpg"
           }")`,
         }}
       >
@@ -1732,7 +1788,7 @@ export function ChatArea({
                   className={`relative max-w-[85%] md:max-w-[70%] break-words rounded-lg px-3 py-2 ${cornerStyle} ${
                     msg.senderId === currentUser.uid
                       ? "dark:bg-[#131418] bg-slate-200"
-                      : "dark:bg-muted bg-slate-100"
+                      : "dark:bg-muted/90 bg-slate-100"
                   }
                      ${
                        isSelected
@@ -1827,6 +1883,7 @@ export function ChatArea({
                     onImageClick={(messageId) =>
                       handleOpenImageViewer(messageId)
                     }
+                    decryptedLocation={decryptedLocationMessages[msg.id]}
                     // setDecryptedImageCache={setDecryptedImageCache}
                   />
 
@@ -2163,8 +2220,7 @@ export function ChatArea({
           {location && (
             <div className="flex items-center mt-2 px-6 text-sm font-medium text-indigo-600 dark:text-indigo-400">
               <MapPin className="mr-2 h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-              Distance:{" "}
-              <span className="ml-1">{Math.floor(accuracy)} meters</span>
+              Distance: <span className="ml-1">{formatAccuracy(accuracy)}</span>
             </div>
           )}
 

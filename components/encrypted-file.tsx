@@ -119,7 +119,7 @@ export function EncryptedFile({
       } else {
         const downloadLink = document.createElement("a");
         downloadLink.href = fileURL;
-        downloadLink.download = fileName || "downloaded_file";
+        downloadLink.download = messageId || "downloaded_file";
         downloadLink.target = "_blank";
         document.body.appendChild(downloadLink);
         downloadLink.click();
@@ -144,25 +144,35 @@ export function EncryptedFile({
   };
 
   return (
-    <div className="flex items-center gap-2 bg-muted rounded-md p-2 relative">
-      <FileText className="h-5 w-5" />
-      <div className="block flex-1">
+    <div
+      className="flex items-center gap-3 rounded-xl p-3 
+  bg-neutral-100/70 dark:bg-neutral-800/40 
+  backdrop-blur-sm border border-neutral-200 dark:border-neutral-700 
+  shadow-sm transition"
+    >
+      <div className="p-2 rounded-lg bg-white dark:bg-neutral-700 shadow-sm">
+        <FileText className="h-5 w-5 text-neutral-700 dark:text-neutral-200" />
+      </div>
+
+      <div className="flex-1 overflow-hidden">
         <div
-          className="text-blue-500 text-sm hover:underline"
+          className="text-blue-600 dark:text-blue-400 text-sm font-medium truncate cursor-pointer hover:underline"
           data-type={fileType}
         >
           {fileName || "File"}
         </div>
-        <p className="text-xs text-muted-foreground">
+
+        <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
           {(fileSize ?? 0) < 1024 * 1024
             ? `${((fileSize ?? 0) / 1024).toFixed(2)} KB`
             : `${((fileSize ?? 0) / (1024 * 1024)).toFixed(2)} MB`}
         </p>
       </div>
+
       <Button
         variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0 rounded-full"
+        size="icon"
+        className="h-8 w-8 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
         onClick={handleDownload}
         disabled={isDownloading}
         title="Download file"

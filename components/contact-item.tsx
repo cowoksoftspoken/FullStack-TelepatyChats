@@ -68,6 +68,7 @@ export function ContactItem({
           video: "🎥 Video",
           audio: "🎧 Audio",
           file: "📁 File",
+          location: "📍 Location",
         };
         setPreview(
           `${prefix}${lastMessageTypes[lastMessage.type]}` ||

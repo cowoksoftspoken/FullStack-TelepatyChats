@@ -1,10 +1,13 @@
 export interface Message {
+  // Atributes
   id: string;
   chatId: string;
   senderId: string;
   receiverId: string;
   timestamp: string;
   type: "text" | "image" | "video" | "audio" | "file" | "location";
+
+  // Media
   fileURL?: string;
   fileName?: string;
   fileType?: string;
@@ -25,11 +28,19 @@ export interface Message {
     encryptedKeyForSelf?: string;
     iv?: string;
   } | null;
+
+  // Location
+  encryptedLocation?: string;
+  locationKey?: string;
+  locationKeyForSelf?: string;
+  locationIv?: string;
   location?: {
     lat: number;
     lng: number;
   };
   accuracy?: number;
+
+  // Text
   isEncrypted: boolean;
   encryptedText: string;
   encryptedKey: string;
