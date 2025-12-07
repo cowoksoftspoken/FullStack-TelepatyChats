@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  arrayUnion,
+  getDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import {
   X,
   ChevronLeft,
@@ -11,6 +17,9 @@ import {
   Volume2,
   VolumeX,
   Users,
+  Lock,
+  Music,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,11 +27,21 @@ import { UserAvatar } from "@/components/user-avatar";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Story } from "@/types/story";
 import type { User } from "@/types/user";
+import { useEncryption } from "../../hooks/use-encryption";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "../ui/use-toast";
+import { deleteObject, ref } from "firebase/storage";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -37,8 +56,11 @@ export function StoryViewer({
   onClose,
   users,
 }: StoryViewerProps) {
-  const { db, currentUser } = useFirebase();
+  const { db, storage, currentUser } = useFirebase();
   const [currentIndex, setCurrentIndex] = useState(initialStoryIndex);
+  const { decryptMessageFromContact, isInitialized } =
+    useEncryption(currentUser);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -47,7 +69,7 @@ export function StoryViewer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressInterval = useRef<NodeJS.Timeout | null>(null);
   const IMAGE_DURATION = 30000;
-
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const currentStory = stories[currentIndex];
   const storyUser = users[currentStory?.userId];
 
@@ -63,34 +85,93 @@ export function StoryViewer({
     }>
   >([]);
   const [viewersLoading, setViewersLoading] = useState(false);
-  const savedProgressRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     setProgress(0);
     setIsLoading(true);
     setIsMediaReady(false);
 
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
     }
-  }, [currentIndex]);
+
+    if (currentStory?.musicUrl) {
+      const audio = new Audio(currentStory.musicUrl);
+      audio.loop = true;
+      audio.volume = isMuted ? 0 : 0.5;
+      audioRef.current = audio;
+    }
+
+    if (currentStory?.type === "text") {
+      setIsMediaReady(true);
+      setIsLoading(false);
+      if (audioRef.current && !isPaused)
+        audioRef.current
+          .play()
+          .catch((e) => console.log("Autoplay blocked", e));
+    }
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current);
+      }
+    };
+  }, [currentIndex, currentStory]);
+
+  useEffect(() => {
+    if (!currentStory || !isMediaReady || isPaused) {
+      if (audioRef.current) audioRef.current.pause();
+      return;
+    } else {
+      if (audioRef.current && !isMuted)
+        audioRef.current
+          .play()
+          .catch((e) => console.log("Autoplay blocked", e));
+    }
+
+    if (progressInterval.current) clearInterval(progressInterval.current);
+
+    const duration =
+      currentStory.mediaType === "video" && videoRef.current
+        ? videoRef.current.duration * 1000
+        : IMAGE_DURATION;
+
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        const newProgress = prev + 100 / (duration / 100);
+        if (newProgress >= 100) {
+          clearInterval(interval);
+          handleNext();
+          return 0;
+        }
+        return newProgress;
+      });
+    }, 100);
+
+    progressInterval.current = interval;
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+    };
+  }, [currentStory, isPaused, currentIndex, isMediaReady, isMuted]);
 
   const fetchViewersData = async () => {
     if (!currentStory) return;
-
     setViewersLoading(true);
     try {
       const storiesDoc = await getDoc(doc(db, "stories", currentStory.id));
-
       if (!storiesDoc.exists()) {
         setViewersData([]);
         return;
       }
-
       const filteredViewers = storiesDoc
         .data()
-        .viewers.filter((viewerId: string) => viewerId !== currentStory.userId);
+        .viewers.filter((id: string) => id !== currentStory.userId);
 
       if (filteredViewers.length === 0) {
         setViewersData([]);
@@ -103,120 +184,89 @@ export function StoryViewer({
           const userData = userDoc.data();
           return {
             id: viewerId,
-            displayName: userData.displayName || "Anonymous User",
+            displayName: userData.displayName || "Anonymous",
             photoURL: userData.photoURL || "",
-            lastSeen: userData.lastSeen || new Date().toISOString(),
+            lastSeen: userData.lastSeen || { seconds: Date.now() / 1000 },
           };
         }
         return null;
       });
 
       const results = await Promise.all(viewersPromises);
-      setViewersData(
-        results.filter(Boolean) as {
-          id: string;
-          displayName: string;
-          photoURL: string;
-          lastSeen: {
-            seconds: number;
-          };
-        }[]
-      );
-    } catch (error) {
-      console.error("Error fetching viewers data:", error);
+      setViewersData(results.filter(Boolean));
+    } catch (err) {
+      console.error(err);
     } finally {
       setViewersLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchViewersData();
+  const togglePlay = () => {
+    const newState = !isPaused;
+    setIsPaused(newState);
 
-    if (showViewers) {
-      savedProgressRef.current = progress;
-      setIsPaused(true);
-      if (currentStory.mediaType === "video" && videoRef.current) {
-        videoRef.current.pause();
+    if (newState) {
+      if (videoRef.current) videoRef.current.pause();
+      if (audioRef.current) audioRef.current.pause();
+    } else {
+      if (videoRef.current) {
+        videoRef.current.play().catch(() => {});
       }
-    } else if (savedProgressRef.current > 0) {
-      setProgress(savedProgressRef.current);
+      if (audioRef.current && !isMuted) {
+        audioRef.current.play().catch(() => {});
+      }
     }
-  }, [showViewers, currentUser, currentStory]);
-
-  const toggleViewers = () => {
-    setShowViewers(!showViewers);
   };
+
+  const handleDelete = async () => {
+    if (!currentUser || !currentStory) return;
+
+    setIsDeleting(true);
+    setIsPaused(true);
+
+    try {
+      await deleteDoc(doc(db, "stories", currentStory.id));
+
+      if (currentStory.type === "media" && currentStory.mediaUrl) {
+        try {
+          const mediaRef = ref(storage, currentStory.mediaUrl);
+          await deleteObject(mediaRef);
+        } catch (storageErr) {
+          console.warn(
+            "Failed to delete media from storage (might already be gone):",
+            storageErr
+          );
+        }
+      }
+
+      toast({ title: "Story deleted successfully" });
+      onClose();
+    } catch (error) {
+      console.error("Error deleting story:", error);
+      toast({ variant: "destructive", title: "Failed to delete story" });
+      setIsDeleting(false);
+      setIsPaused(false);
+    }
+  };
+  useEffect(() => {
+    if (showViewers) {
+      setIsPaused(true);
+      if (videoRef.current) videoRef.current.pause();
+      if (audioRef.current) audioRef.current.pause();
+    }
+  }, [showViewers]);
 
   useEffect(() => {
     if (!currentStory || !currentUser) return;
-
     const markAsViewed = async () => {
-      try {
-        if (!currentStory.viewers.includes(currentUser.uid)) {
-          await updateDoc(doc(db, "stories", currentStory.id), {
-            viewers: arrayUnion(currentUser.uid),
-          });
-        }
-      } catch (error) {
-        console.error("Error marking story as viewed:", error);
+      if (!currentStory.viewers?.includes(currentUser.uid)) {
+        await updateDoc(doc(db, "stories", currentStory.id), {
+          viewers: arrayUnion(currentUser.uid),
+        });
       }
     };
-
     markAsViewed();
   }, [currentStory, currentUser, db]);
-
-  useEffect(() => {
-    if (!currentStory || !isMediaReady || isPaused) return;
-
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
-
-    const duration =
-      currentStory.mediaType === "video" && videoRef.current
-        ? videoRef.current.duration * 1000
-        : IMAGE_DURATION;
-
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + 100 / (duration / 100);
-
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          if (currentIndex < stories.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-          } else {
-            onClose();
-          }
-          return 0;
-        }
-
-        return newProgress;
-      });
-    }, 100);
-
-    progressInterval.current = interval;
-
-    return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current);
-      }
-    };
-  }, [
-    currentStory,
-    isPaused,
-    currentIndex,
-    stories.length,
-    onClose,
-    isMediaReady,
-  ]);
-
-  const handlePrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
-    }
-  };
 
   const handleNext = () => {
     if (currentIndex < stories.length - 1) {
@@ -226,23 +276,18 @@ export function StoryViewer({
     }
   };
 
-  const togglePause = () => {
-    setIsPaused(!isPaused);
-
-    if (currentStory.mediaType === "video" && videoRef.current) {
-      if (isPaused) {
-        videoRef.current.play();
-      } else {
-        videoRef.current.pause();
-      }
-    }
+  const handlePrevious = () => {
+    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
-
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
     if (videoRef.current) {
-      videoRef.current.muted = !isMuted;
+      videoRef.current.muted = newMutedState;
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = newMutedState ? 0 : 0.5;
     }
   };
 
@@ -251,43 +296,32 @@ export function StoryViewer({
     setIsMediaReady(true);
   };
 
-  const formatTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const storyTime = new Date(timestamp);
-    const diffInSeconds = Math.floor(
-      (now.getTime() - storyTime.getTime()) / 1000
-    );
-
-    if (diffInSeconds < 60) {
-      return `${diffInSeconds}s`;
-    } else if (diffInSeconds < 3600) {
-      return `${Math.floor(diffInSeconds / 60)}m`;
-    } else if (diffInSeconds < 86400) {
-      return `${Math.floor(diffInSeconds / 3600)}h`;
-    } else {
-      return `${Math.floor(diffInSeconds / 86400)}d`;
-    }
-  };
-
-  if (!currentStory) return null;
-  // console.log(
-  //   currentStory.viewers,
-  //   currentStory.id,
-  //   currentStory.userId,
-  //   viewersData
-  // );
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+      <div className="absolute inset-0 opacity-30 blur-3xl scale-110 z-0 pointer-events-none">
+        {currentStory.type === "text" ? (
+          <div
+            className={`w-full h-full ${
+              currentStory.backgroundColor || "bg-gray-900"
+            }`}
+          />
+        ) : (
+          <img
+            src={currentStory.mediaUrl || "/placeholder.svg"}
+            className="w-full h-full object-cover"
+            alt="blur-bg"
+          />
+        )}
+      </div>
+
       <button
-        className="absolute right-4 top-4 z-50 text-white"
+        className="absolute right-4 top-4 z-50 text-white hover:bg-white/10 p-2 rounded-full transition"
         onClick={onClose}
       >
         <X className="h-6 w-6" />
       </button>
-
       <button
-        className="absolute left-4 top-1/2 z-50 -translate-y-1/2 text-white"
+        className="absolute left-2 top-1/2 z-50 -translate-y-1/2 text-white p-4 hover:bg-white/5 rounded-full"
         onClick={handlePrevious}
         disabled={currentIndex === 0}
       >
@@ -295,9 +329,8 @@ export function StoryViewer({
           className={`h-8 w-8 ${currentIndex === 0 ? "opacity-50" : ""}`}
         />
       </button>
-
       <button
-        className="absolute right-4 top-1/2 z-50 -translate-y-1/2 text-white"
+        className="absolute right-2 top-1/2 z-50 -translate-y-1/2 text-white p-4 hover:bg-white/5 rounded-full"
         onClick={handleNext}
       >
         <ChevronRight className="h-8 w-8" />
@@ -310,7 +343,7 @@ export function StoryViewer({
             className="h-1 flex-1 rounded-full bg-white/30 overflow-hidden"
           >
             <div
-              className="h-full bg-white"
+              className="h-full bg-white transition-all duration-100 ease-linear"
               style={{
                 width:
                   index === currentIndex
@@ -332,7 +365,7 @@ export function StoryViewer({
           className="h-10 w-10 border-2 border-primary"
         />
         <div className="text-white">
-          <p className="font-medium flex items-center gap-1">
+          <p className="font-medium flex items-center gap-1 text-sm shadow-black drop-shadow-md">
             {storyUser?.uid === currentUser?.uid ? (
               <span className="text-primary">You</span>
             ) : (
@@ -386,90 +419,129 @@ export function StoryViewer({
               </svg>
             )}
           </p>
-          <p className="text-xs opacity-80">
-            {formatTimeAgo(currentStory.createdAt)}
+          <p className="text-xs opacity-80 drop-shadow-md">
+            {formatDistanceToNow(new Date(currentStory.createdAt), {
+              addSuffix: true,
+            })}
           </p>
+          {currentStory.musicTitle && (
+            <div className="flex items-center gap-1 text-xs opacity-90 mt-0.5 animate-pulse">
+              <Music className="h-3 w-3" /> {currentStory.musicTitle} -{" "}
+              {currentStory.musicArtist}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="relative h-full w-full max-w-md">
-        {currentStory.mediaType === "image" ? (
-          <img
-            src={currentStory.mediaUrl || "/placeholder.svg"}
-            alt="Story"
-            className="h-full w-full object-contain"
-            onLoad={handleMediaLoaded}
-          />
-        ) : (
-          <video
-            ref={videoRef}
-            src={currentStory.mediaUrl}
-            className="h-full w-full object-contain"
-            autoPlay
-            playsInline
-            muted={isMuted}
-            onLoadedData={handleMediaLoaded}
-            onEnded={handleNext}
-          />
-        )}
-
-        {currentStory.caption && (
-          <div className="absolute bottom-20 left-0 right-0 p-4">
-            <p className="text-center text-white text-shadow-sm">
-              {currentStory.caption}
-            </p>
+      <div className="relative h-full w-full max-w-md flex items-center justify-center overflow-hidden z-10 shadow md:rounded-xl">
+        {isLoading && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           </div>
         )}
 
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4 px-4">
+        {currentStory.type === "text" ? (
+          <div
+            className={`w-full h-full flex items-center justify-center p-8 text-center ${
+              currentStory.backgroundColor || "bg-black"
+            }`}
+          >
+            <p className="text-white text-2xl font-bold break-words whitespace-pre-wrap animate-in fade-in zoom-in duration-500">
+              {currentStory.textContent}
+            </p>
+          </div>
+        ) : (
+          <>
+            {currentStory.mediaType === "image" ? (
+              <img
+                src={currentStory.mediaUrl || "/placeholder.svg"}
+                alt="Story"
+                className="h-full w-full object-contain"
+                onLoad={handleMediaLoaded}
+              />
+            ) : (
+              <video
+                ref={videoRef}
+                src={currentStory.mediaUrl}
+                className="h-full w-full object-contain"
+                autoPlay
+                playsInline
+                muted={isMuted}
+                onLoadedData={handleMediaLoaded}
+                onEnded={handleNext}
+              />
+            )}
+
+            {(currentStory.caption || currentStory.textContent) && (
+              <div className="absolute bottom-0 left-0 right-0 p-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10">
+                <p className="text-center text-white text-base font-roboto">
+                  {currentStory.caption || currentStory.textContent}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="absolute bottom-6 left-0 right-0 z-50 flex justify-center gap-4 px-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
+          onClick={() => togglePlay()}
+        >
+          {isPaused ? (
+            <Play className="h-5 w-5" />
+          ) : (
+            <Pause className="h-5 w-5" />
+          )}
+        </Button>
+
+        {(currentStory.musicUrl || currentStory.mediaType === "video") && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 rounded-full bg-black/30 text-white"
-            onClick={togglePause}
+            className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
+            onClick={toggleMute}
           >
-            {isPaused ? (
-              <Play className="h-5 w-5" />
+            {isMuted ? (
+              <VolumeX className="h-5 w-5" />
             ) : (
-              <Pause className="h-5 w-5" />
+              <Volume2 className="h-5 w-5" />
             )}
           </Button>
+        )}
 
-          {currentStory.mediaType === "video" && (
+        {currentStory.userId === currentUser?.uid && (
+          <>
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full bg-black/30 text-white"
-              onClick={toggleMute}
+              className="h-10 w-10 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
+              onClick={() => {
+                setShowViewers(true);
+                fetchViewersData();
+              }}
             >
-              {isMuted ? (
-                <VolumeX className="h-5 w-5" />
+              <Users className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full bg-red-500/90 dark:bg-red-500/40 dark:text-white 
+              text-black hover:bg-red-500/20 backdrop-blur-sm border border-red-500/30"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
               ) : (
-                <Volume2 className="h-5 w-5" />
+                <Trash2 className="h-5 w-5" />
               )}
             </Button>
-          )}
-
-          {viewersData &&
-            viewersData.length > 0 &&
-            currentStory.userId === currentUser?.uid && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-full bg-black/30 text-white"
-                onClick={toggleViewers}
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-            )}
-        </div>
+          </>
+        )}
       </div>
-
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-        </div>
-      )}
 
       <AnimatePresence>
         {showViewers && (
@@ -478,7 +550,7 @@ export function StoryViewer({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 500 }}
-            className="absolute bottom-0 left-0 right-0 z-50 bg-background/95 rounded-t-xl backdrop-blur-sm md:max-w-2xl max-w-full mx-auto"
+            className="absolute bottom-0 left-0 right-0 z-50 bg-background/95 rounded-t-xl backdrop-blur-md md:max-w-2xl max-w-full mx-auto border-t border-white/10"
             style={{ height: "50vh" }}
           >
             <div className="flex items-center justify-between border-b p-4">
@@ -502,7 +574,7 @@ export function StoryViewer({
                   {viewersData.map((viewer) => (
                     <Card
                       key={viewer.id}
-                      className="p-3 flex items-center gap-3"
+                      className="p-3 flex items-center gap-3 border-none bg-accent/50"
                     >
                       <Avatar>
                         <AvatarImage
@@ -515,14 +587,14 @@ export function StoryViewer({
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-medium">{viewer.displayName}</p>
+                        <p className="font-medium text-sm">
+                          {viewer.displayName}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           Seen{" "}
                           {formatDistanceToNow(
                             new Date(viewer.lastSeen.seconds * 1000),
-                            {
-                              addSuffix: true,
-                            }
+                            { addSuffix: true }
                           )}
                         </p>
                       </div>
@@ -530,14 +602,43 @@ export function StoryViewer({
                   ))}
                 </div>
               ) : (
-                <p className="text-center text-muted-foreground p-4">
-                  No viewers data available
+                <p className="text-center text-muted-foreground p-4 text-sm">
+                  No viewers yet
                 </p>
               )}
             </ScrollArea>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="bg-zinc-900 text-white border-zinc-800">
+          <DialogHeader>
+            <DialogTitle>Delete Story?</DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              This story will be deleted. This action cannot be undone
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="ghost"
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

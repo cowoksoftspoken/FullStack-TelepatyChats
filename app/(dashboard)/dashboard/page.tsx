@@ -26,6 +26,7 @@ import { NotificationProvider } from "@/components/notification-provider";
 import { toast } from "sonner";
 import { useSystemNotif } from "@/components/system-notif-context";
 import { get } from "idb-keyval";
+import { getAuth, signOut } from "firebase/auth";
 
 interface CallData {
   callId: string;
@@ -104,6 +105,34 @@ export default function DashboardPage() {
       setLocalStream(stream);
     },
   });
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const auth = getAuth();
+    const userDocRef = doc(db, "users", currentUser.uid);
+
+    const unsubscribe = onSnapshot(userDocRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const userData = docSnap.data();
+
+        if (userData?.disabled === true) {
+          try {
+            await signOut(auth);
+            toast.error(
+              "Your session has expired, your account has been disabled by admin."
+            );
+
+            router.replace("/login");
+          } catch (error) {
+            console.error("Auto-logout error:", error);
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [currentUser, db, router]);
 
   useEffect(() => {
     if (!currentUser || !incomingCall?.callData.callId) return;

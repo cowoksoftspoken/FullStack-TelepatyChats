@@ -1442,7 +1442,7 @@ export function ChatArea({
       if (isInitialized && currentUser && contact) {
         const encryptedData = await encryptMessageForContact(
           newText,
-          currentUser.uid
+          contact.uid
         );
 
         if (encryptedData.isEncrypted) {
@@ -1452,7 +1452,7 @@ export function ChatArea({
             encryptedKey: encryptedData.encryptedKeyForContact,
             encryptedKeyForSelf: encryptedData.encryptedKeyForSelf,
             iv: encryptedData.iv,
-            text: "総",
+            text: "",
           };
         } else {
           updateData.text = newText;
@@ -1967,6 +1967,11 @@ export function ChatArea({
                       {msg.isEdited && (
                         <span className="text-[10px] italic opacity-80">
                           (edited)
+                        </span>
+                      )}
+                      {msg.isBroadcast && (
+                        <span className="text-[10px] italic opacity-80">
+                          (Broadcast Message)
                         </span>
                       )}
                       {renderSeenIndicator(msg)}

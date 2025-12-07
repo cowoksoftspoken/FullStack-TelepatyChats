@@ -54,7 +54,7 @@ export function EditMessageDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md w-[85%]">
         <DialogHeader>
           <DialogTitle>Edit Message</DialogTitle>
           <DialogDescription>Make changes to your message.</DialogDescription>

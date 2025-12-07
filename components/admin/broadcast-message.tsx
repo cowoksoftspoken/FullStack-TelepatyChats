@@ -2,10 +2,10 @@
 
 import type React from "react";
 
-import { useState, useRef } from "react";
-import { addDoc, collection } from "firebase/firestore";
+import { useState, useRef, useMemo } from "react";
+import { addDoc, collection, doc, writeBatch } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Send, ImageIcon, Film, File, X } from "lucide-react";
+import { Send, ImageIcon, Film, File, X, CheckSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,6 +28,8 @@ import {
 import { useFirebase } from "@/lib/firebase-provider";
 import { toast } from "@/components/ui/use-toast";
 import type { User } from "@/types/user";
+import { Label } from "../ui/label";
+import { useEncryption } from "@/hooks/use-encryption";
 
 interface BroadcastMessageProps {
   users?: User[];
@@ -49,6 +51,11 @@ export function BroadcastMessage({
   const [mediaType, setMediaType] = useState<"image" | "video" | "file" | null>(
     null
   );
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
+    new Set()
+  );
+  const { encryptMessageForContact, isInitialized } =
+    useEncryption(currentUser);
   const [preview, setPreview] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -64,12 +71,35 @@ export function BroadcastMessage({
     setMediaType(type);
     setMediaFile(file);
 
-    // Create preview for images and videos
     if (type === "image" || type === "video") {
       const url = URL.createObjectURL(file);
       setPreview(url);
     } else {
       setPreview(null);
+    }
+  };
+
+  const selectableUsers = useMemo(() => {
+    return users.filter((u) => u.uid !== currentUser?.uid);
+  }, [users, currentUser]);
+
+  const toggleUserSelection = (uid: string) => {
+    setSelectedUserIds((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(uid)) {
+        newSet.delete(uid);
+      } else {
+        newSet.add(uid);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedUserIds.size === selectableUsers.length) {
+      setSelectedUserIds(new Set());
+    } else {
+      setSelectedUserIds(new Set(selectableUsers.map((u) => u.uid)));
     }
   };
 
@@ -85,13 +115,24 @@ export function BroadcastMessage({
       return;
     }
 
+    if (audience === "selected" && selectedUserIds.size === 0) {
+      toast({
+        variant: "destructive",
+        title: "No users selected",
+        description: "Please select at least one user to broadcast to.",
+      });
+      console.log(
+        "[Broadcast] Please select at least one user to broadcast to."
+      );
+      return;
+    }
+
     setIsUploading(true);
 
     try {
       let mediaUrl = "";
       const finalMediaType = mediaType;
 
-      // Upload media if exists
       if (mediaFile && mediaType) {
         const storageRef = ref(
           storage,
@@ -101,7 +142,29 @@ export function BroadcastMessage({
         mediaUrl = await getDownloadURL(storageRef);
       }
 
-      // Add broadcast to Firestore
+      let targetUsers: User[] = [];
+      if (audience === "all") targetUsers = users;
+      else if (audience === "verified")
+        targetUsers = users.filter((u) => u.isVerified);
+      else if (audience === "unverified")
+        targetUsers = users.filter((u) => !u.isVerified);
+      else if (audience === "selected") {
+        targetUsers = users.filter((u) => selectedUserIds.has(u.uid));
+      }
+
+      targetUsers = targetUsers.filter(
+        (target) => target.uid !== currentUser.uid
+      );
+
+      if (targetUsers.length === 0) {
+        toast({
+          title: "No users found",
+          description: "No users match the selected audience",
+        });
+        setIsUploading(false);
+        return;
+      }
+
       await addDoc(collection(db, "broadcasts"), {
         senderId: currentUser.uid,
         message: message.trim(),
@@ -109,16 +172,100 @@ export function BroadcastMessage({
         mediaType: finalMediaType || null,
         sentAt: new Date().toISOString(),
         sentTo: audience,
-        selectedUsers:
-          audience === "selected" ? users.map((user) => user.uid) : [],
+        recipientCount: targetUsers.length,
+        recipients: targetUsers.map((u) => u.uid),
       });
+
+      const batch = writeBatch(db);
+      // targetUsers.forEach((target) => {
+      //   const chatId = [currentUser.uid, target.uid].sort().join("_");
+      //   const newMessageRef = doc(collection(db, "messages"));
+
+      //   const messageData: any = {
+      //     chatId: chatId,
+      //     senderId: currentUser.uid,
+      //     receiverId: target.uid,
+      //     text:
+      //     message.trim() ||
+      //     (finalMediaType ? `[${finalMediaType}]` : "BroadcastMessage"),
+      //     timestamp: new Date().toISOString(),
+      //     isSeen: false,
+      //     type: "broadcast",
+      //     isEncrypted: true,
+      //     isBroadcast: true,
+      //   };
+
+      //   if (mediaUrl) {
+      //     messageData.fileURL = mediaUrl;
+      //     messageData.fileType = mediaFile?.type || "unknown";
+      //     messageData.fileName = mediaFile?.name || "file";
+
+      //     if (finalMediaType === "image") messageData.type = "image";
+      //     if (finalMediaType === "video") messageData.type = "video";
+      //     if (finalMediaType === "file") messageData.type = "file";
+      //   }
+
+      //   batch.set(newMessageRef, messageData);
+      // });
+
+      const baseMessageText =
+        message.trim() ||
+        (finalMediaType ? `[${finalMediaType}]` : "Broadcast Message");
+
+      for (const targetUser of targetUsers) {
+        const chatId = [currentUser.uid, targetUser.uid].sort().join("_");
+        const newMessageRef = doc(collection(db, "messages"));
+
+        let messageData: any = {
+          chatId: chatId,
+          senderId: currentUser.uid,
+          receiverId: targetUser.uid,
+          timestamp: new Date().toISOString(),
+          isSeen: false,
+          type: "broadcast",
+          isBroadcast: true,
+        };
+
+        if (isInitialized) {
+          try {
+            const encryptedBroadcastData = await encryptMessageForContact(
+              baseMessageText,
+              targetUser.uid
+            );
+            if (encryptedBroadcastData.isEncrypted) {
+              messageData = {
+                ...messageData,
+                text: "🔒 Encrypted Broadcast",
+                encryptedText: encryptedBroadcastData.encryptedText,
+                encryptedKey: encryptedBroadcastData.encryptedKeyForContact,
+                encryptedKeyForSelf: encryptedBroadcastData.encryptedKeyForSelf,
+                iv: encryptedBroadcastData.iv,
+                isEncrypted: true,
+              };
+            } else {
+              messageData.text = baseMessageText;
+            }
+          } catch (error) {
+            console.error(
+              `Failed to encrypt for ${targetUser.displayName}`,
+              error
+            );
+            messageData.text = baseMessageText;
+          }
+        } else {
+          messageData.text = baseMessageText;
+        }
+
+        batch.set(newMessageRef, messageData);
+      }
+
+      await batch.commit();
 
       toast({
         title: "Broadcast sent",
-        description: "Your message has been sent successfully.",
+        description: `Message sent successfully to ${targetUsers.length} users.`,
       });
 
-      // Reset form and close dialog
       setMessage("");
       setMediaFile(null);
       setMediaType(null);
@@ -146,8 +293,8 @@ export function BroadcastMessage({
           <span>Broadcast Message</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md max-h-[90vh] rounded flex flex-col p-2 gap-0">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle>Send Broadcast Message</DialogTitle>
           <DialogDescription>
             Send a message to multiple users at once. This will appear as a
@@ -155,11 +302,12 @@ export function BroadcastMessage({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div className="space-y-2">
             <Textarea
               placeholder="Type your message here..."
               value={message}
+              className="resize-none"
               onChange={(e) => setMessage(e.target.value)}
               rows={4}
             />
@@ -288,6 +436,83 @@ export function BroadcastMessage({
               </SelectContent>
             </Select>
           </div>
+
+          {audience === "selected" && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">
+                  Selected: {selectedUserIds.size} users
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={handleSelectAll}
+                >
+                  {selectedUserIds.size === selectableUsers.length
+                    ? "Deselect All"
+                    : "Select All"}
+                </Button>
+              </div>
+
+              <div className="border rounded-md max-h-[100px] overflow-y-auto p-1 bg-background">
+                {selectableUsers.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground py-4">
+                    No users found.
+                  </p>
+                ) : (
+                  selectableUsers.map((user) => {
+                    const isSelected = selectedUserIds.has(user.uid);
+                    return (
+                      <div
+                        key={user.uid}
+                        onClick={() => toggleUserSelection(user.uid)}
+                        className={`flex items-center gap-3 p-2 rounded-sm cursor-pointer transition-colors hover:bg-accent ${
+                          isSelected ? "bg-accent/50" : ""
+                        }`}
+                      >
+                        <div
+                          className={`flex items-center justify-center w-5 h-5 rounded border ${
+                            isSelected
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-muted-foreground"
+                          }`}
+                        >
+                          {isSelected && (
+                            <CheckSquare className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <div className="h-6 w-6 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                            {user.photoURL ? (
+                              <img
+                                src={user.photoURL}
+                                alt={user.displayName}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-[10px] font-bold">
+                                {user.displayName?.charAt(0) || "?"}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col truncate">
+                            <span className="text-sm font-medium truncate">
+                              {user.displayName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground truncate">
+                              {user.email}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

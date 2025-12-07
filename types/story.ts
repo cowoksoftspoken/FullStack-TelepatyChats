@@ -9,6 +9,13 @@ export interface Story {
   viewers: string[];
   privacy: "public" | "contacts" | "selected";
   allowedViewers?: string[];
+  type: "text" | "media";
+  isEncrypted?: boolean;
+  textContent?: string;
+  musicUrl?: string;
+  backgroundColor?: string;
+  musicTitle?: string;
+  musicArtist?: string;
 }
 
 export interface StoryView {

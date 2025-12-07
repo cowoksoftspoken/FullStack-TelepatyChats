@@ -1,28 +1,31 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  updateDoc,
-  getDoc,
   DocumentData,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
 } from "firebase/firestore";
 import {
+  ArrowLeft,
+  Ban,
   CheckCircle,
-  XCircle,
+  Crown,
+  MessageSquare,
+  Power,
+  Trash2,
   User,
   Users,
-  MessageSquare,
-  ArrowLeft,
-  Crown,
+  XCircle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
+import { BroadcastMessage } from "@/components/admin/broadcast-message";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
   CardContent,
@@ -31,11 +34,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BroadcastMessage } from "@/components/admin/broadcast-message";
-import { useFirebase } from "@/lib/firebase-provider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/use-toast";
-import type { User as UserType } from "@/types/user";
+import { useFirebase } from "@/lib/firebase-provider";
 import type { VerificationRequest } from "@/types/admin";
+import type { User as UserType } from "@/types/user";
 import Link from "next/link";
 
 export function AdminDashboard({ userData }: { userData?: DocumentData }) {
@@ -106,6 +109,73 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     fetchVerificationRequests();
     fetchUsers();
   }, [userData, db]);
+
+  const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
+    if (!userData?.isAdmin) return;
+
+    if (userId === currentUser.uid) {
+      toast({
+        title: "Access denied",
+        variant: "destructive",
+        description: "you cannot disable your own account",
+      });
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        disabled: !currentStatus,
+      });
+
+      setUsers(
+        users.map((u) =>
+          u.uid === userId ? { ...u, disabled: !currentStatus } : u
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: `User account ${currentStatus ? "disabled" : "Enabled"}.`,
+      });
+    } catch (error) {
+      console.error("Error toggling status:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update user status.",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!userData?.isAdmin) return;
+    if (userId === currentUser?.uid) return;
+
+    if (
+      !confirm(
+        `Are you sure you want to PERMANENTLY delete user ${userName}? This cannot be undone.`
+      )
+    )
+      return;
+
+    try {
+      await deleteDoc(doc(db, "users", userId));
+
+      setUsers(users.filter((u) => u.uid !== userId));
+
+      toast({
+        title: "Deleted",
+        description: "User has been removed from database.",
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete user.",
+      });
+    }
+  };
 
   const handleVerificationAction = async (
     requestId: string,
@@ -327,6 +397,11 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
                     )}
                   </div>
                   <span className="font-medium">{user.displayName}</span>
+                  {user.disabled && (
+                    <span className="text-[10px] text-red-500 font-bold uppercase">
+                      DISABLED
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center">{user.email}</div>
                 <div className="flex items-center gap-2">
@@ -346,19 +421,30 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm">
-                    View
+                  <Button
+                    variant={user.disabled ? "default" : "secondary"}
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title={user.disabled ? "Enable Account" : "Disable Account"}
+                    onClick={() =>
+                      handleToggleStatus(user.uid, !!user.disabled)
+                    }
+                  >
+                    {user.disabled ? (
+                      <Power className="h-4 w-4" />
+                    ) : (
+                      <Ban className="h-4 w-4 text-orange-600" />
+                    )}
                   </Button>
-                  {!user.isVerified && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        handleVerificationAction("manual", user.uid, true)
-                      }
-                    >
-                      Verify
-                    </Button>
-                  )}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    title="Delete User"
+                    onClick={() => handleDeleteUser(user.uid, user.displayName)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}

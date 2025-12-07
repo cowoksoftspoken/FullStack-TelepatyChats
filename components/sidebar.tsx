@@ -453,37 +453,35 @@ export function Sidebar({
           </Link>
         </div>
         <div className="flex gap-4 items-center overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[#cbd5e1] scrollbar-track-[#f3f4f6] dark:scrollbar-thumb-[#4e4e4e] dark:scrollbar-track-[#1e1e1e]">
-          <div className="flex flex-col items-center">
-            {currentUserHasStory ? (
-              <>
-                <StoryCircle user={user} currentUser={currentUser} />
-                <span className="mt-1 text-xs">Your Story</span>
-              </>
-            ) : (
-              <div className="flex flex-col items-center">
-                <div className="relative h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
-                    <span className="text-xl font-bold text-muted-foreground">
-                      +
-                    </span>
-                  </div>
-                  <div className="absolute inset-0 opacity-0">
-                    <StoryCreator />
-                  </div>
-                </div>
-                <span className="mt-1 text-xs">Your Story</span>
+          <div className="flex flex-col items-center flex-shrink-0">
+            <div className="relative h-16 w-16 rounded-full border-2 border-dashed border-muted-foreground/50 p-[2px]">
+              <div className="flex h-full w-full items-center justify-center rounded-full bg-muted">
+                <span className="text-xl font-bold text-muted-foreground">
+                  +
+                </span>
               </div>
-            )}
+              <div className="absolute inset-0 opacity-0 cursor-pointer">
+                <StoryCreator />
+              </div>
+            </div>
+            <span className="mt-1 text-xs">Add Story</span>
           </div>
 
-          {contactsWithStories.map((contact) => (
-            <>
-              <StoryCircleWrapper
-                key={contact.uid}
-                storyUser={contact}
-                currentUser={user}
-              />
-            </>
+          {currentUserHasStory && (
+            <div className="flex flex-col items-center flex-shrink-0">
+              <StoryCircle user={user} currentUser={currentUser} />
+              <span className="mt-1 text-xs">You</span>
+            </div>
+          )}
+
+          {contactsWithStories.map((story) => (
+            <div
+              key={story.uid}
+              className="flex flex-col items-center flex-shrink-0"
+            >
+              <StoryCircle user={story} currentUser={currentUser} />
+              <span className="mt-1 text-xs">{story.displayName}</span>
+            </div>
           ))}
         </div>
       </div>

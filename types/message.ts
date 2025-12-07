@@ -40,6 +40,9 @@ export interface Message {
   };
   accuracy?: number;
 
+  // broadcast
+  isBroadcast?: boolean;
+
   // edited
   isEdited?: boolean;
 

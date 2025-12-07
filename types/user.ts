@@ -9,4 +9,5 @@ export interface User {
   isAdmin?: boolean;
   verifiedAt?: string;
   verifiedBy?: string;
+  disabled?: Boolean;
 }
