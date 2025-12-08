@@ -12,10 +12,9 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import {
-  CheckCircle2,
+  CheckSquare,
   Film,
   ImageIcon,
-  Lock,
   Music,
   Pause,
   Play,
@@ -37,14 +36,13 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { useEncryption } from "@/hooks/use-encryption";
 import { useFirebase } from "@/lib/firebase-provider";
 import { User } from "@/types/user";
+import { DialogDescription } from "@radix-ui/react-dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { ScrollArea } from "../ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { DialogDescription } from "@radix-ui/react-dialog";
 
 const BG_COLORS = [
   "bg-gradient-to-br from-purple-500 to-pink-500",
@@ -78,7 +76,6 @@ export function StoryCreator() {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set()
   );
-  const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -269,7 +266,6 @@ export function StoryCreator() {
     setSelectedUserIds(new Set());
     setMusicSearch("");
     setMusicResults([]);
-    setIsEncryptionEnabled(false);
     if (audioPreviewRef.current) audioPreviewRef.current.pause();
   };
 
@@ -558,15 +554,38 @@ export function StoryCreator() {
                       <div
                         className={`h-4 w-4 rounded border flex items-center justify-center ${
                           selectedUserIds.has(contact.uid)
-                            ? "bg-primary border-primary"
+                            ? "bg-primary border-primary text-primary-foreground"
                             : "border-muted-foreground"
                         }`}
                       >
                         {selectedUserIds.has(contact.uid) && (
-                          <CheckCircle2 className="h-3 w-3 text-white" />
+                          <CheckSquare className="h-3.5 w-3.5" />
                         )}
                       </div>
-                      <span className="text-sm">{contact.displayName}</span>
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <div className="h-6 w-6 rounded-full overflow-hidden flex-shrink-0 bg-muted">
+                          {contact.photoURL ? (
+                            <img
+                              src={contact.photoURL}
+                              alt={contact.displayName}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-[10px] font-bold">
+                              {contact.displayName?.charAt(0) || "?"}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col truncate">
+                          <span className="text-sm font-medium truncate">
+                            {contact.displayName}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate">
+                            {contact.email}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}

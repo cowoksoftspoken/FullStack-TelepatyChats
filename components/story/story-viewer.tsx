@@ -64,8 +64,6 @@ export function StoryViewer({
 }: StoryViewerProps) {
   const { db, storage, currentUser } = useFirebase();
   const [currentIndex, setCurrentIndex] = useState(initialStoryIndex);
-  const { decryptMessageFromContact, isInitialized } =
-    useEncryption(currentUser);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -444,11 +442,11 @@ export function StoryViewer({
                     x2="100%"
                     y2="100%"
                   >
-                    <stop offset="0%" stop-color="#fff7b0" />
-                    <stop offset="25%" stop-color="#ffd700" />
-                    <stop offset="50%" stop-color="#ffa500" />
-                    <stop offset="75%" stop-color="#ffd700" />
-                    <stop offset="100%" stop-color="#fff7b0" />
+                    <stop offset="0%" stopColor="#fff7b0" />
+                    <stop offset="25%" stopColor="#ffd700" />
+                    <stop offset="50%" stopColor="#ffa500" />
+                    <stop offset="75%" stopColor="#ffd700" />
+                    <stop offset="100%" stopColor="#fff7b0" />
                   </linearGradient>
                 </defs>
                 <title>Afiliated Account</title>

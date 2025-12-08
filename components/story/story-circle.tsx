@@ -50,11 +50,27 @@ export function StoryCircle({
         ...doc.data(),
       })) as Story[];
 
-      setStories(storyData);
-      setHasStories(storyData.length > 0);
+      const visibleStories = storyData.filter((story) => {
+        if (currentUser && story.userId === currentUser.uid) return true;
 
-      if (currentUser && storyData.length > 0) {
-        const hasUnseen = storyData.some(
+        if (story.privacy === "public") return true;
+
+        if (
+          currentUser &&
+          story.allowedViewers &&
+          story.allowedViewers.includes(currentUser.uid)
+        ) {
+          return true;
+        }
+
+        return false;
+      });
+
+      setStories(visibleStories);
+      setHasStories(visibleStories.length > 0);
+
+      if (currentUser && visibleStories.length > 0) {
+        const hasUnseen = visibleStories.some(
           (story) => !story.viewers?.includes(currentUser.uid)
         );
         setHasUnseenStories(hasUnseen);

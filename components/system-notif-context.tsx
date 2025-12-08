@@ -49,6 +49,7 @@ export const SystemNotifProvider = ({ children }: { children: ReactNode }) => {
           onRelogin={notif.onRelogin}
           storageKey={notif.storageKey}
           onClose={closeNotif}
+          allowReset
         />
       )}
     </SystemNotifContext.Provider>
