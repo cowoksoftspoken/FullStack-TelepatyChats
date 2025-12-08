@@ -85,6 +85,7 @@ export function StoryCreator() {
     description: "",
   });
   const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
+  const [allContactIds, setContactIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (open && currentUser) {
@@ -96,6 +97,8 @@ export function StoryCreator() {
           );
           const contactsSnap = await getDocs(contactsQ);
           const contactIds = contactsSnap.docs.map((d) => d.data().contactId);
+
+          setContactIds(contactIds);
 
           if (contactIds.length > 0) {
             const usersQ = query(
@@ -210,10 +213,7 @@ export function StoryCreator() {
       let allowedViewers: string[] = [];
 
       if (privacy === "contacts") {
-        const contactsRef = collection(db, "contacts");
-        const q = query(contactsRef, where("userId", "==", currentUser.uid));
-        const snapshot = await getDocs(q);
-        allowedViewers = snapshot.docs.map((d) => d.data().contactId);
+        allowedViewers = allContactIds;
       } else if (privacy === "selected") {
         allowedViewers = Array.from(selectedUserIds);
       }
@@ -285,7 +285,7 @@ export function StoryCreator() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md h-[90vh] flex flex-col p-0 gap-0">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden w-[90%] ">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Create Story</DialogTitle>
           <DialogDescription>{errorMessage.description}</DialogDescription>
@@ -594,7 +594,7 @@ export function StoryCreator() {
           </div>
         </div>
 
-        <DialogFooter className="p-6 pt-0 bg-background z-20">
+        <DialogFooter className="p-6 pt-0 bg-background z-20 gap-2">
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
