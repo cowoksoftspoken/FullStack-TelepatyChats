@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { StoryViewer } from "./story-viewer";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Story } from "@/types/story";
 import type { User } from "@/types/user";
+import {
+  collection,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { StoryViewer } from "./story-viewer";
 
 interface StoryCircleProps {
   user: User;
@@ -27,41 +33,72 @@ export function StoryCircle({
   const [users, setUsers] = useState<Record<string, User>>({});
 
   useEffect(() => {
-    const fetchStories = async () => {
-      if (!user.uid) return;
+    if (!user.uid) return;
 
-      try {
-        const now = new Date();
+    const now = new Date();
 
-        const q = query(
-          collection(db, "stories"),
-          where("userId", "==", user.uid),
-          where("expiresAt", ">", now.toISOString()),
-          orderBy("expiresAt", "desc")
+    const q = query(
+      collection(db, "stories"),
+      where("userId", "==", user.uid),
+      where("expiresAt", ">", now.toISOString()),
+      orderBy("expiresAt", "desc")
+    );
+
+    const unsub = onSnapshot(q, (snapshot) => {
+      const storyData: Story[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Story[];
+
+      setStories(storyData);
+      setHasStories(storyData.length > 0);
+
+      if (currentUser && storyData.length > 0) {
+        const hasUnseen = storyData.some(
+          (story) => !story.viewers?.includes(currentUser.uid)
         );
-
-        const querySnapshot = await getDocs(q);
-        const storiesData: Story[] = [];
-
-        querySnapshot.forEach((doc) => {
-          storiesData.push({ id: doc.id, ...doc.data() } as Story);
-        });
-
-        setStories(storiesData);
-        setHasStories(storiesData.length > 0);
-
-        if (currentUser && storiesData.length > 0) {
-          const hasUnseen = storiesData.some(
-            (story) => !story.viewers.includes(currentUser.uid)
-          );
-          setHasUnseenStories(hasUnseen);
-        }
-      } catch (error) {
-        console.error("Error fetching stories:", error);
+        setHasUnseenStories(hasUnseen);
       }
-    };
+    });
 
-    fetchStories();
+    return () => unsub();
+
+    // const fetchStories = async () => {
+    //   if (!user.uid) return;
+
+    //   try {
+    //     const now = new Date();
+
+    //     const q = query(
+    //       collection(db, "stories"),
+    //       where("userId", "==", user.uid),
+    //       where("expiresAt", ">", now.toISOString()),
+    //       orderBy("expiresAt", "desc")
+    //     );
+
+    //     // const querySnapshot = await getDocs(q);
+    //     // const storiesData: Story[] = [];
+
+    //     // querySnapshot.forEach((doc) => {
+    //     //   storiesData.push({ id: doc.id, ...doc.data() } as Story);
+    //     // });
+
+    //     // setStories(storiesData);
+    //     // setHasStories(storiesData.length > 0);
+
+    //     // if (currentUser && storiesData.length > 0) {
+    //     //   const hasUnseen = storiesData.some(
+    //     //     (story) => !story.viewers.includes(currentUser.uid)
+    //     //   );
+    //     //   setHasUnseenStories(hasUnseen);
+    //     // }
+
+    //   } catch (error) {
+    //     console.error("Error fetching stories:", error);
+    //   }
+    // };
+
+    // fetchStories();
   }, [user.uid, db, currentUser]);
 
   useEffect(() => {

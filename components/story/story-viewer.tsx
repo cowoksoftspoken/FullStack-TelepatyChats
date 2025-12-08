@@ -42,6 +42,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -314,12 +320,47 @@ export function StoryViewer({
         )}
       </div>
 
-      <button
-        className="absolute right-4 top-4 z-50 text-white hover:bg-white/10 p-2 rounded-full transition"
-        onClick={onClose}
-      >
-        <X className="h-6 w-6" />
-      </button>
+      <div className="absolute right-4 top-4 z-[9999] flex items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="text-white hover:bg-white/10 p-2 rounded-full transition">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <circle cx="5" cy="12" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="19" cy="12" r="1.5" />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            className="w-40 bg-zinc-900 text-white border border-zinc-700"
+            align="end"
+          >
+            {currentStory.userId === currentUser?.uid && (
+              <DropdownMenuItem
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-red-500 focus:bg-red-500/20 cursor-pointer"
+              >
+                Delete Story
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <button
+          className="text-white hover:bg-white/10 p-2 rounded-full transition"
+          onClick={onClose}
+        >
+          <X className="h-6 w-6" />
+        </button>
+      </div>
+
       <button
         className="absolute left-2 top-1/2 z-50 -translate-y-1/2 text-white p-4 hover:bg-white/5 rounded-full"
         onClick={handlePrevious}
@@ -336,7 +377,7 @@ export function StoryViewer({
         <ChevronRight className="h-8 w-8" />
       </button>
 
-      <div className="absolute top-2 left-0 right-0 z-50 flex gap-1 px-4">
+      <div className="absolute top-2 top left-0 right-0 z-[9999] flex gap-1 px-4">
         {stories.map((story, index) => (
           <div
             key={story.id}
@@ -359,7 +400,7 @@ export function StoryViewer({
         ))}
       </div>
 
-      <div className="absolute top-6 left-0 right-0 z-50 flex items-center gap-3 px-4">
+      <div className="absolute top-0 left-0 right-0 z-50 px-4 pt-6 pb-3 bg-gradient-to-b from-black/60 via-black/30 to-transparent flex items-center gap-3">
         <UserAvatar
           user={storyUser}
           className="h-10 w-10 border-2 border-primary"
@@ -426,8 +467,11 @@ export function StoryViewer({
           </p>
           {currentStory.musicTitle && (
             <div className="flex items-center gap-1 text-xs opacity-90 mt-0.5 animate-pulse">
-              <Music className="h-3 w-3" /> {currentStory.musicTitle} -{" "}
-              {currentStory.musicArtist}
+              <Music className="h-3 w-3 shrink-0" />
+              <span className="truncate max-w-[200px">
+                {currentStory.musicTitle}
+              </span>
+              <span className="shrink-0"> - {currentStory.musicArtist}</span>
             </div>
           )}
         </div>
@@ -471,76 +515,67 @@ export function StoryViewer({
                 onEnded={handleNext}
               />
             )}
-
-            {(currentStory.caption || currentStory.textContent) && (
-              <div className="absolute bottom-0 left-0 right-0 p-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-10">
-                <p className="text-center text-white text-base font-roboto">
-                  {currentStory.caption || currentStory.textContent}
-                </p>
-              </div>
-            )}
           </>
         )}
       </div>
 
-      <div className="absolute bottom-6 left-0 right-0 z-50 flex justify-center gap-4 px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
-          onClick={() => togglePlay()}
-        >
-          {isPaused ? (
-            <Play className="h-5 w-5" />
-          ) : (
-            <Pause className="h-5 w-5" />
+      <div
+        className="absolute bottom-0 left-0 right-0 z-50 
+  bg-gradient-to-t from-black/80 via-black/40 to-transparent
+  px-4 pt-10 pb-6 flex flex-col items-center gap-4"
+      >
+        {(currentStory.caption || currentStory.textContent) &&
+          currentStory.type !== "text" && (
+            <p className="text-center text-white text-base font-roboto px-6 mb-2">
+              {currentStory.caption || currentStory.textContent}
+            </p>
           )}
-        </Button>
 
-        {(currentStory.musicUrl || currentStory.mediaType === "video") && (
+        <div className="flex justify-center gap-4">
           <Button
             variant="ghost"
             size="icon"
             className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
-            onClick={toggleMute}
+            onClick={() => togglePlay()}
           >
-            {isMuted ? (
-              <VolumeX className="h-5 w-5" />
+            {isPaused ? (
+              <Play className="h-5 w-5" />
             ) : (
-              <Volume2 className="h-5 w-5" />
+              <Pause className="h-5 w-5" />
             )}
           </Button>
-        )}
 
-        {currentStory.userId === currentUser?.uid && (
-          <>
+          {(currentStory.musicUrl || currentStory.mediaType === "video") && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
-              onClick={() => {
-                setShowViewers(true);
-                fetchViewersData();
-              }}
+              className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
+              onClick={toggleMute}
             >
-              <Users className="h-5 w-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full bg-red-500/90 dark:bg-red-500/40 dark:text-white 
-              text-black hover:bg-red-500/20 backdrop-blur-sm border border-red-500/30"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-400 border-t-transparent" />
+              {isMuted ? (
+                <VolumeX className="h-5 w-5" />
               ) : (
-                <Trash2 className="h-5 w-5" />
+                <Volume2 className="h-5 w-5" />
               )}
             </Button>
-          </>
-        )}
+          )}
+
+          {currentStory.userId === currentUser?.uid && (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
+                onClick={() => {
+                  setShowViewers(true);
+                  fetchViewersData();
+                }}
+              >
+                <Users className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       <AnimatePresence>
