@@ -373,8 +373,49 @@ export function StoryViewer({
                 Save
               </DropdownMenuItem>
             )}
+            {currentStory.userId !== currentUser?.uid && (
+              <>
+                <DropdownMenuItem onClick={togglePlay}>
+                  {isPaused ? "Play" : "Pause"}
+                </DropdownMenuItem>
+
+                {(currentStory.musicUrl ||
+                  currentStory.mediaType === "video") && (
+                  <DropdownMenuItem onClick={toggleMute}>
+                    {isMuted ? "Unmute" : "Mute"}
+                  </DropdownMenuItem>
+                )}
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {currentStory.userId !== currentUser.uid && (
+          <button
+            onClick={togglePlay}
+            className="text-white hover:bg-white/10 p-2 rounded-full transition"
+          >
+            {isPaused ? (
+              <Play className="h-6 w-6" />
+            ) : (
+              <Pause className="h-6 w-6" />
+            )}
+          </button>
+        )}
+
+        {(currentStory.musicUrl || currentStory.mediaType === "video") &&
+          currentStory.userId !== currentUser.uid && (
+            <button
+              onClick={toggleMute}
+              className="text-white hover:bg-white/10 p-2 rounded-full transition"
+            >
+              {isMuted ? (
+                <VolumeX className="h-6 w-6" />
+              ) : (
+                <Volume2 className="h-6 w-6" />
+              )}
+            </button>
+          )}
 
         <button
           className="text-white hover:bg-white/10 p-2 rounded-full transition"
@@ -431,10 +472,15 @@ export function StoryViewer({
         <div className="text-white">
           <p className="font-medium flex items-center gap-1 text-sm shadow-black drop-shadow-md">
             {storyUser?.uid === currentUser?.uid ? (
-              <span className="text-primary">You</span>
+              <span className="text-primary max-w-[120px] truncate inline-block">
+                You
+              </span>
             ) : (
-              <span>{storyUser?.displayName}</span>
+              <span className="max-w-[120px] truncate inline-block">
+                {storyUser?.displayName}
+              </span>
             )}
+
             {storyUser?.isVerified && !storyUser.isAdmin && (
               <svg
                 aria-label="Sudah Diverifikasi"
@@ -451,6 +497,7 @@ export function StoryViewer({
                 ></path>
               </svg>
             )}
+
             {storyUser.isAdmin && (
               <svg
                 aria-label="Afiliated Account"
@@ -478,11 +525,12 @@ export function StoryViewer({
                 <path
                   d="M19.998 3.094 14.638 0l-2.972 5.15H5.432v6.354L0 14.64 3.094 20 0 25.359l5.432 3.137v5.905h5.975L14.638 40l5.36-3.094L25.358 40l3.232-5.6h6.162v-6.01L40 25.359 36.905 20 40 14.641l-5.248-3.03v-6.46h-6.419L25.358 0l-5.36 3.094Zm7.415 11.225 2.254 2.287-11.43 11.5-6.835-6.93 2.244-2.258 4.587 4.581 9.18-9.18Z"
                   fill="url(#metallicGold)"
-                  fill-rule="evenodd"
+                  fillRule="evenodd"
                 ></path>
               </svg>
             )}
           </p>
+
           <p className="text-xs opacity-80 drop-shadow-md">
             {formatDistanceToNow(new Date(currentStory.createdAt), {
               addSuffix: true,
@@ -551,42 +599,39 @@ export function StoryViewer({
           )}
 
         <div
-          className={`flex ${
-            currentStory.userId === currentUser.uid
-              ? "items-center justify-center"
-              : "items-end"
-          } gap-2 shrink-0 w-full max-w-xl mx-auto`}
+          className={`flex items-center justify-center gap-2 shrink-0 w-full max-w-xl mx-auto`}
         >
-          <button
-            onClick={togglePlay}
-            className="h-11 w-11 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
-          >
-            {isPaused ? (
-              <Play className="h-5 w-5" />
-            ) : (
-              <Pause className="h-5 w-5" />
-            )}
-          </button>
-
-          {(currentStory.musicUrl || currentStory.mediaType === "video") && (
-            <button
-              onClick={toggleMute}
-              className="h-11 w-11 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
-            >
-              {isMuted ? (
-                <VolumeX className="h-5 w-5" />
-              ) : (
-                <Volume2 className="h-5 w-5" />
-              )}
-            </button>
-          )}
-
           {currentStory.userId === currentUser?.uid && (
             <>
+              <button
+                onClick={togglePlay}
+                className="h-10 w-10 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
+              >
+                {isPaused ? (
+                  <Play className="h-5 w-5" />
+                ) : (
+                  <Pause className="h-5 w-5" />
+                )}
+              </button>
+
+              {(currentStory.musicUrl ||
+                currentStory.mediaType === "video") && (
+                <button
+                  onClick={toggleMute}
+                  className="h-10 w-10 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-5 w-5" />
+                  ) : (
+                    <Volume2 className="h-5 w-5" />
+                  )}
+                </button>
+              )}
+
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-11 w-11 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
+                className="h-10 w-10 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
                 onClick={() => {
                   setShowViewers(true);
                   fetchViewersData();
