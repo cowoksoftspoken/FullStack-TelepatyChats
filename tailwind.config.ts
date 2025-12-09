@@ -99,6 +99,7 @@ const config: Config = {
     require("tailwindcss-animate"),
     require("tailwind-scrollbar"),
     require("@tailwindcss/typography"),
+    require("tailwindcss-textshadow"),
   ],
 };
 export default config;

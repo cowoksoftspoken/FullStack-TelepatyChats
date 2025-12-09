@@ -7,6 +7,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   query,
   updateDoc,
@@ -84,6 +85,8 @@ import {
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
+import { Story } from "@/types/story";
+import { StoryViewer } from "./story/story-viewer";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -189,6 +192,11 @@ export function ChatArea({
     currentUserId: string;
     text: string;
   } | null>(null);
+  const [viewingStory, setViewingStory] = useState<{
+    story: Story;
+    user: User;
+  } | null>(null);
+  const [isLoadingStory, setIsLoadingStory] = useState(false);
 
   useEffect(() => {
     if (!currentUser || !contact) return;
@@ -445,6 +453,60 @@ export function ChatArea({
     decryptedLocationMessages,
     decryptMessageFromContact,
   ]);
+
+  const handleViewStory = async (storyId: string) => {
+    if (isLoadingStory) return;
+    setIsLoadingStory(true);
+
+    try {
+      const storyRef = doc(db, "stories", storyId);
+      const storySnap = await getDoc(storyRef);
+
+      if (!storySnap.exists()) {
+        toast({
+          variant: "destructive",
+          title: "Story unavailable",
+          description: "This story has been deleted or expired.",
+        });
+        return;
+      }
+
+      const storyData = { id: storySnap.id, ...storySnap.data() } as Story;
+
+      let storyUser: User | null = null;
+
+      if (storyData.userId === currentUser.uid) {
+        storyUser = currentUser;
+      } else if (storyData.userId === contact.uid) {
+        storyUser = contact;
+      } else {
+        const userRef = doc(db, "users", storyData.userId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+          storyUser = userSnap.data() as User;
+        }
+      }
+
+      if (storyUser) {
+        setViewingStory({ story: storyData, user: storyUser });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "User not found",
+          description: "Could not retrieve story owner details.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching story:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to open story.",
+      });
+    } finally {
+      setIsLoadingStory(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1939,6 +2001,64 @@ export function ChatArea({
                     </a>
                   )}
 
+                  {msg.replyContext?.type === "story" && (
+                    <div
+                      className={`flex items-center gap-2 rounded-md mb-2 p-1 border-l-4 overflow-hidden cursor-pointer transition-opacity hover:opacity-80 ${
+                        msg.senderId === currentUser.uid
+                          ? "border-l-pink-500 bg-pink-50 dark:bg-pink-900/20"
+                          : "border-l-purple-500 bg-purple-50 dark:bg-purple-900/20"
+                      }`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleViewStory(msg.replyContext?.storyId as string);
+                      }}
+                    >
+                      <div className="h-12 w-10 bg-black/20 dark:bg-white/10 rounded flex items-center justify-center overflow-hidden shrink-0 relative">
+                        {msg.replyContext.mediaType === "video" ? (
+                          <video
+                            src={msg.replyContext.storyUrl}
+                            className="h-full w-full object-cover opacity-80"
+                            muted
+                            preload="metadata"
+                          />
+                        ) : msg.replyContext.storyUrl ? (
+                          <img
+                            src={msg.replyContext.storyUrl}
+                            alt="Story"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-[8px] p-1 text-center break-words leading-tight">
+                            Story Text
+                          </div>
+                        )}
+
+                        {msg.replyContext.mediaType === "video" && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="w-4 h-4 text-white drop-shadow-md"
+                            >
+                              <path d="M8 5v14l11-7z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col justify-center pr-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">
+                          Status Update
+                        </span>
+                        <span className="text-xs italic opacity-90 truncate max-w-[150px]">
+                          {msg.replyContext.mediaType === "video"
+                            ? "Replied to a video"
+                            : "Replied to a story"}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <MessageContent
                     msg={msg}
                     messageText={getMessageText(msg)}
@@ -2489,6 +2609,15 @@ export function ChatArea({
         onClose={() => setEditingMessage(null)}
         onSave={handleSaveEdit}
       />
+
+      {viewingStory && (
+        <StoryViewer
+          stories={[viewingStory.story]}
+          initialStoryIndex={0}
+          onClose={() => setViewingStory(null)}
+          users={{ [viewingStory.user.uid]: viewingStory.user }}
+        />
+      )}
     </div>
   );
 }

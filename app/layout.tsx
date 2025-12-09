@@ -1,12 +1,11 @@
-import type React from "react";
-import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { FirebaseProvider } from "@/lib/firebase-provider";
-import { Toaster } from "@/components/ui/toaster";
 import { ToastProvider } from "@/components/ui/toast";
-import { Roboto } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
+import { FirebaseProvider } from "@/lib/firebase-provider";
+import type { Metadata, Viewport } from "next";
+import { Inter, Roboto } from "next/font/google";
+import type React from "react";
+import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -154,7 +153,7 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

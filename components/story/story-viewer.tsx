@@ -1,40 +1,36 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import {
-  doc,
-  updateDoc,
   arrayUnion,
-  getDoc,
   deleteDoc,
+  doc,
+  getDoc,
+  updateDoc,
 } from "firebase/firestore";
 import {
-  X,
   ChevronLeft,
   ChevronRight,
+  Music,
   Pause,
   Play,
+  Users,
   Volume2,
   VolumeX,
-  Users,
-  Lock,
-  Music,
-  Trash2,
+  X,
 } from "lucide-react";
-
+import { useEffect, useRef, useState } from "react";
+import { StoryReply } from "./story-comment";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserAvatar } from "@/components/user-avatar";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { Story } from "@/types/story";
 import type { User } from "@/types/user";
-import { useEncryption } from "../../hooks/use-encryption";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { formatDistanceToNow } from "date-fns";
-import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "../ui/use-toast";
 import { deleteObject, ref } from "firebase/storage";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +44,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { toast } from "../ui/use-toast";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -76,6 +73,7 @@ export function StoryViewer({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const currentStory = stories[currentIndex];
   const storyUser = users[currentStory?.userId];
+  const [isReplying, setIsReplying] = useState<boolean>(false);
 
   const [showViewers, setShowViewers] = useState(false);
   const [viewersData, setViewersData] = useState<
@@ -253,12 +251,12 @@ export function StoryViewer({
     }
   };
   useEffect(() => {
-    if (showViewers) {
+    if (showViewers || showDeleteDialog || isReplying) {
       setIsPaused(true);
       if (videoRef.current) videoRef.current.pause();
       if (audioRef.current) audioRef.current.pause();
     }
-  }, [showViewers]);
+  }, [showViewers, showDeleteDialog, isReplying]);
 
   useEffect(() => {
     if (!currentStory || !currentUser) return;
@@ -298,6 +296,28 @@ export function StoryViewer({
   const handleMediaLoaded = () => {
     setIsLoading(false);
     setIsMediaReady(true);
+  };
+
+  const handleSaveMedia = async () => {
+    if (currentStory.type === "media") {
+      try {
+        const response = await fetch(currentStory.mediaUrl, { mode: "cors" });
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `tpy_story_${currentStory.id}_media`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        URL.revokeObjectURL(url);
+        console.log("[Story Viewer] Downloaded Media Success");
+      } catch (err) {
+        console.error("Download error:", err);
+      }
+    }
   };
 
   return (
@@ -346,6 +366,11 @@ export function StoryViewer({
                 className="text-red-500 focus:bg-red-500/20 cursor-pointer"
               >
                 Delete Story
+              </DropdownMenuItem>
+            )}
+            {currentStory.type === "media" && (
+              <DropdownMenuItem onClick={() => handleSaveMedia()}>
+                Save
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -517,45 +542,43 @@ export function StoryViewer({
         )}
       </div>
 
-      <div
-        className="absolute bottom-0 left-0 right-0 z-50 
-  bg-gradient-to-t from-black/80 via-black/40 to-transparent
-  px-4 pt-10 pb-6 flex flex-col items-center gap-4"
-      >
+      <div className="absolute bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-6 flex flex-col gap-4">
         {(currentStory.caption || currentStory.textContent) &&
           currentStory.type !== "text" && (
-            <p className="text-center text-white text-base font-roboto px-6 mb-2">
+            <p className="text-center text-white text-base font-roboto px-6 mb-2 text-shadow-md">
               {currentStory.caption || currentStory.textContent}
             </p>
           )}
 
-        <div className="flex justify-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
-            onClick={() => togglePlay()}
+        <div
+          className={`flex ${
+            currentStory.userId === currentUser.uid
+              ? "items-center justify-center"
+              : "items-end"
+          } gap-2 shrink-0 w-full max-w-xl mx-auto`}
+        >
+          <button
+            onClick={togglePlay}
+            className="h-11 w-11 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
           >
             {isPaused ? (
               <Play className="h-5 w-5" />
             ) : (
               <Pause className="h-5 w-5" />
             )}
-          </Button>
+          </button>
 
           {(currentStory.musicUrl || currentStory.mediaType === "video") && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full bg-black/30 text-white backdrop-blur-sm hover:bg-black/50"
+            <button
               onClick={toggleMute}
+              className="h-11 w-11 flex-shrink-0 rounded-full bg-black/30 backdrop-blur-sm text-white flex items-center justify-center hover:bg-black/50 transition"
             >
               {isMuted ? (
                 <VolumeX className="h-5 w-5" />
               ) : (
                 <Volume2 className="h-5 w-5" />
               )}
-            </Button>
+            </button>
           )}
 
           {currentStory.userId === currentUser?.uid && (
@@ -563,7 +586,7 @@ export function StoryViewer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-10 w-10 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
+                className="h-11 w-11 rounded-full bg-black/20 text-white backdrop-blur-sm hover:bg-black/50"
                 onClick={() => {
                   setShowViewers(true);
                   fetchViewersData();
@@ -572,6 +595,18 @@ export function StoryViewer({
                 <Users className="h-5 w-5" />
               </Button>
             </>
+          )}
+
+          {currentStory.userId !== currentUser?.uid && (
+            <StoryReply
+              storyId={currentStory.id}
+              storyOwnerId={currentStory.userId}
+              currentUser={currentUser}
+              storyUrl={currentStory.mediaUrl}
+              mediaType={currentStory.mediaType}
+              onFocus={() => setIsReplying(true)}
+              onBlur={() => setIsReplying(false)}
+            />
           )}
         </div>
       </div>

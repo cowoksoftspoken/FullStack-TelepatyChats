@@ -30,8 +30,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/",
-    "/((?!_next|favicon.ico|unsupported-browser).*)",
-  ],
+  matcher: ["/", "/((?!_next|favicon.ico|unsupported-browser).*)"],
 };

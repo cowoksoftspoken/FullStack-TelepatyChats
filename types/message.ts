@@ -49,6 +49,14 @@ export interface Message {
   // Reactions
   reactions?: Record<string, string[]>;
 
+  // Story Reply
+  replyContext?: {
+    type: string;
+    storyUrl: string;
+    mediaType: "image" | "video" | "text";
+    storyId: string;
+  };
+
   // Text
   isEncrypted: boolean;
   encryptedText: string;
