@@ -486,7 +486,11 @@ export function Sidebar({
               <span className="mt-1 text-xs">{story.displayName}</span>
             </div>
           ))} */}
-          <StoryTray users={contactsWithStories} currentUser={user} />
+          <StoryTray
+            users={contactsWithStories}
+            currentUser={user}
+            hasStory={currentUserHasStory}
+          />
         </div>
       </div>
 

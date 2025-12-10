@@ -4,14 +4,13 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAOkE27nXxkipOczHekDsaoS3tXpqWOIEo",
-  // authDomain: "react-chat-98ca7.firebaseapp.com",
-  authDomain: "auth.telepaty.my.id",
-  databaseURL: "https://react-chat-98ca7-default-rtdb.firebaseio.com",
-  projectId: "react-chat-98ca7",
-  storageBucket: "react-chat-98ca7.appspot.com",
-  messagingSenderId: "236660772088",
-  appId: "1:236660772088:web:204c4cba8203870caabf0d",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);

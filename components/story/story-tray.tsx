@@ -9,9 +9,10 @@ import type { Story } from "@/types/story";
 interface StoryTrayProps {
   users: User[];
   currentUser: User | null;
+  hasStory: boolean;
 }
 
-export function StoryTray({ users, currentUser }: StoryTrayProps) {
+export function StoryTray({ users, currentUser, hasStory }: StoryTrayProps) {
   const [storiesMap, setStoriesMap] = useState<Record<string, Story[]>>({});
 
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
@@ -69,7 +70,7 @@ export function StoryTray({ users, currentUser }: StoryTrayProps) {
   return (
     <>
       <div className="flex gap-4 items-center">
-        {currentUser && (
+        {currentUser && hasStory && (
           <div className="flex flex-col items-center flex-shrink-0">
             <StoryCircle
               key={currentUser.uid}
