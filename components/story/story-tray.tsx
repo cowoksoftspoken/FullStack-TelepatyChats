@@ -60,6 +60,9 @@ export function StoryTray({ users, currentUser }: StoryTrayProps) {
   const usersRecord = useMemo(() => {
     const record: Record<string, User> = {};
     users.forEach((u) => (record[u.uid] = u));
+    if (currentUser) {
+      record[currentUser.uid] = currentUser;
+    }
     return record;
   }, [users]);
 
