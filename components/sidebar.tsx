@@ -42,6 +42,7 @@ import { StoryCircleWrapper } from "./story-wrapper";
 import { StoryCircle } from "./story/story-circle";
 import { StoryCreator } from "./story/story-creator";
 import { UserAvatar } from "./user-avatar";
+import { StoryTray } from "./story/story-tray";
 
 interface SidebarProps {
   user: any;
@@ -466,7 +467,9 @@ export function Sidebar({
             </div>
             <span className="mt-1 text-xs">Add Story</span>
           </div>
-
+          {/* 
+          @Deprecated
+          @description This section is no longer used and has been replaced with a better storytray.
           {currentUserHasStory && (
             <div className="flex flex-col items-center flex-shrink-0">
               <StoryCircle user={user} currentUser={currentUser} />
@@ -482,7 +485,8 @@ export function Sidebar({
               <StoryCircle user={story} currentUser={currentUser} />
               <span className="mt-1 text-xs">{story.displayName}</span>
             </div>
-          ))}
+          ))} */}
+          <StoryTray users={contactsWithStories} currentUser={user} />
         </div>
       </div>
 

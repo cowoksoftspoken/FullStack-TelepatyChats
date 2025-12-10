@@ -12,25 +12,29 @@ import {
   where,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { StoryViewer } from "./story-viewer";
+// import { StoryViewer } from "./story-viewer";
 
 interface StoryCircleProps {
   user: User;
   currentUser: User | null;
   size?: "sm" | "md" | "lg";
+  onClick?: () => void;
+  onStoriesLoaded?: (userId: string, stories: Story[]) => void;
 }
 
 export function StoryCircle({
   user,
   currentUser,
   size = "md",
+  onStoriesLoaded,
+  onClick,
 }: StoryCircleProps) {
   const { db } = useFirebase();
   const [hasStories, setHasStories] = useState(false);
   const [hasUnseenStories, setHasUnseenStories] = useState(false);
   const [stories, setStories] = useState<Story[]>([]);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [users, setUsers] = useState<Record<string, User>>({});
+  // const [isViewerOpen, setIsViewerOpen] = useState(false);
+  // const [users, setUsers] = useState<Record<string, User>>({});
 
   useEffect(() => {
     if (!user.uid) return;
@@ -68,6 +72,10 @@ export function StoryCircle({
 
       setStories(visibleStories);
       setHasStories(visibleStories.length > 0);
+
+      if (onStoriesLoaded) {
+        onStoriesLoaded(user.uid, visibleStories);
+      }
 
       if (currentUser && visibleStories.length > 0) {
         const hasUnseen = visibleStories.some(
@@ -117,13 +125,13 @@ export function StoryCircle({
     // fetchStories();
   }, [user.uid, db, currentUser]);
 
-  useEffect(() => {
-    if (stories.length > 0) {
-      const usersData: Record<string, User> = {};
-      usersData[user.uid] = user;
-      setUsers(usersData);
-    }
-  }, [stories, user]);
+  // useEffect(() => {
+  //   if (stories.length > 0) {
+  //     const usersData: Record<string, User> = {};
+  //     usersData[user.uid] = user;
+  //     // setUsers(usersData);
+  //   }
+  // }, [stories, user]);
 
   const sizeClasses = {
     sm: "h-12 w-12",
@@ -143,7 +151,8 @@ export function StoryCircle({
     <>
       <div
         className={`relative cursor-pointer ${sizeClasses[size]} rounded-full ${ringClasses} p-[2px]`}
-        onClick={() => setIsViewerOpen(true)}
+        // onClick={() => setIsViewerOpen(true)}
+        onClick={onClick}
       >
         <Avatar className="h-full w-full">
           <AvatarImage
@@ -155,13 +164,13 @@ export function StoryCircle({
         </Avatar>
       </div>
 
-      {isViewerOpen && (
+      {/* {isViewerOpen && (
         <StoryViewer
           stories={stories}
           onClose={() => setIsViewerOpen(false)}
           users={users}
         />
-      )}
+      )} */}
     </>
   );
 }

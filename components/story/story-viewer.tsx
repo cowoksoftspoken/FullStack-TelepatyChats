@@ -51,6 +51,8 @@ interface StoryViewerProps {
   initialStoryIndex?: number;
   onClose: () => void;
   users: Record<string, User>;
+  onNextUser?: () => void;
+  onPrevUser?: () => void;
 }
 
 export function StoryViewer({
@@ -58,6 +60,8 @@ export function StoryViewer({
   initialStoryIndex = 0,
   onClose,
   users,
+  onNextUser,
+  onPrevUser,
 }: StoryViewerProps) {
   const { db, storage, currentUser } = useFirebase();
   const [currentIndex, setCurrentIndex] = useState(initialStoryIndex);
@@ -72,9 +76,9 @@ export function StoryViewer({
   const IMAGE_DURATION = 30000;
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const currentStory = stories[currentIndex];
-  const storyUser = users[currentStory?.userId];
+  const safeStory = currentStory || stories[0];
+  const storyUser = users[safeStory?.userId];
   const [isReplying, setIsReplying] = useState<boolean>(false);
-
   const [showViewers, setShowViewers] = useState(false);
   const [viewersData, setViewersData] = useState<
     Array<{
@@ -90,6 +94,12 @@ export function StoryViewer({
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
+    setCurrentIndex(0);
+  }, [stories]);
+
+  useEffect(() => {
+    if (!currentStory) return;
+
     setProgress(0);
     setIsLoading(true);
     setIsMediaReady(false);
@@ -109,10 +119,10 @@ export function StoryViewer({
     if (currentStory?.type === "text") {
       setIsMediaReady(true);
       setIsLoading(false);
-      if (audioRef.current && !isPaused)
-        audioRef.current
-          .play()
-          .catch((e) => console.log("Autoplay blocked", e));
+      // if (audioRef.current && !isPaused)
+      //   audioRef.current
+      //     .play()
+      //     .catch((e) => console.log("Autoplay blocked", e));
     }
 
     return () => {
@@ -274,12 +284,20 @@ export function StoryViewer({
     if (currentIndex < stories.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      onClose();
+      if (onNextUser) {
+        onNextUser();
+      } else {
+        onClose();
+      }
     }
   };
 
   const handlePrevious = () => {
-    if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+    } else {
+      if (onPrevUser) onPrevUser();
+    }
   };
 
   const toggleMute = () => {
@@ -341,10 +359,10 @@ export function StoryViewer({
       <div className="absolute right-4 top-4 z-[9999] flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="text-white hover:bg-white/10 p-2 rounded-full transition">
+            <button className="text-white hover:bg-white/10 p-1 rounded-full transition">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -373,32 +391,18 @@ export function StoryViewer({
                 Save
               </DropdownMenuItem>
             )}
-            {currentStory.userId !== currentUser?.uid && (
-              <>
-                <DropdownMenuItem onClick={togglePlay}>
-                  {isPaused ? "Play" : "Pause"}
-                </DropdownMenuItem>
-
-                {(currentStory.musicUrl ||
-                  currentStory.mediaType === "video") && (
-                  <DropdownMenuItem onClick={toggleMute}>
-                    {isMuted ? "Unmute" : "Mute"}
-                  </DropdownMenuItem>
-                )}
-              </>
-            )}
           </DropdownMenuContent>
         </DropdownMenu>
 
         {currentStory.userId !== currentUser.uid && (
           <button
             onClick={togglePlay}
-            className="text-white hover:bg-white/10 p-2 rounded-full transition"
+            className="text-white hover:bg-white/10 p-1 rounded-full transition"
           >
             {isPaused ? (
-              <Play className="h-6 w-6" />
+              <Play className="h-5 w-5" />
             ) : (
-              <Pause className="h-6 w-6" />
+              <Pause className="h-5 w-5" />
             )}
           </button>
         )}
@@ -407,31 +411,33 @@ export function StoryViewer({
           currentStory.userId !== currentUser.uid && (
             <button
               onClick={toggleMute}
-              className="text-white hover:bg-white/10 p-2 rounded-full transition"
+              className="text-white hover:bg-white/10 p-1 rounded-full transition"
             >
               {isMuted ? (
-                <VolumeX className="h-6 w-6" />
+                <VolumeX className="h-5 w-5" />
               ) : (
-                <Volume2 className="h-6 w-6" />
+                <Volume2 className="h-5 w-5" />
               )}
             </button>
           )}
 
         <button
-          className="text-white hover:bg-white/10 p-2 rounded-full transition"
+          className="text-white hover:bg-white/10 p-1 rounded-full transition"
           onClick={onClose}
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
       <button
         className="absolute left-2 top-1/2 z-50 -translate-y-1/2 text-white p-4 hover:bg-white/5 rounded-full"
         onClick={handlePrevious}
-        disabled={currentIndex === 0}
+        disabled={currentIndex === 0 && !onPrevUser}
       >
         <ChevronLeft
-          className={`h-8 w-8 ${currentIndex === 0 ? "opacity-50" : ""}`}
+          className={`h-8 w-8 ${
+            currentIndex === 0 && !onPrevUser ? "opacity-50" : ""
+          }`}
         />
       </button>
       <button
@@ -476,7 +482,7 @@ export function StoryViewer({
                 You
               </span>
             ) : (
-              <span className="max-w-[120px] truncate inline-block">
+              <span className="max-w-[100px] md:max-w-none truncate inline-block">
                 {storyUser?.displayName}
               </span>
             )}
@@ -498,7 +504,7 @@ export function StoryViewer({
               </svg>
             )}
 
-            {storyUser.isAdmin && (
+            {storyUser?.isAdmin && (
               <svg
                 aria-label="Afiliated Account"
                 height="15"
@@ -593,13 +599,13 @@ export function StoryViewer({
       <div className="absolute bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pt-10 pb-6 flex flex-col gap-4">
         {(currentStory.caption || currentStory.textContent) &&
           currentStory.type !== "text" && (
-            <p className="text-center text-white text-base font-roboto px-6 mb-2 text-shadow-md">
+            <p className="text-center text-white text-base font-roboto px-6 mb-1 text-shadow-md">
               {currentStory.caption || currentStory.textContent}
             </p>
           )}
 
         <div
-          className={`flex items-center justify-center gap-2 shrink-0 w-full max-w-xl mx-auto`}
+          className={`flex items-center justify-center gap-2 mb-2 shrink-0 w-full max-w-xl mx-auto`}
         >
           {currentStory.userId === currentUser?.uid && (
             <>
