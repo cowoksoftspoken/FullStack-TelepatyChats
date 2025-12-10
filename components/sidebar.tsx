@@ -38,11 +38,10 @@ import { Loader2, LogOut, Search, Settings, UserPlus, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ContactItem } from "./contact-item";
-import { StoryCircleWrapper } from "./story-wrapper";
-import { StoryCircle } from "./story/story-circle";
 import { StoryCreator } from "./story/story-creator";
-import { UserAvatar } from "./user-avatar";
 import { StoryTray } from "./story/story-tray";
+import { UserAvatar } from "./user-avatar";
+import { useFCM } from "@/hooks/use-fcm";
 
 interface SidebarProps {
   user: any;
@@ -88,6 +87,8 @@ export function Sidebar({
       }
     >
   >({});
+
+  useFCM(user);
 
   useEffect(() => {
     if (!user?.uid) return;

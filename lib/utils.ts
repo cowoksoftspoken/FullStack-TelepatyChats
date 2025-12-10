@@ -237,3 +237,31 @@ export const getReactionCount = (
   if (!reactions) return 0;
   return Object.values(reactions).reduce((acc, curr) => acc + curr.length, 0);
 };
+
+// just plan
+export const getMemberColor = (userId: string) => {
+  const colors = [
+    "text-red-500 dark:text-red-400",
+    "text-orange-500 dark:text-orange-400",
+    "text-amber-500 dark:text-amber-400",
+    "text-green-500 dark:text-green-400",
+    "text-emerald-500 dark:text-emerald-400",
+    "text-teal-500 dark:text-teal-400",
+    "text-cyan-500 dark:text-cyan-400",
+    "text-blue-500 dark:text-blue-400",
+    "text-indigo-500 dark:text-indigo-400",
+    "text-violet-500 dark:text-violet-400",
+    "text-purple-500 dark:text-purple-400",
+    "text-fuchsia-500 dark:text-fuchsia-400",
+    "text-pink-500 dark:text-pink-400",
+    "text-rose-500 dark:text-rose-400",
+  ];
+
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const index = Math.abs(hash % colors.length);
+  return colors[index];
+};

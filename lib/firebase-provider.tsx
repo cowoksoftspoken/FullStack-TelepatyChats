@@ -4,7 +4,7 @@ import type React from "react";
 import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { Loader2 } from "lucide-react";
-import { auth, db, storage } from "./firebase";
+import { auth, db, storage, app } from "./firebase";
 
 interface FirebaseContextType {
   auth: typeof auth;
@@ -12,6 +12,7 @@ interface FirebaseContextType {
   storage: typeof storage;
   currentUser: any;
   loading: boolean;
+  app: typeof app;
 }
 
 const FirebaseContext = createContext<FirebaseContextType | null>(null);
@@ -53,6 +54,7 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
         storage,
         currentUser,
         loading,
+        app,
       }}
     >
       {children}

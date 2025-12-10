@@ -705,6 +705,17 @@ export function ChatArea({
 
       await addDoc(collection(db, "messages"), messageData);
 
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: contact.uid,
+          title: currentUser.displayName || "New Message",
+          body: "Shared location 📍",
+          icon: currentUser.photoURL,
+        }),
+      });
+
       setIsLocationDialogOpen(false);
       setLocation(null);
       setReplyTo(null);
@@ -869,6 +880,16 @@ export function ChatArea({
       }
 
       await addDoc(collection(db, "messages"), messageData);
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: contact.uid,
+          title: currentUser.displayName || "New Message",
+          body: "Sent a photo 📸",
+          icon: currentUser.photoURL,
+        }),
+      });
       setReplyTo(null);
     } catch (error) {
       console.error("Error sending camera image:", error);
@@ -976,6 +997,17 @@ export function ChatArea({
       }
 
       await addDoc(collection(db, "messages"), messageData);
+
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: contact.uid,
+          title: currentUser.displayName,
+          body: messageText,
+          icon: currentUser.photoURL,
+        }),
+      });
 
       if (contactIsTyping) {
         setContactIsTyping(false);
@@ -1197,6 +1229,23 @@ export function ChatArea({
       }
 
       await addDoc(collection(db, "messages"), messageData);
+
+      let bodyText = "Sent a file 📂";
+      if (previewFile.type === "image") bodyText = "Sent a photo 📸";
+      else if (previewFile.type === "video") bodyText = "Sent a video 🎥";
+      else if (previewFile.type === "audio")
+        bodyText = "Sent a voice message 🎤";
+
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: contact.uid,
+          title: currentUser.displayName || "New Message",
+          body: bodyText,
+          icon: currentUser.photoURL,
+        }),
+      });
 
       setPreviewFile(null);
       setCaption("");
@@ -1478,6 +1527,17 @@ export function ChatArea({
       }
 
       await addDoc(collection(db, "messages"), messageData);
+
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: contact.uid,
+          title: currentUser.displayName || "New Message",
+          body: "Sent a voice message 🎤",
+          icon: currentUser.photoURL,
+        }),
+      });
 
       setReplyTo(null);
     } catch (error) {

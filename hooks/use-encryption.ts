@@ -217,6 +217,75 @@ export function useEncryption(currentUser: any) {
     }
   };
 
+  // just plan
+  const decryptGroupMessage = async (
+    encryptedText: string,
+    recipientKeys: Record<string, string>,
+    iv: string
+  ) => {
+    if (!isInitialized || !privateKey) {
+      return "Locked Group Message 🔒";
+    }
+
+    try {
+      const myEncryptedKey = recipientKeys[currentUser.uid];
+      if (!myEncryptedKey) return "No key found for you";
+
+      const messageKey = await decryptKey(
+        myEncryptedKey,
+        privateKey,
+        publicKey!
+      );
+
+      return await decryptMessage(encryptedText, iv, messageKey);
+    } catch (error) {
+      console.error("Group decryption failed", error);
+      return "Decryption failed ⚠️";
+    }
+  };
+
+  // just plan
+  const encryptGroupMessage = async (message: string, memberIds: string[]) => {
+    if (!isInitialized || !publicKey) {
+      throw new Error("Encryption not initialized");
+    }
+
+    try {
+      const messageKey = await generateMessageKey();
+
+      const { cipherText, iv } = await encryptMessage(message, messageKey);
+
+      const recipientKeys: Record<string, string> = {};
+
+      await Promise.all(
+        memberIds.map(async (uid) => {
+          let targetPublicKey: Uint8Array | null = null;
+
+          if (uid === currentUser.uid) {
+            targetPublicKey = publicKey;
+          } else {
+            targetPublicKey = await fetchContactPublicKey(uid);
+          }
+
+          if (targetPublicKey) {
+            const encryptedKey = await encryptKey(messageKey, targetPublicKey);
+            recipientKeys[uid] = encryptedKey;
+          }
+        })
+      );
+
+      return {
+        isEncrypted: true,
+        encryptedText: cipherText,
+        recipientKeys,
+        iv,
+      };
+    } catch (error) {
+      console.error("Group encryption failed:", error);
+      return { isEncrypted: false, text: message };
+    }
+  };
+
   const encryptFile = async (
     file: File,
     contactId: string
@@ -289,5 +358,7 @@ export function useEncryption(currentUser: any) {
     decryptMessageFromContact,
     encryptFile,
     decryptLastMessageFromContact,
+    encryptGroupMessage,
+    decryptGroupMessage,
   };
 }
