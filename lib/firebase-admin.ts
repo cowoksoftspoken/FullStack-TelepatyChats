@@ -1,6 +1,6 @@
 import admin from "firebase-admin";
 
-if (!admin.app.length) {
+if (!admin.apps.length) {
   if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
     throw new Error("Missing FIREBASE_SERVICE_ACCOUNT environment variable");
   }
@@ -9,6 +9,7 @@ if (!admin.app.length) {
 
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   });
 }
 
