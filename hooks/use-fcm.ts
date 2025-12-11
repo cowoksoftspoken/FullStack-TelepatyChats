@@ -29,8 +29,7 @@ export function useFCM(currentUser: any) {
             await navigator.serviceWorker.ready;
 
             const token = await getToken(messaging, {
-              vapidKey:
-                "BPuy4FB4qbFJ4-cL26QHW8i8edudHwJz2ZXpEs2j6ON3BNleDYIiaGpz6PHne2i1QB5wSkEkX2Kf7FWjpkh1xAI",
+              vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
               serviceWorkerRegistration: registration,
             });
 

@@ -1,15 +1,19 @@
 "use client";
 
 import {
+  addDoc,
   arrayUnion,
+  collection,
   deleteDoc,
   doc,
   getDoc,
   updateDoc,
 } from "firebase/firestore";
 import {
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Flag,
   Music,
   Pause,
   Play,
@@ -45,6 +49,14 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { toast } from "../ui/use-toast";
+import { Label } from "../ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -90,8 +102,42 @@ export function StoryViewer({
       };
     }>
   >([]);
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [viewersLoading, setViewersLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleReport = async () => {
+    if (!reportReason || !currentUser) return;
+
+    setIsSubmittingReport(true);
+    try {
+      await addDoc(collection(db, "reports"), {
+        targetId: currentStory.id,
+        targetType: "story",
+        targetUserId: currentStory.userId,
+        reporterId: currentUser.uid,
+        reason: reportReason,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        contentPreview:
+          currentStory.mediaUrl || currentStory.textContent || "No Content",
+      });
+
+      toast({
+        title: "Report submitted",
+        description: "Thanks for keeping our community safe.",
+      });
+      setShowReportDialog(false);
+      setReportReason("");
+    } catch (error) {
+      console.error("Report error:", error);
+      toast({ variant: "destructive", title: "Failed to submit report" });
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -389,6 +435,14 @@ export function StoryViewer({
             {currentStory.type === "media" && (
               <DropdownMenuItem onClick={() => handleSaveMedia()}>
                 Save
+              </DropdownMenuItem>
+            )}
+            {currentStory.userId !== currentUser?.uid && (
+              <DropdownMenuItem
+                onClick={() => setShowReportDialog(true)}
+                className="text-yellow-500 focus:bg-yellow-500/20 cursor-pointer gap-2"
+              >
+                <Flag className="h-4 w-4" /> Report Story
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
@@ -754,6 +808,58 @@ export function StoryViewer({
               disabled={isDeleting}
             >
               {isDeleting ? "Deleting..." : "Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="bg-zinc-900 text-white border-zinc-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Report Content
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Why are you reporting this story?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select onValueChange={setReportReason} value={reportReason}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                  <SelectValue placeholder="Select a reason" />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-800 border-zinc-700 text-white">
+                  <SelectItem value="spam">It's spam</SelectItem>
+                  <SelectItem value="nudity">
+                    Nudity or sexual activity
+                  </SelectItem>
+                  <SelectItem value="hate">Hate speech or symbols</SelectItem>
+                  <SelectItem value="violence">
+                    Violence or dangerous organizations
+                  </SelectItem>
+                  <SelectItem value="harassment">
+                    Bullying or harassment
+                  </SelectItem>
+                  <SelectItem value="other">Something else</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setShowReportDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReport}
+              disabled={!reportReason || isSubmittingReport}
+            >
+              {isSubmittingReport ? "Submitting..." : "Submit Report"}
             </Button>
           </div>
         </DialogContent>

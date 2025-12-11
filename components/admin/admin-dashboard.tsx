@@ -5,18 +5,22 @@ import {
   collection,
   deleteDoc,
   doc,
+  getCountFromServer,
   getDocs,
+  orderBy,
   query,
   updateDoc,
   where,
 } from "firebase/firestore";
 import {
+  AlertTriangle,
   ArrowLeft,
   Ban,
   CheckCircle,
   Crown,
   MessageSquare,
   Power,
+  ShieldAlert,
   Trash2,
   User,
   Users,
@@ -40,6 +44,17 @@ import { useFirebase } from "@/lib/firebase-provider";
 import type { VerificationRequest } from "@/types/admin";
 import type { User as UserType } from "@/types/user";
 import Link from "next/link";
+import { DashboardStats } from "./dashboard-stats";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 
 export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const { db, currentUser } = useFirebase();
@@ -50,6 +65,13 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const [users, setUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("verification");
+  const [storiesCount, setStoriesCount] = useState<number>(0);
+  const [reports, setReports] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!userData?.isAdmin) return;
@@ -101,14 +123,112 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
         setUsers(usersData);
       } catch (error) {
         console.error("Error fetching users:", error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
-    fetchVerificationRequests();
-    fetchUsers();
+    const fetchStoriesCount = async () => {
+      try {
+        const now = new Date().toISOString();
+        const coll = collection(db, "stories");
+        const q = query(coll, where("expiresAt", ">", now));
+
+        const snapshot = await getCountFromServer(q);
+        setStoriesCount(snapshot.data().count);
+      } catch (error) {
+        console.error("Error fetching stories count:", error);
+      }
+    };
+
+    const fetchReports = async () => {
+      try {
+        const q = query(
+          collection(db, "reports"),
+          where("status", "==", "pending")
+        );
+        const snapshot = await getDocs(q);
+        const reportsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setReports(reportsData);
+      } catch (error) {
+        console.error("Error reports:", error);
+      }
+    };
+
+    Promise.all([
+      fetchVerificationRequests(),
+      fetchUsers(),
+      fetchStoriesCount(),
+      fetchReports(),
+    ]).finally(() => setIsLoading(false));
   }, [userData, db]);
+
+  const initiateDeleteUser = (userId: string, userName: string) => {
+    if (!userData?.isAdmin) return;
+    if (userId === currentUser?.uid) return;
+
+    setUserToDelete({ id: userId, name: userName });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete || !userData?.isAdmin) return;
+
+    setIsDeleting(true);
+
+    try {
+      const idToken = await currentUser.getIdToken();
+
+      const response = await fetch("/api/admin/delete-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: userToDelete.id,
+          idToken,
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed");
+
+      setUsers(users.filter((u) => u.uid !== userToDelete.id));
+
+      toast({
+        title: "Account Deleted",
+        description: `${userToDelete.name} has been permanently removed.`,
+      });
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: error.message || "Failed to delete user.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setUserToDelete(null);
+    }
+  };
+
+  const handleReportAction = async (
+    reportId: string,
+    action: "dismiss" | "resolve"
+  ) => {
+    if (!userData?.isAdmin) return;
+    try {
+      await updateDoc(doc(db, "reports", reportId), {
+        status: action === "dismiss" ? "dismissed" : "resolved",
+        adminId: currentUser.uid,
+        processedAt: new Date().toISOString(),
+      });
+
+      setReports((prev) => prev.filter((r) => r.id !== reportId));
+
+      toast({ title: `Report ${action}ed` });
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
 
   const handleToggleStatus = async (userId: string, currentStatus: boolean) => {
     if (!userData?.isAdmin) return;
@@ -123,9 +243,35 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     }
 
     try {
-      await updateDoc(doc(db, "users", userId), {
-        disabled: !currentStatus,
-      });
+      const idToken = await currentUser.getIdToken();
+      // await updateDoc(doc(db, "users", userId), {
+      //   disabled: !currentStatus,
+      // });
+
+      // console.table({
+      //   userId,
+      //   idToken,
+      //   disable: !currentStatus,
+      // });
+      // return;
+
+      if (userId) {
+        const response = await fetch("/api/admin/toggle-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId,
+            disable: !currentStatus,
+            idToken,
+          }),
+        });
+
+        const result = await response.json();
+
+        console.log(`[ToggleStatus] ${JSON.stringify(result)}}`);
+
+        if (!response.ok) throw new Error(result.error || "Failed");
+      }
 
       setUsers(
         users.map((u) =>
@@ -147,35 +293,49 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     }
   };
 
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!userData?.isAdmin) return;
-    if (userId === currentUser?.uid) return;
+  // const handleDeleteUser = async (userId: string, userName: string) => {
+  //   if (!userData?.isAdmin) return;
+  //   if (userId === currentUser?.uid) return;
 
-    if (
-      !confirm(
-        `Are you sure you want to PERMANENTLY delete user ${userName}? This cannot be undone.`
-      )
-    )
-      return;
+  //   if (
+  //     !confirm(
+  //       `Are you sure you want to PERMANENTLY delete user ${userName}? This cannot be undone.`
+  //     )
+  //   )
+  //     return;
 
-    try {
-      await deleteDoc(doc(db, "users", userId));
+  //   try {
+  //     const idToken = await currentUser.getIdToken();
 
-      setUsers(users.filter((u) => u.uid !== userId));
+  //     // await deleteDoc(doc(db, "users", userId));
+  //     const response = await fetch("/api/admin/delete-user", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({
+  //         userId,
+  //         idToken,
+  //       }),
+  //     });
 
-      toast({
-        title: "Deleted",
-        description: "User has been removed from database.",
-      });
-    } catch (error) {
-      console.error("Error deleting user:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete user.",
-      });
-    }
-  };
+  //     const result = await response.json();
+  //     console.log(`[DeleteUser] ${JSON.stringify(result)}`);
+
+  //     if (!response.ok) throw new Error(result.error || "Failed");
+  //     setUsers(users.filter((u) => u.uid !== userId));
+
+  //     toast({
+  //       title: "Deleted",
+  //       description: "User has been removed from database.",
+  //     });
+  //   } catch (error) {
+  //     console.error("Error deleting user:", error);
+  //     toast({
+  //       variant: "destructive",
+  //       title: "Error",
+  //       description: "Failed to delete user.",
+  //     });
+  //   }
+  // };
 
   const handleVerificationAction = async (
     requestId: string,
@@ -259,6 +419,8 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
         <BroadcastMessage users={users} isAdmin={userData?.isAdmin} />
       </div>
 
+      <DashboardStats users={users} totalStories={storiesCount} />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-6">
           <TabsTrigger value="verification" className="flex items-center gap-2">
@@ -277,6 +439,15 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
           <TabsTrigger value="broadcasts" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             <span>Broadcasts</span>
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4" />
+            <span>Reports</span>
+            {reports.length > 0 && (
+              <span className="ml-1 rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">
+                {reports.length}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
@@ -441,7 +612,9 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
                     size="sm"
                     className="h-8 w-8 p-0"
                     title="Delete User"
-                    onClick={() => handleDeleteUser(user.uid, user.displayName)}
+                    onClick={() =>
+                      initiateDeleteUser(user.uid, user.displayName)
+                    }
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -462,7 +635,120 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
             <BroadcastMessage users={users} isAdmin={userData?.isAdmin} />
           </div>
         </TabsContent>
+
+        <TabsContent value="reports">
+          <div className="grid gap-4 md:grid-cols-2">
+            {reports.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center p-8 border border-dashed rounded-lg text-muted-foreground">
+                <CheckCircle className="h-12 w-12 mb-4 text-green-500" />
+                <p>All clean! No pending reports.</p>
+              </div>
+            ) : (
+              reports.map((report) => (
+                <Card key={report.id} className="border-l-4 border-l-red-500">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-base text-red-500 font-bold uppercase tracking-wider">
+                          {report.reason}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          Reported{" "}
+                          {new Date(report.createdAt).toLocaleDateString()}
+                        </CardDescription>
+                      </div>
+                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                        Pending
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="text-sm space-y-3">
+                    <div className="p-3 bg-muted rounded-md text-xs font-mono break-all">
+                      User ID: {report.targetUserId}
+                      <br />
+                      Content: {report.contentPreview.substring(0, 50)}...
+                    </div>
+
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          initiateDeleteUser(
+                            report.targetUserId,
+                            "Reported User"
+                          )
+                        }
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" /> Ban User
+                      </Button>
+
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleReportAction(report.id, "dismiss")}
+                      >
+                        Dismiss
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        onClick={() => handleReportAction(report.id, "resolve")}
+                      >
+                        Mark Resolved
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
+
+      <AlertDialog
+        open={!!userToDelete}
+        onOpenChange={(open) => !open && setUserToDelete(null)}
+      >
+        <AlertDialogContent className="bg-zinc-950 border-zinc-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-500">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account Permanently?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              You are about to delete <strong>{userToDelete?.name}</strong>.
+              <br />
+              <br />
+              This action cannot be undone. It will permanently delete their:
+              <ul className="list-disc list-inside mt-2 text-sm text-zinc-300">
+                <li>Login Access (Authentication)</li>
+                <li>User Profile Data</li>
+                <li>Chat History & Stories</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="bg-transparent border-zinc-700 hover:bg-zinc-800 text-white hover:text-white"
+            >
+              Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                confirmDeleteUser();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white border-none"
+            >
+              {isDeleting ? "Deleting..." : "Yes, Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
