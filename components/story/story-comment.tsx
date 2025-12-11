@@ -142,6 +142,18 @@ export function StoryReply({
       }
 
       await addDoc(collection(db, "messages"), messageData);
+
+      fetch("/api/send-notification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receiverId: storyOwnerId,
+          title: currentUser.displayName || "New Message",
+          body: "Replied to a Story",
+          icon: currentUser.photoURL,
+        }),
+      });
+
       await updateDoc(doc(db, "typingStatus", chatId), {
         [currentUser.uid]: false,
       }).catch(() => {});
@@ -195,6 +207,7 @@ export function StoryReply({
           </Button>
 
           <textarea
+            name="Reply"
             ref={textareaRef}
             placeholder={
               isLoadingContact
