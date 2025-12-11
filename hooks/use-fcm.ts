@@ -35,7 +35,6 @@ export function useFCM(currentUser: any) {
             });
 
             if (token) {
-              console.log("FCM Token:", token);
               setFcmToken(token);
 
               await updateDoc(doc(db, "users", currentUser.uid), {
