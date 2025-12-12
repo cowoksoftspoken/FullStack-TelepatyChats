@@ -25,7 +25,7 @@ import { useToast } from "@/components/ui/use-toast";
 export default function StoriesPage() {
   const { db, currentUser, loading: authLoading } = useFirebase();
   const [loading, setLoading] = useState(true);
-  const [contacts, setContacts] = useState<User[]>([]);
+  // const [contacts, setContacts] = useState<User[]>([]);
   const [contactsWithStories, setContactsWithStories] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [stories, setStories] = useState<Story[]>([]);
@@ -129,7 +129,7 @@ export default function StoriesPage() {
 
         usersData[currentUser.uid] = currentUser as User;
 
-        setContacts(contactsData);
+        // setContacts(contactsData);
         setUsers(usersData);
 
         await fetchStoriesForContacts(

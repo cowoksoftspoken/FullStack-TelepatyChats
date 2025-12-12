@@ -64,7 +64,7 @@ export function ContactItem({
 
       if (lastMessage.type !== "text") {
         const lastMessageTypes: Record<string, string> = {
-          image: "📷 Photo",
+          image: "🖼️ Photo",
           video: "🎥 Video",
           audio: "🎧 Audio",
           file: "📁 File",

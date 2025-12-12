@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  onSnapshot,
-} from "firebase/firestore";
-import { useChatContext } from "./chat-context";
 import { useFirebase } from "@/lib/firebase-provider";
 import type { User } from "@/types/user";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
 import NotificationToast from "./notification-toast";
 
 interface Props {

@@ -20,6 +20,7 @@ import {
   Crown,
   MessageSquare,
   Power,
+  Shield,
   ShieldAlert,
   Trash2,
   User,
@@ -55,6 +56,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
+import { toggleAdminStatus } from "@/app/actions/admin";
 
 export function AdminDashboard({ userData }: { userData?: DocumentData }) {
   const { db, currentUser } = useFirebase();
@@ -72,6 +74,8 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     id: string;
     name: string;
   } | null>(null);
+  const [adminDialogUser, setAdminDialogUser] = useState<UserType | null>(null);
+  const [isProcessingAdmin, setIsProcessingAdmin] = useState(false);
 
   useEffect(() => {
     if (!userData?.isAdmin) return;
@@ -290,6 +294,56 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
         title: "Error",
         description: "Failed to update user status.",
       });
+    }
+  };
+
+  const initiateToggleAdmin = (user: UserType) => {
+    setAdminDialogUser(user);
+  };
+
+  const executeToggleAdmin = async () => {
+    if (!adminDialogUser || !userData?.isAdmin) return;
+
+    setIsProcessingAdmin(true);
+
+    try {
+      const idToken = await currentUser.getIdToken();
+      const newStatus = !adminDialogUser.isAdmin;
+
+      const result = await toggleAdminStatus(
+        adminDialogUser.uid,
+        newStatus,
+        idToken
+      );
+
+      if (result.success) {
+        setUsers(
+          users.map((u) =>
+            u.uid === adminDialogUser.uid ? { ...u, isAdmin: newStatus } : u
+          )
+        );
+
+        toast({
+          title: "Success",
+          description: result.message,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Failed",
+          description: result.error,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Something went wrong",
+      });
+    } finally {
+      setIsProcessingAdmin(false);
+      setAdminDialogUser(null);
     }
   };
 
@@ -618,6 +672,23 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
+                  <Button
+                    variant={user.isAdmin ? "default" : "outline"}
+                    size="sm"
+                    className={`h-8 w-8 p-0 ${
+                      user.isAdmin
+                        ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                        : ""
+                    }`}
+                    title={user.isAdmin ? "Remove Admin" : "Make Admin"}
+                    onClick={() => initiateToggleAdmin(user)}
+                  >
+                    {user.isAdmin ? (
+                      <ShieldAlert className="h-4 w-4" />
+                    ) : (
+                      <Shield className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
               </div>
             ))}
@@ -745,6 +816,75 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
               className="bg-red-600 hover:bg-red-700 text-white border-none"
             >
               {isDeleting ? "Deleting..." : "Yes, Delete Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!adminDialogUser}
+        onOpenChange={(open) => !open && setAdminDialogUser(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {adminDialogUser?.isAdmin ? (
+                <ShieldAlert className="h-5 w-5 text-red-500" />
+              ) : (
+                <Shield className="h-5 w-5 text-yellow-500" />
+              )}
+              {adminDialogUser?.isAdmin
+                ? "Revoke Admin Access?"
+                : "Grant Admin Access?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to{" "}
+              <strong>{adminDialogUser?.isAdmin ? "REMOVE" : "MAKE"}</strong>{" "}
+              <span className="font-semibold text-foreground">
+                {adminDialogUser?.displayName}
+              </span>{" "}
+              as an Admin?
+              <br />
+              <br />
+              {adminDialogUser?.isAdmin ? (
+                <span className="text-red-500">
+                  They will lose access to the Admin Dashboard and broadcast
+                  features immediately.
+                </span>
+              ) : (
+                <span className="text-yellow-600 dark:text-yellow-500">
+                  They will gain full control over user management and
+                  broadcasts. Use with caution.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessingAdmin}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                executeToggleAdmin();
+              }}
+              disabled={isProcessingAdmin}
+              className={
+                adminDialogUser?.isAdmin
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-yellow-600 hover:bg-yellow-700 text-white"
+              }
+            >
+              {isProcessingAdmin ? (
+                <span className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Processing...
+                </span>
+              ) : adminDialogUser?.isAdmin ? (
+                "Revoke Access"
+              ) : (
+                "Grant Access"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

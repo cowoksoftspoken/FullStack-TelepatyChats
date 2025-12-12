@@ -1,0 +1,42 @@
+rules_version = '2';
+service firebase.storage {
+    match /b/{bucket}/o {
+
+        // Helper Functions
+        function isAuthenticated() {
+            return request.auth != null;
+        }
+
+        function isOwner(userId) {
+            return isAuthenticated() && request.auth.uid == userId;
+        }
+
+    // function isAdmin() {
+        //     return isAuthenticated(); 
+        // }
+
+        // 1. STORY MEDIA
+        match /stories/{userId}/{fileName} {
+            allow read: if isAuthenticated();
+            allow write: if isOwner(userId) 
+                && request.resource.size < 50 * 1024 * 1024; 
+            allow delete: if isOwner(userId);
+        }
+
+        // 2. CHAT MEDIA (Encrypted & Non-Encrypted)
+        match /chats/{chatId}/{fileName} {
+                allow read, write, delete: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
+            }
+
+            // 3. AVATARS
+            match /avatars/{userId}/{fileName} {
+                allow read: if true; 
+                allow write, delete: if isOwner(userId);
+            }
+
+            match /broadcasts/{fileName} {
+                allow read: if isAuthenticated();
+                allow write: if isAuthenticated(); 
+            }
+        }
+    }

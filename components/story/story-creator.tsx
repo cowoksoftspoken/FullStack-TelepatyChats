@@ -479,7 +479,7 @@ export function StoryCreator() {
                             alt="art"
                           />
                           <div className="truncate">
-                            <p className="text-xs font-medium truncate">
+                            <p className="text-xs font-medium truncate max-w-[120px] md:max-w-none text-ellipsis">
                               {track.trackName}
                             </p>
                             <p className="text-[10px] text-muted-foreground truncate">

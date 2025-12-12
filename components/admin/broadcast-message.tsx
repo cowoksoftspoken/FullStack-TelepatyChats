@@ -216,15 +216,28 @@ export function BroadcastMessage({
         const chatId = [currentUser.uid, targetUser.uid].sort().join("_");
         const newMessageRef = doc(collection(db, "messages"));
 
+        let msgType = "text";
+        if (mediaUrl && finalMediaType) {
+          msgType = finalMediaType;
+        }
+
         let messageData: any = {
           chatId: chatId,
           senderId: currentUser.uid,
           receiverId: targetUser.uid,
           timestamp: new Date().toISOString(),
           isSeen: false,
-          type: "broadcast",
+          type: msgType,
           isBroadcast: true,
         };
+
+        if (mediaUrl) {
+          messageData.fileURL = mediaUrl;
+          messageData.fileName = mediaFile?.name || "broadcast_file";
+          messageData.fileType = mediaFile?.type || "application/octet-stream";
+          messageData.size = mediaFile?.size || 0;
+          messageData.fileIsEncrypted = false;
+        }
 
         if (isInitialized) {
           try {

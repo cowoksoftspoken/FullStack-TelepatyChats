@@ -5,6 +5,7 @@ import { StoryCircle } from "./story-circle";
 import { StoryViewer } from "./story-viewer";
 import type { User } from "@/types/user";
 import type { Story } from "@/types/story";
+import useUserStatus from "@/hooks/use-user-status";
 
 interface StoryTrayProps {
   users: User[];
@@ -12,9 +13,41 @@ interface StoryTrayProps {
   hasStory: boolean;
 }
 
+function StoryTrayItem({
+  user,
+  currentUser,
+  onStoriesLoaded,
+  onClick,
+}: {
+  user: User;
+  currentUser: User | null;
+  onStoriesLoaded: (userId: string, stories: Story[]) => void;
+  onClick: () => void;
+}) {
+  const { isBlocked, isUserBlockedByContact } = useUserStatus(
+    user.uid,
+    currentUser?.uid
+  );
+
+  if (isBlocked || isUserBlockedByContact) return null;
+
+  return (
+    <div className="flex flex-col items-center flex-shrink-0">
+      <StoryCircle
+        user={user}
+        currentUser={currentUser}
+        onStoriesLoaded={onStoriesLoaded}
+        onClick={onClick}
+      />
+      <span className="mt-1 text-xs max-w-[100px] truncate inline-block">
+        {user.displayName}
+      </span>
+    </div>
+  );
+}
+
 export function StoryTray({ users, currentUser, hasStory }: StoryTrayProps) {
   const [storiesMap, setStoriesMap] = useState<Record<string, Story[]>>({});
-
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   const handleStoriesLoaded = useCallback(
@@ -65,7 +98,7 @@ export function StoryTray({ users, currentUser, hasStory }: StoryTrayProps) {
       record[currentUser.uid] = currentUser;
     }
     return record;
-  }, [users]);
+  }, [users, currentUser]);
 
   return (
     <>
@@ -88,18 +121,13 @@ export function StoryTray({ users, currentUser, hasStory }: StoryTrayProps) {
         {users
           .filter((u) => u.uid !== currentUser?.uid)
           .map((user) => (
-            <div className="flex flex-col items-center flex-shrink-0">
-              <StoryCircle
-                key={user.uid}
-                user={user}
-                currentUser={currentUser}
-                onStoriesLoaded={handleStoriesLoaded}
-                onClick={() => setActiveUserId(user.uid)}
-              />
-              <span className="mt-1 text-xs max-w-[100px] truncate inline-block">
-                {user.displayName}
-              </span>
-            </div>
+            <StoryTrayItem
+              key={user.uid}
+              user={user}
+              currentUser={currentUser}
+              onStoriesLoaded={handleStoriesLoaded}
+              onClick={() => setActiveUserId(user.uid)}
+            />
           ))}
       </div>
 

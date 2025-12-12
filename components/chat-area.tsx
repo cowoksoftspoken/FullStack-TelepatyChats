@@ -87,6 +87,7 @@ import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
 import { Story } from "@/types/story";
 import { StoryViewer } from "./story/story-viewer";
+import { StoryThumbnail } from "./story/story-thumnail";
 
 interface ChatAreaProps {
   currentUser: any;
@@ -2073,39 +2074,9 @@ export function ChatArea({
                         handleViewStory(msg.replyContext?.storyId as string);
                       }}
                     >
-                      <div className="h-12 w-10 bg-black/20 dark:bg-white/10 rounded flex items-center justify-center overflow-hidden shrink-0 relative">
-                        {msg.replyContext.mediaType === "video" ? (
-                          <video
-                            src={msg.replyContext.storyUrl}
-                            className="h-full w-full object-cover opacity-80"
-                            muted
-                            preload="metadata"
-                          />
-                        ) : msg.replyContext.storyUrl ? (
-                          <img
-                            src={msg.replyContext.storyUrl}
-                            alt="Story"
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="text-[8px] p-1 text-center break-words leading-tight">
-                            Story Text
-                          </div>
-                        )}
-
-                        {msg.replyContext.mediaType === "video" && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                              className="w-4 h-4 text-white drop-shadow-md"
-                            >
-                              <path d="M8 5v14l11-7z" />
-                            </svg>
-                          </div>
-                        )}
+                      <div className="h-12 w-10 bg-black/5 dark:bg-white/5 rounded overflow-hidden shrink-0 relative">
+                        <StoryThumbnail context={msg.replyContext} />
                       </div>
-
                       <div className="flex flex-col justify-center pr-2">
                         <span className="text-[10px] font-bold uppercase tracking-wider opacity-60">
                           Status Update

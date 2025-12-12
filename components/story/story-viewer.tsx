@@ -384,6 +384,8 @@ export function StoryViewer({
     }
   };
 
+  if (!currentStory) return null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
       <div className="absolute inset-0 opacity-30 blur-3xl scale-110 z-0 pointer-events-none">

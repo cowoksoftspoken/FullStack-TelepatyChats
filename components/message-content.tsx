@@ -1,16 +1,14 @@
 "use client";
 
 import type { Message } from "@/types/message";
-import { Globe, MapPin } from "lucide-react";
 import { useMemo } from "react";
-import { MarkdownCollapsedText } from "./markdown-collapsed-text";
 import { EncryptedAudio } from "./encrypted-audio";
 import { EncryptedFile } from "./encrypted-file";
 import { EncryptedImage } from "./encrypted-image";
 import { EncryptedVideo } from "./encrypted-video";
-import MapPreview from "./map-preview";
-import { YoutubeEmbed } from "./yt-embed";
 import { LocationMessage } from "./location-message";
+import { MarkdownCollapsedText } from "./markdown-collapsed-text";
+import { YoutubeEmbed } from "./yt-embed";
 
 interface MessageContentProps {
   msg: Message;
