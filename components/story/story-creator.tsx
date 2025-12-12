@@ -360,6 +360,7 @@ export function StoryCreator() {
                     onClick={() => {
                       setPreview(null);
                       setMediaFile(null);
+                      setMediaType(null);
                     }}
                   >
                     <X className="h-4 w-4" />
