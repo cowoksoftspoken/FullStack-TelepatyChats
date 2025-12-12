@@ -482,7 +482,7 @@ export function StoryCreator() {
                             <p className="text-xs font-medium truncate max-w-[120px] md:max-w-none text-ellipsis">
                               {track.trackName}
                             </p>
-                            <p className="text-[10px] text-muted-foreground truncate">
+                            <p className="text-[10px] max-w-[120px] md:max-w-none text-muted-foreground truncate text-ellipsis">
                               {track.artistName}
                             </p>
                           </div>
