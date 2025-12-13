@@ -12,7 +12,11 @@ body {
   }
 
   .gradient-primary {
-    background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+    background: linear-gradient(
+      135deg,
+      var(--gradient-start),
+      var(--gradient-end)
+    );
     position: relative;
     overflow: hidden;
   }
@@ -140,3 +144,18 @@ body {
     @apply bg-background text-foreground;
   }
 }
+/* 
+@layer components {
+  [data-radix-toast-viewport] {
+    position: fixed !important;
+    z-index: 999999;
+    top: 0;
+    right: 0;
+    width: 100%;
+    pointer-events: none;
+  }
+
+  [data-radix-toast-viewport] > * {
+    pointer-events: auto;
+  }
+} */

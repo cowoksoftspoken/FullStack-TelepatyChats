@@ -11,7 +11,7 @@ service cloud.firestore {
         }
 
         function isAdmin() {
-            return isAuthenticated() && request.auth.token.admin == true;
+            return isAuthenticated() && (request.auth.token.admin == true || request.auth.token.superAdmin == true);
         }
 
         function isBlockedBy(targetUserId) {
@@ -34,25 +34,31 @@ service cloud.firestore {
             allow create: if isOwner(userId);
 
             allow update: if isAdmin() 
-                || (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isVerified', 'disabled']))
+                || (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isVerified']))
                 || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['incomingCall', 'userInCall', 'otherUserId', 'online', 'lastSeen']));
 
             allow delete: if isAdmin() || isOwner(userId);
         }
 
-        // 2. CONTACTS
         match /contacts/{contactDocId} {
             allow list: if isAuthenticated(); 
-            allow get: if isAuthenticated() && resource.data.userId == request.auth.uid;
+            allow get: if isAuthenticated() && (
+            resource == null || 
+            resource.data.userId == request.auth.uid || 
+            resource.data.contactId == request.auth.uid
+            );
 
-            allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+            allow create: if isAuthenticated() && (
+            request.resource.data.userId == request.auth.uid ||
+            request.resource.data.contactId == request.auth.uid
+            );
 
             allow delete: if isAuthenticated() && (
             resource.data.userId == request.auth.uid || 
             resource.data.contactId == request.auth.uid
             );
         }
-        // 3. MESSAGES 
+
         match /messages/{messageId} {
             allow list: if isAuthenticated(); 
 
@@ -71,7 +77,7 @@ service cloud.firestore {
 
                 allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
             }
-            // 4. STORIES
+
             match /stories/{storyId} {
                 allow list: if isAuthenticated();
 
@@ -96,7 +102,6 @@ service cloud.firestore {
                 allow delete: if isOwner(resource.data.userId);
             }
 
-            // 5. CALLS & CANDIDATES
             match /calls/{callId} {
                 allow create: if isAuthenticated();
                 allow read, update, delete: if isAuthenticated() && (
@@ -110,7 +115,6 @@ service cloud.firestore {
                 allow get, create, delete: if isAuthenticated();
             }
 
-            // 6. ADMIN & SYSTEM
             match /typingStatus/{chatId} {
                     allow read, write: if isAuthenticated() && chatId.matches('.*' + request.auth.uid + '.*');
                 }

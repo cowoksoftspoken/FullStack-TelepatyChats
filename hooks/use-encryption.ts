@@ -160,7 +160,7 @@ export function useEncryption(currentUser: any) {
     iv: string,
     isSender: boolean
   ) => {
-    if (!isInitialized || !privateKey) {
+    if (!isInitialized || !privateKey || !publicKey) {
       throw new Error(
         "Encryption not initialized or private key not available"
       );
@@ -171,7 +171,11 @@ export function useEncryption(currentUser: any) {
         ? encryptedKeyForSelf || encryptedKey
         : encryptedKey;
 
+      if (!keyToDecrypt) return "Initializing Keys";
+
       const messageKey = await decryptKey(keyToDecrypt, privateKey, publicKey!);
+
+      if (!messageKey) return "Processing keys";
 
       const decryptedMessage = await decryptMessage(
         encryptedText,
@@ -193,15 +197,18 @@ export function useEncryption(currentUser: any) {
     isSender: boolean,
     iv: string
   ) => {
-    if (!isInitialized || !privateKey) {
-      throw new Error(
-        "Encryption not initialized or private key not available"
-      );
+    if (!isInitialized || !privateKey || !publicKey) {
+      return "Initializing Keys";
     }
+
+    if (!lastMessage || !iv) return lastMessage || "";
+
     try {
       const keyToDecrypt = isSender
         ? encryptedKeyForSelf || encryptedKey
         : encryptedKey;
+
+      if (!keyToDecrypt) return lastMessage;
 
       const messageKey = await decryptKey(keyToDecrypt, privateKey, publicKey!);
       const decryptedMessage = await decryptMessage(

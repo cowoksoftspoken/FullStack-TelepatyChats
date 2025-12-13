@@ -72,7 +72,6 @@ export function Sidebar({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [contactToDelete, setContactToDelete] = useState<string | null>(null);
   const { toast } = useToast();
-
   const [lastMessage, setLastMessage] = useState<
     Record<
       string,
