@@ -94,13 +94,17 @@ interface ChatAreaProps {
   contact: User;
   initiateCall: (isVideo: boolean) => void;
   setIsMobileMenuOpen?: (isOpen: boolean) => void;
+  isOnline: boolean;
+  lastSeen: number;
 }
 
 export function ChatArea({
   currentUser,
   contact,
   initiateCall,
+  isOnline,
   setIsMobileMenuOpen,
+  lastSeen,
 }: ChatAreaProps) {
   const { db, storage } = useFirebase();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -122,7 +126,7 @@ export function ChatArea({
     msg: Message;
     initialText: string;
   } | null>(null);
-  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+  // const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
   const isSelectionMode = selectedIds.size > 0;
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -132,7 +136,7 @@ export function ChatArea({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   // const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
-  const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
+  const { isBlocked, isUserBlockedByContact } = useUserStatus(
     contact.uid,
     currentUser?.uid
   );
@@ -1552,7 +1556,7 @@ export function ChatArea({
   };
 
   const handleSaveEdit = async (messageId: string, newText: string) => {
-    setIsSavingEdit(true);
+    // setIsSavingEdit(true);
 
     try {
       const messageRef = doc(db, "messages", messageId);
@@ -1599,9 +1603,9 @@ export function ChatArea({
         variant: "destructive",
         description: "Failed to update message.",
       });
-    } finally {
-      setIsSavingEdit(false);
-    }
+    } //finally {
+    // setIsSavingEdit(false);
+    // }
   };
 
   useEffect(() => {
@@ -1798,6 +1802,7 @@ export function ChatArea({
                     contact={contact}
                     onlineStatus={isOnline}
                     isAdmin={contact.isAdmin}
+                    lastSeen={lastSeen}
                     isVerified={contact.isVerified}
                     contactIsTyping={contactIsTyping}
                   />
@@ -2556,6 +2561,7 @@ export function ChatArea({
         initiateCall={initiateCall}
         open={isUserProfileOpen}
         onClose={() => setIsUserProfileOpen(false)}
+        isOnline={isOnline}
       />
 
       {isImageViewerOpen && currentViewingImage && (

@@ -23,6 +23,7 @@ interface UserProfilePopupProps {
   initiateCall: (isVideo: boolean) => void;
   onClose: () => void;
   open: boolean;
+  isOnline: boolean;
 }
 
 export function UserProfilePopup({
@@ -31,11 +32,12 @@ export function UserProfilePopup({
   initiateCall,
   onClose,
   open,
+  isOnline,
 }: UserProfilePopupProps) {
   const { db } = useFirebase();
   const { toast } = useToast();
   const [isBlocking, setIsBlocking] = useState(false);
-  const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
+  const { isBlocked, isUserBlockedByContact } = useUserStatus(
     user.uid,
     currentUser?.uid
   );

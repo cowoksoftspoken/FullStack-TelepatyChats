@@ -7,9 +7,12 @@
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 
-import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
+import { setGlobalOptions } from "firebase-functions";
+
+import { onValueUpdated } from "firebase-functions/v2/database";
+import * as admin from "firebase-admin";
+// import {onRequest} from "firebase-functions/https";
+// import * as logger from "firebase-functions/logger";
 
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
@@ -30,3 +33,25 @@ setGlobalOptions({ maxInstances: 10 });
 //   logger.info("Hello logs!", {structuredData: true});
 //   response.send("Hello from Firebase!");
 // });
+
+admin.initializeApp();
+
+export const syncPresenceToFirestore = onValueUpdated(
+  "/status/{uid}",
+  async (event) => {
+    const after = event.data.after.val();
+    const uid = event.params.uid;
+
+    if (!after) return;
+
+    if (after.online === false) {
+      await admin
+        .firestore()
+        .doc(`users/${uid}`)
+        .update({
+          online: false,
+          lastSeen: admin.firestore.Timestamp.fromMillis(after.lastSeen),
+        });
+    }
+  }
+);

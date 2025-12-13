@@ -10,6 +10,14 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  onDisconnect,
+  set,
+  off,
+} from "firebase/database";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { EnhancedCallInterface } from "@/components/enhanced-call-interface";
@@ -51,6 +59,9 @@ export default function DashboardPage() {
   const [currentCaller, setCurrentCaller] = useState<User | null>(null);
   const { theme } = useTheme();
   const { showNotif } = useSystemNotif();
+  const [userStatusMap, setUserStatusMap] = useState<
+    Record<string, { online: boolean; lastSeen: number }>
+  >({});
 
   const router = useRouter();
 
@@ -174,75 +185,127 @@ export default function DashboardPage() {
     };
   }, [currentUser, db, incomingCall?.callData.callId]);
 
-  useEffect(() => {
-    if (!authLoading && !currentUser) {
-      router.push("/login");
-    }
-  }, [authLoading, currentUser, router]);
+  // useEffect(() => {
+  //   if (!authLoading && !currentUser) {
+  //     router.push("/login");
+  //   }
+  // }, [authLoading, currentUser, router]);
 
+  // useEffect(() => {
+  //   if (!currentUser) return;
+
+  //   const userRef = doc(db, "users", currentUser.uid);
+
+  //   const setOnline = async () => {
+  //     try {
+  //       await updateDoc(userRef, {
+  //         online: true,
+  //       });
+  //     } catch (error) {
+  //       console.error("Error setting online:", error);
+  //     }
+  //   };
+
+  //   const setOffline = async () => {
+  //     try {
+  //       await updateDoc(userRef, {
+  //         online: false,
+  //         lastSeen: serverTimestamp(),
+  //       });
+  //     } catch (error) {
+  //       console.error("Error setting offline:", error);
+  //     }
+  //   };
+
+  //   const handleBeforeUnload = () => {
+  //     setOffline();
+  //   };
+
+  //   const handleBlur = () => {
+  //     setOffline();
+  //   };
+
+  //   const handleFocus = () => {
+  //     setOnline();
+  //   };
+
+  //   const handleOffline = () => {
+  //     setOffline();
+  //   };
+
+  //   const handleOnline = () => {
+  //     setOnline();
+  //   };
+
+  //   setOnline();
+
+  //   window.addEventListener("beforeunload", handleBeforeUnload);
+  //   window.addEventListener("blur", handleBlur);
+  //   window.addEventListener("focus", handleFocus);
+  //   window.addEventListener("offline", handleOffline);
+  //   window.addEventListener("online", handleOnline);
+
+  //   return () => {
+  //     window.removeEventListener("beforeunload", handleBeforeUnload);
+  //     window.removeEventListener("blur", handleBlur);
+  //     window.removeEventListener("focus", handleFocus);
+  //     window.removeEventListener("offline", handleOffline);
+  //     window.removeEventListener("online", handleOnline);
+  //     setOffline();
+  //   };
+  // }, [currentUser, db]);
   useEffect(() => {
     if (!currentUser) return;
 
-    const userRef = doc(db, "users", currentUser.uid);
+    const rtdb = getDatabase();
+    const statusRef = ref(rtdb, `status/${currentUser.uid}`);
+    const connectedRef = ref(rtdb, ".info/connected");
 
-    const setOnline = async () => {
-      try {
-        await updateDoc(userRef, {
-          online: true,
-        });
-      } catch (error) {
-        console.error("Error setting online:", error);
-      }
-    };
+    onValue(connectedRef, (snap) => {
+      if (snap.val() === false) return;
 
-    const setOffline = async () => {
-      try {
-        await updateDoc(userRef, {
-          online: false,
-          lastSeen: serverTimestamp(),
-        });
-      } catch (error) {
-        console.error("Error setting offline:", error);
-      }
-    };
+      onDisconnect(statusRef).set({
+        online: false,
+        lastSeen: Date.now(),
+      });
 
-    const handleBeforeUnload = () => {
-      setOffline();
-    };
+      set(statusRef, {
+        online: true,
+        lastSeen: Date.now(),
+      });
+    });
+  }, [currentUser]);
 
-    const handleBlur = () => {
-      setOffline();
-    };
+  useEffect(() => {
+    if (!currentUser || contacts.length === 0) return;
 
-    const handleFocus = () => {
-      setOnline();
-    };
+    const rtdb = getDatabase();
+    const listeners: Array<() => void> = [];
 
-    const handleOffline = () => {
-      setOffline();
-    };
+    contacts.forEach((contact) => {
+      const statusRef = ref(rtdb, `status/${contact.uid}`);
 
-    const handleOnline = () => {
-      setOnline();
-    };
+      const callback = (snap: any) => {
+        const data = snap.val();
 
-    setOnline();
+        setUserStatusMap((prev) => ({
+          ...prev,
+          [contact.uid]: {
+            online: data?.online ?? false,
+            lastSeen: data?.lastSeen ?? 0,
+          },
+        }));
+      };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("blur", handleBlur);
-    window.addEventListener("focus", handleFocus);
-    window.addEventListener("offline", handleOffline);
-    window.addEventListener("online", handleOnline);
+      onValue(statusRef, callback);
+
+      listeners.push(() => off(statusRef, "value", callback));
+    });
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("blur", handleBlur);
-      window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("offline", handleOffline);
-      window.removeEventListener("online", handleOnline);
-      setOffline();
+      listeners.forEach((unsub) => unsub());
     };
-  }, [currentUser, db]);
+  }, [currentUser, contacts]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -414,6 +477,7 @@ export default function DashboardPage() {
           <Sidebar
             user={currentUser}
             contacts={contacts}
+            userStatusMap={userStatusMap}
             selectedContact={selectedContact}
             setSelectedContact={(contact) => {
               setSelectedContact(contact);
@@ -430,6 +494,8 @@ export default function DashboardPage() {
             <ChatArea
               currentUser={currentUser}
               contact={selectedContact}
+              lastSeen={userStatusMap[selectedContact.uid].lastSeen}
+              isOnline={userStatusMap[selectedContact.uid].online ?? false}
               initiateCall={(isVideo) =>
                 handleStartCall(selectedContact, isVideo)
               }

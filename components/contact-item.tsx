@@ -20,6 +20,7 @@ export function ContactItem({
   handleDeleteContact,
   lastMessage,
   currentUser,
+  isOnline,
 }: {
   contact: User;
   user: any;
@@ -28,6 +29,7 @@ export function ContactItem({
   setIsChatActive: (b: boolean) => void;
   initiateCall: (c: User, isVideo: boolean) => void;
   toast: any;
+  isOnline: boolean;
   handleDeleteContact: (contactUid: string) => void;
   lastMessage: {
     type: string;
@@ -40,7 +42,7 @@ export function ContactItem({
   };
   currentUser: any;
 }) {
-  const { isOnline, isBlocked, isUserBlockedByContact } = useUserStatus(
+  const { isBlocked, isUserBlockedByContact } = useUserStatus(
     contact.uid,
     user.uid
   );
@@ -208,7 +210,7 @@ export function ContactItem({
                 description:
                   "You cannot call this contact because one of you has blocked the other.",
               });
-            } else if (!contact.online) {
+            } else if (!isOnline) {
               toast({
                 variant: "destructive",
                 title: "Cannot initiate call",
@@ -218,7 +220,7 @@ export function ContactItem({
               initiateCall(contact, false);
             }
           }}
-          disabled={blocked || !contact.online}
+          disabled={blocked || !isOnline}
         >
           <Phone className="h-4 w-4" />
         </Button>
@@ -235,7 +237,7 @@ export function ContactItem({
                 description:
                   "You cannot call this contact because one of you has blocked the other.",
               });
-            } else if (!contact.online) {
+            } else if (!isOnline) {
               toast({
                 variant: "destructive",
                 title: "Cannot initiate call",
@@ -245,7 +247,7 @@ export function ContactItem({
               initiateCall(contact, true);
             }
           }}
-          disabled={blocked || !contact.online}
+          disabled={blocked || !isOnline}
         >
           <Video className="h-4 w-4" />
         </Button>

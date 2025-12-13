@@ -1,4 +1,5 @@
-import React from "react";
+"use client";
+import React, { useEffect, useMemo, useState } from "react";
 
 type Timestamp = {
   seconds: number;
@@ -16,16 +17,14 @@ type Props = {
   onlineStatus?: boolean;
   contactIsTyping: boolean;
   isAdmin?: boolean;
+  lastSeen: number;
   isVerified?: boolean;
 };
 
-function formatLastSeen(timestamp?: Timestamp): string {
-  if (!timestamp || !timestamp.seconds) return "Offline";
+function formatLastSeen(lastSeen?: number): string {
+  if (!lastSeen) return "Offline";
 
-  const date = new Date(
-    timestamp.seconds * 1000 +
-      Math.floor((timestamp.nanoseconds || 0) / 1_000_000)
-  );
+  const date = new Date(lastSeen);
   const now = new Date();
 
   const lastSeenDay = date.toDateString();
@@ -61,8 +60,51 @@ const ContactStatus: React.FC<Props> = ({
   onlineStatus,
   contactIsTyping,
   isAdmin,
+  lastSeen,
   isVerified,
 }) => {
+  const [statusIndex, setStatusIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  const offlineStatuses = useMemo(() => {
+    const list: { text: string; type: "role" | "verified" | "lastSeen" }[] = [];
+
+    if (isVerified && isAdmin) {
+      list.push({ text: "Developer Telepaty", type: "role" });
+    }
+
+    if (isVerified) {
+      list.push({ text: "Verified Account", type: "verified" });
+    }
+
+    list.push({
+      text: formatLastSeen(lastSeen),
+      type: "lastSeen",
+    });
+
+    return list;
+  }, [isVerified, isAdmin, lastSeen]);
+
+  useEffect(() => {
+    if (onlineStatus || contactIsTyping) return;
+    if (offlineStatuses.length <= 1) return;
+
+    setStatusIndex(0);
+
+    const interval = setInterval(() => {
+      setVisible(false);
+
+      setTimeout(() => {
+        setStatusIndex((i) => (i + 1) % offlineStatuses.length);
+        setVisible(true);
+      }, 250);
+    }, 8000);
+
+    return () => clearInterval(interval);
+  }, [onlineStatus, contactIsTyping, offlineStatuses]);
+
+  const status = offlineStatuses[statusIndex];
+
   if (isBlocked) {
     return <span>You cannot interact with this user</span>;
   }
@@ -75,15 +117,21 @@ const ContactStatus: React.FC<Props> = ({
     return <span>Online</span>;
   }
 
-  if (isVerified && isAdmin && !onlineStatus) {
-    return <span>Developer Telepaty</span>;
-  }
-
-  if (isVerified && !onlineStatus) {
-    return <span>Verified Account</span>;
-  }
-
-  return <span>{formatLastSeen(contact.lastSeen)}</span>;
+  return (
+    <span
+      className={`inline-block transition-all duration-300 ease-out ${
+        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
+      } ${
+        status.type === "role"
+          ? "text-purple-500"
+          : status.type === "verified"
+          ? "text-blue-500"
+          : "text-muted-foreground"
+      }`}
+    >
+      {status.text}
+    </span>
+  );
 };
 
 export default ContactStatus;

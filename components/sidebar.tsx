@@ -51,6 +51,7 @@ interface SidebarProps {
   initiateCall: (contact: User, isVideo: boolean) => void;
   setIsMobileMenuOpen: (open: boolean) => void;
   setIsChatActive: (open: boolean) => void;
+  userStatusMap: Record<string, { online: boolean; lastSeen: number }>;
 }
 
 export function Sidebar({
@@ -61,6 +62,7 @@ export function Sidebar({
   initiateCall,
   setIsMobileMenuOpen,
   setIsChatActive,
+  userStatusMap,
 }: SidebarProps) {
   const { auth, db, storage, currentUser } = useFirebase();
   const [searchQuery, setSearchQuery] = useState("");
@@ -528,11 +530,14 @@ export function Sidebar({
               </div>
             ) : (
               filteredAndSortedContacts.map((contact) => {
+                const isOnline = userStatusMap[contact.uid]?.online;
+
                 return (
                   <ContactItem
                     key={contact.uid}
                     contact={contact}
                     user={user}
+                    isOnline={isOnline}
                     selectedContact={selectedContact}
                     setSelectedContact={setSelectedContact}
                     setIsChatActive={setIsChatActive}
