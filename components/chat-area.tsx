@@ -1799,7 +1799,7 @@ export function ChatArea({
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <ContactStatus
                     isBlocked={isBlocked || isUserBlockedByContact}
-                    contact={contact}
+                    // contact={contact}
                     onlineStatus={isOnline}
                     isAdmin={contact.isAdmin}
                     lastSeen={lastSeen}

@@ -1,5 +1,4 @@
-"use client";
-import React, { useEffect, useMemo, useState } from "react";
+import styles from "@/styles/status.module.css";
 
 type Timestamp = {
   seconds: number;
@@ -13,7 +12,6 @@ type Contact = {
 
 type Props = {
   isBlocked: boolean;
-  contact: Contact;
   onlineStatus?: boolean;
   contactIsTyping: boolean;
   isAdmin?: boolean;
@@ -56,55 +54,12 @@ function formatLastSeen(lastSeen?: number): string {
 
 const ContactStatus: React.FC<Props> = ({
   isBlocked,
-  contact,
   onlineStatus,
   contactIsTyping,
   isAdmin,
   lastSeen,
   isVerified,
 }) => {
-  const [statusIndex, setStatusIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
-
-  const offlineStatuses = useMemo(() => {
-    const list: { text: string; type: "role" | "verified" | "lastSeen" }[] = [];
-
-    if (isVerified && isAdmin) {
-      list.push({ text: "Developer Telepaty", type: "role" });
-    }
-
-    if (isVerified) {
-      list.push({ text: "Verified Account", type: "verified" });
-    }
-
-    list.push({
-      text: formatLastSeen(lastSeen),
-      type: "lastSeen",
-    });
-
-    return list;
-  }, [isVerified, isAdmin, lastSeen]);
-
-  useEffect(() => {
-    if (onlineStatus || contactIsTyping) return;
-    if (offlineStatuses.length <= 1) return;
-
-    setStatusIndex(0);
-
-    const interval = setInterval(() => {
-      setVisible(false);
-
-      setTimeout(() => {
-        setStatusIndex((i) => (i + 1) % offlineStatuses.length);
-        setVisible(true);
-      }, 250);
-    }, 8000);
-
-    return () => clearInterval(interval);
-  }, [onlineStatus, contactIsTyping, offlineStatuses]);
-
-  const status = offlineStatuses[statusIndex];
-
   if (isBlocked) {
     return <span>You cannot interact with this user</span>;
   }
@@ -117,21 +72,15 @@ const ContactStatus: React.FC<Props> = ({
     return <span>Online</span>;
   }
 
-  return (
-    <span
-      className={`inline-block transition-all duration-300 ease-out ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-1"
-      } ${
-        status.type === "role"
-          ? "text-purple-500"
-          : status.type === "verified"
-          ? "text-blue-500"
-          : "text-muted-foreground"
-      }`}
-    >
-      {status.text}
-    </span>
-  );
+  if (isAdmin) {
+    return <span className={styles.role}>Developer Telepaty</span>;
+  }
+
+  if (isVerified && !isAdmin) {
+    return <span className={styles.verified}>Verified Account</span>;
+  }
+
+  return <span className={styles.lastseen}>{formatLastSeen(lastSeen)}</span>;
 };
 
 export default ContactStatus;
