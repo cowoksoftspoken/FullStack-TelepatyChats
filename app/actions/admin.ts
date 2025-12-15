@@ -1,6 +1,7 @@
 "use server";
 
 import { adminAuth, adminDB } from "@/lib/firebase-admin";
+import { getRoleClaims } from "@/lib/utils";
 
 export async function toggleAdminStatus(
   targetUserId: string,
@@ -8,40 +9,55 @@ export async function toggleAdminStatus(
   idToken: string
 ) {
   try {
-    try {
-      const decodedToken = await adminAuth.verifyIdToken(idToken);
-      if (!decodedToken.superAdmin && !decodedToken.admin) {
-        throw new Error("Unauthorized: Requestor isn't admin");
-      }
-
-      if (newStatus == false && !decodedToken.superAdmin) {
-        throw new Error(
-          "Unauthorized: Only superAdmin can revoke another admin's role."
-        );
-      }
-    } catch (error) {
-      console.log(error);
-      throw new Error("Unauthorized: Failed to identify admin.");
+    if (!targetUserId || typeof newStatus !== "boolean" || !idToken) {
+      throw new Error("Invalid request data");
     }
 
-    const user = adminAuth.getUser(targetUserId);
-    const userClaims = await user;
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    const requester = await adminAuth.getUser(decoded.uid);
+
+    const { isAdmin: requesterIsAdmin, isSuperAdmin: requesterIsSuperAdmin } =
+      getRoleClaims(requester.customClaims);
+
+    if (!requesterIsAdmin && !requesterIsSuperAdmin) {
+      throw new Error("Unauthorized: Admin only");
+    }
+
+    if (decoded.uid === targetUserId) {
+      throw new Error("You can't change your own role");
+    }
+
+    const target = await adminAuth.getUser(targetUserId);
+    const { isAdmin: targetIsAdmin, isSuperAdmin: targetIsSuperAdmin } =
+      getRoleClaims(target.customClaims);
+
+    if (!requesterIsSuperAdmin && (targetIsAdmin || targetIsSuperAdmin)) {
+      throw new Error("Only superAdmin can modify admin roles");
+    }
+
+    if (!requesterIsSuperAdmin && targetIsSuperAdmin) {
+      throw new Error("Cannot modify superAdmin");
+    }
 
     await adminAuth.setCustomUserClaims(targetUserId, {
       admin: newStatus,
-      superAdmin: userClaims.customClaims?.superAdmin == true,
+      superAdmin: targetIsSuperAdmin,
     });
 
     await adminDB.collection("users").doc(targetUserId).update({
       isAdmin: newStatus,
-      roleChangeAt: new Date(),
+      roleChangedBy: decoded.uid,
+      roleChangedAt: new Date(),
     });
+
+    await adminAuth.revokeRefreshTokens(targetUserId);
 
     return {
       success: true,
-      message: `User ${targetUserId} admin status: ${newStatus}`,
+      message: newStatus ? "User promoted to admin" : "Admin role revoked",
     };
   } catch (error: any) {
+    console.error("[toggleAdminStatus]", error);
     return { success: false, error: error.message };
   }
 }

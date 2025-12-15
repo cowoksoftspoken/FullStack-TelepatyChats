@@ -297,7 +297,7 @@ export function AdminDashboard({ userData }: { userData?: DocumentData }) {
     }
   };
 
-  const initiateToggleAdmin = (user: UserType) => {
+  const initiateToggleAdmin = async (user: UserType) => {
     setAdminDialogUser(user);
   };
 

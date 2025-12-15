@@ -42,6 +42,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { get, getDatabase, ref as RTDBRef } from "firebase/database";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,9 +98,7 @@ export function StoryViewer({
       id: string;
       displayName: string;
       photoURL: string;
-      lastSeen: {
-        seconds: number;
-      };
+      lastSeen: number;
     }>
   >([]);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -236,18 +235,24 @@ export function StoryViewer({
         return;
       }
 
+      const rtdb = getDatabase();
+
       const viewersPromises = filteredViewers.map(async (viewerId: string) => {
         const userDoc = await getDoc(doc(db, "users", viewerId));
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          return {
-            id: viewerId,
-            displayName: userData.displayName || "Anonymous",
-            photoURL: userData.photoURL || "",
-            lastSeen: userData.lastSeen || { seconds: Date.now() / 1000 },
-          };
-        }
-        return null;
+        if (!userDoc.exists()) return null;
+
+        const statusSnap = await get(RTDBRef(rtdb, `status/${viewerId}`));
+        const status = statusSnap.val();
+
+        const userData = userDoc.data();
+
+        return {
+          id: viewerId,
+          displayName: userData.displayName || "Anonymous",
+          photoURL: userData.photoURL || "",
+          online: status?.online ?? false,
+          lastSeen: status?.lastSeen ?? 0,
+        };
       });
 
       const results = await Promise.all(viewersPromises);
@@ -766,11 +771,11 @@ export function StoryViewer({
                           {viewer.displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Seen{" "}
-                          {formatDistanceToNow(
-                            new Date(viewer.lastSeen.seconds * 1000),
-                            { addSuffix: true }
-                          )}
+                          {viewer.lastSeen
+                            ? formatDistanceToNow(new Date(viewer.lastSeen), {
+                                addSuffix: true,
+                              })
+                            : "—"}
                         </p>
                       </div>
                     </Card>

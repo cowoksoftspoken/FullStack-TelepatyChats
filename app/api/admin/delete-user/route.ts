@@ -1,23 +1,64 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDB, adminStorage } from "@/lib/firebase-admin";
+import { getRoleClaims } from "@/lib/utils";
 
 export async function POST(request: Request) {
   try {
     const { userId, idToken } = await request.json();
 
     if (!userId || !idToken) {
-      return NextResponse.json({ error: "Missing Data" }, { status: 500 });
+      return NextResponse.json(
+        { error: " Missing Data", success: false },
+        { status: 400 }
+      );
+    }
+
+    let userRecord;
+    try {
+      userRecord = await adminAuth.getUser(userId);
+    } catch (error: any) {
+      if (error.code === "auth/user-not-found") {
+        return NextResponse.json(
+          { error: "Bad Request: Target user not found", success: false },
+          { status: 404 }
+        );
+      }
+      return error;
     }
 
     const decodedToken = await adminAuth.verifyIdToken(idToken);
-    const requesterDoc = await adminDB
-      .collection("users")
-      .doc(decodedToken.uid)
-      .get();
 
-    if (!requesterDoc.exists || !requesterDoc.data()?.isAdmin) {
+    if (decodedToken.uid === userId) {
       return NextResponse.json(
-        { error: "Unauthorized: Admins only" },
+        { error: "You can't delete your own account" },
+        { status: 400 }
+      );
+    }
+
+    const requesterRecord = await adminAuth.getUser(decodedToken.uid);
+
+    const { isAdmin, isSuperAdmin } = getRoleClaims(
+      requesterRecord.customClaims
+    );
+
+    if (!isAdmin && !isSuperAdmin) {
+      return NextResponse.json(
+        { error: "Unauthorized: Admin only" },
+        { status: 403 }
+      );
+    }
+
+    const targetClaims = userRecord?.customClaims || {};
+
+    const targetIsAdmin = targetClaims.admin === true;
+    const targetIsSuperAdmin = targetClaims.superAdmin === true;
+
+    if (!isSuperAdmin && (targetIsAdmin || targetIsSuperAdmin)) {
+      return NextResponse.json(
+        {
+          error: "Forbidden: You can't delete admin or superAdmin",
+          success: false,
+        },
         { status: 403 }
       );
     }

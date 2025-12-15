@@ -288,7 +288,13 @@ export function StoryCreator() {
       <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden w-[90%] ">
         <DialogHeader className="p-6 pb-2">
           <DialogTitle>Create Story</DialogTitle>
-          <DialogDescription>{errorMessage.description}</DialogDescription>
+          <DialogDescription
+            className={`text-base ${
+              errorMessage ? "text-red-500 font-semibold" : ""
+            }`}
+          >
+            {errorMessage.description}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 pt-2 space-y-6">

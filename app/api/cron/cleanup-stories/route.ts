@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDB, adminStorage } from "@/lib/firebase-admin";
-import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +7,14 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      {
+        error:
+          "Unauthorized: You do not have sufficient permission to access this",
+        success: false,
+      },
+      { status: 401 }
+    );
   }
 
   try {

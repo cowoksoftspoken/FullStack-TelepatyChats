@@ -31,6 +31,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const getRoleClaims = (claims: any) => {
+  return {
+    isAdmin: claims?.admin === true,
+    isSuperAdmin: claims?.superAdmin === true,
+  };
+};
+
 export function formatTimestamp(
   timestamp: number,
   timeZone: string = "Asia/Jakarta"
