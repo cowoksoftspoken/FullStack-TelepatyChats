@@ -97,7 +97,7 @@ service cloud.firestore {
                 allow create: if isOwner(request.resource.data.userId);
                 allow update: if isAuthenticated() && (
                 isOwner(resource.data.userId) || 
-                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers'])
+                request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewers', 'viewersDetails'])
                 )
                 allow delete: if isOwner(resource.data.userId);
             }

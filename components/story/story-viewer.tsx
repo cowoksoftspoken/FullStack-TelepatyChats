@@ -1,5 +1,14 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { UserAvatar } from "@/components/user-avatar";
+import { useFirebase } from "@/lib/firebase-provider";
+import type { Story } from "@/types/story";
+import type { User } from "@/types/user";
+import { formatDistanceToNow, formatDistanceToNowStrict } from "date-fns";
 import {
   addDoc,
   arrayUnion,
@@ -9,6 +18,8 @@ import {
   getDoc,
   updateDoc,
 } from "firebase/firestore";
+import { deleteObject, ref } from "firebase/storage";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
   ChevronLeft,
@@ -23,18 +34,6 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { StoryReply } from "./story-comment";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { UserAvatar } from "@/components/user-avatar";
-import { useFirebase } from "@/lib/firebase-provider";
-import type { Story } from "@/types/story";
-import type { User } from "@/types/user";
-import { formatDistanceToNow } from "date-fns";
-import { deleteObject, ref } from "firebase/storage";
-import { AnimatePresence, motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -42,14 +41,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { get, getDatabase, ref as RTDBRef } from "firebase/database";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { toast } from "../ui/use-toast";
 import { Label } from "../ui/label";
 import {
   Select,
@@ -58,6 +55,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { toast } from "../ui/use-toast";
+import { StoryReply } from "./story-comment";
 
 interface StoryViewerProps {
   stories: Story[];
@@ -99,6 +98,7 @@ export function StoryViewer({
       displayName: string;
       photoURL: string;
       lastSeen: number;
+      seenAt: number;
     }>
   >([]);
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -219,6 +219,7 @@ export function StoryViewer({
 
   const fetchViewersData = async () => {
     if (!currentStory) return;
+
     setViewersLoading(true);
     try {
       const storiesDoc = await getDoc(doc(db, "stories", currentStory.id));
@@ -226,39 +227,42 @@ export function StoryViewer({
         setViewersData([]);
         return;
       }
-      const filteredViewers = storiesDoc
-        .data()
-        .viewers.filter((id: string) => id !== currentStory.userId);
 
-      if (filteredViewers.length === 0) {
+      const data = storiesDoc.data();
+      const viewersDetails = data.viewersDetails || {};
+
+      const viewersEntries = Object.entries(viewersDetails).filter(
+        ([uid]) => uid !== currentStory.userId
+      );
+
+      if (viewersEntries.length === 0) {
         setViewersData([]);
         return;
       }
 
-      const rtdb = getDatabase();
+      const viewers = await Promise.all(
+        viewersEntries.map(async ([uid, seenAt]) => {
+          const userDoc = await getDoc(doc(db, "users", uid));
+          if (!userDoc.exists()) return null;
 
-      const viewersPromises = filteredViewers.map(async (viewerId: string) => {
-        const userDoc = await getDoc(doc(db, "users", viewerId));
-        if (!userDoc.exists()) return null;
+          const userData = userDoc.data();
+          return {
+            id: uid,
+            displayName: userData.displayName || "Anonymous",
+            photoURL: userData.photoURL || "",
+            lastSeen: userData.lastSeen || 0,
+            seenAt: Number(seenAt) || 0,
+          };
+        })
+      );
 
-        const statusSnap = await get(RTDBRef(rtdb, `status/${viewerId}`));
-        const status = statusSnap.val();
+      const result = viewers
+        .filter((v) => v !== null)
+        .sort((a, b) => b?.seenAt - a?.seenAt);
 
-        const userData = userDoc.data();
-
-        return {
-          id: viewerId,
-          displayName: userData.displayName || "Anonymous",
-          photoURL: userData.photoURL || "",
-          online: status?.online ?? false,
-          lastSeen: status?.lastSeen ?? 0,
-        };
-      });
-
-      const results = await Promise.all(viewersPromises);
-      setViewersData(results.filter(Boolean));
+      setViewersData(result);
     } catch (err) {
-      console.error(err);
+      console.error("[fetchViewersData]", err);
     } finally {
       setViewersLoading(false);
     }
@@ -323,9 +327,17 @@ export function StoryViewer({
     if (!currentStory || !currentUser) return;
     const markAsViewed = async () => {
       if (!currentStory.viewers?.includes(currentUser.uid)) {
-        await updateDoc(doc(db, "stories", currentStory.id), {
-          viewers: arrayUnion(currentUser.uid),
-        });
+        try {
+          await updateDoc(doc(db, "stories", currentStory.id), {
+            viewers: arrayUnion(currentUser.uid),
+            viewersDetails: {
+              ...((currentStory as any).viewersDetails || {}),
+              [currentUser.uid]: Date.now(),
+            },
+          });
+        } catch (error) {
+          console.error("Error marking story as viewed:", error);
+        }
       }
     };
     markAsViewed();
@@ -601,7 +613,7 @@ export function StoryViewer({
           <p className="text-xs opacity-80 drop-shadow-md">
             {formatDistanceToNow(new Date(currentStory.createdAt), {
               addSuffix: true,
-            })}
+            }).replace(/^about\s+/i, "")}
           </p>
           {currentStory.musicTitle && (
             <div className="flex items-center gap-1 text-xs opacity-90 mt-0.5 animate-pulse">
@@ -771,11 +783,11 @@ export function StoryViewer({
                           {viewer.displayName}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {viewer.lastSeen
-                            ? formatDistanceToNow(new Date(viewer.lastSeen), {
+                          {viewer.seenAt
+                            ? formatDistanceToNow(new Date(viewer.seenAt), {
                                 addSuffix: true,
-                              })
-                            : "—"}
+                              }).replace(/^about\s+/i, "")
+                            : "-"}
                         </p>
                       </div>
                     </Card>
