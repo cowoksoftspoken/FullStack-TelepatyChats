@@ -9,19 +9,19 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { UserAvatar } from "./user-avatar";
 import type { User } from "@/types/user";
 
-interface EnhancedIncomingCallProps {
+interface IncomingCallProps {
   caller: User;
   isVideo: boolean;
   onAccept: () => void;
   onReject: () => void;
 }
 
-export function EnhancedIncomingCall({
+export function IncomingCall({
   caller,
   isVideo,
   onAccept,
   onReject,
-}: EnhancedIncomingCallProps) {
+}: IncomingCallProps) {
   const [isAccepting, setIsAccepting] = useState(false);
 
   useEffect(() => {

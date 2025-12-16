@@ -17,14 +17,14 @@ import {
   off,
 } from "firebase/database";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
-import { EnhancedCallInterface } from "@/components/enhanced-call-interface";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CallInterface } from "@/components/call-interface";
 import { ChatArea } from "@/components/chat-area";
-import { EnhancedIncomingCall } from "@/components/enhanced-incoming-call";
+import { IncomingCall } from "@/components/incoming-call";
 import { Sidebar } from "@/components/sidebar";
 import { useTheme } from "@/components/theme-provider";
 import { useFirebase } from "@/lib/firebase-provider";
-import { useWebRTCEnhanced } from "@/hooks/use-webrtc-enhanced";
+import { useWebRTC } from "@/hooks/use-webrtc";
 import type { User } from "@/types/user";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { ChatProvider } from "@/components/chat-context";
@@ -79,7 +79,7 @@ export default function DashboardPage() {
     toggleVideo,
     toggleShareScreen,
     handleSwitchCamera,
-  } = useWebRTCEnhanced({
+  } = useWebRTC({
     currentUser,
     onIncomingCall: async (callData: CallData | null) => {
       if (callData) {
@@ -97,8 +97,9 @@ export default function DashboardPage() {
           console.error("Error fetching caller data:", error);
         }
       } else {
-        setCurrentCaller(null);
         setIncomingCall(null);
+
+        // if (!isCallActive) setCurrentCaller(null);
       }
     },
     onCallEnded: () => {
@@ -114,6 +115,8 @@ export default function DashboardPage() {
       setLocalStream(stream);
     },
   });
+  const callId = incomingCall?.callData?.callId;
+  const lastCallIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -140,48 +143,88 @@ export default function DashboardPage() {
       }
     });
 
-    return () => unsubscribe();
-  }, [currentUser, db, router]);
+    return unsubscribe;
+  }, [currentUser?.uid, db, router]);
 
   useEffect(() => {
-    if (!currentUser || !incomingCall?.callData.callId) return;
+    if (!currentUser) return;
 
-    const callRef = doc(db, "calls", incomingCall.callData.callId);
+    const rtdb = getDatabase();
+    const incomingRef = ref(rtdb, `users/${currentUser.uid}/incomingCall`);
 
-    let unsubscribeUser: (() => void) | null = null;
+    const unsubscribe = onValue(incomingRef, async (snapshot) => {
+      const data = snapshot.val();
+      const newCallId = data?.callId ?? null;
 
-    const unsubscribeCall = onSnapshot(callRef, (callSnap) => {
-      if (!callSnap.exists()) return;
+      if (newCallId && lastCallIdRef.current === newCallId) return;
 
-      const callData = callSnap.data() as any;
-      const receiverId = callData.receiverId;
+      lastCallIdRef.current = newCallId;
 
-      if (receiverId && !unsubscribeUser) {
-        const userRef = doc(db, "users", receiverId);
-        unsubscribeUser = onSnapshot(userRef, (userSnap) => {
-          if (!userSnap.exists()) return;
-          const userData = userSnap.data();
-
-          if (!userData?.incomingCall) {
-            console.log("Receiver incomingCall null, reset state");
-            setIncomingCall(null);
+      if (data) {
+        try {
+          const callerDoc = await getDoc(doc(db, "users", data.from));
+          if (callerDoc.exists()) {
+            const callerData = callerDoc.data() as User;
+            setCurrentCaller(callerData);
+            setIncomingCall({
+              callData: data,
+              caller: callerData,
+            });
           }
-        });
-      }
-
-      if (callData.status === "ended") {
+        } catch (error) {
+          console.error("Error fetching caller info:", error);
+        }
+      } else {
         setIncomingCall(null);
         setCurrentCaller(null);
-        setLocalStream(null);
-        setRemoteStream(null);
       }
     });
 
     return () => {
-      unsubscribeCall();
-      if (unsubscribeUser) unsubscribeUser();
+      // off(incomingRef);
+      unsubscribe();
     };
-  }, [currentUser, db, incomingCall?.callData.callId]);
+  }, [currentUser, db]);
+
+  // useEffect(() => {
+  //   if (!currentUser || !incomingCall?.callData.callId) return;
+
+  //   const callRef = doc(db, "calls", incomingCall.callData.callId);
+
+  //   let unsubscribeUser: (() => void) | null = null;
+
+  //   const unsubscribeCall = onSnapshot(callRef, (callSnap) => {
+  //     if (!callSnap.exists()) return;
+
+  //     const callData = callSnap.data() as any;
+  //     const receiverId = callData.receiverId;
+
+  //     if (receiverId && !unsubscribeUser) {
+  //       const userRef = doc(db, "users", receiverId);
+  //       unsubscribeUser = onSnapshot(userRef, (userSnap) => {
+  //         if (!userSnap.exists()) return;
+  //         const userData = userSnap.data();
+
+  //         if (!userData?.incomingCall) {
+  //           console.log("Receiver incomingCall null, reset state");
+  //           setIncomingCall(null);
+  //         }
+  //       });
+  //     }
+
+  //     if (callData.status === "ended") {
+  //       setIncomingCall(null);
+  //       setCurrentCaller(null);
+  //       setLocalStream(null);
+  //       setRemoteStream(null);
+  //     }
+  //   });
+
+  //   return () => {
+  //     unsubscribeCall();
+  //     if (unsubscribeUser) unsubscribeUser();
+  //   };
+  // }, [currentUser, db, incomingCall?.callData.callId]);
 
   // useEffect(() => {
   //   if (!authLoading && !currentUser) {
@@ -252,6 +295,27 @@ export default function DashboardPage() {
   //     setOffline();
   //   };
   // }, [currentUser, db]);
+
+  // Ganti listener status call pake RTDB onValue
+
+  useEffect(() => {
+    if (!currentUser || !callId) return;
+
+    const rtdb = getDatabase();
+    const callRef = ref(rtdb, `calls/${callId}`);
+
+    const unsubscribeCall = onValue(callRef, (snapshot) => {
+      if (!snapshot.exists() || snapshot.val().status === "ended") {
+        setIncomingCall(null);
+        setCurrentCaller(null);
+        setLocalStream(null);
+        setRemoteStream(null);
+      }
+    });
+
+    return unsubscribeCall;
+  }, [currentUser, callId]);
+
   useEffect(() => {
     if (!currentUser) return;
 
@@ -509,7 +573,7 @@ export default function DashboardPage() {
         </div>
 
         {isCallActive && (
-          <EnhancedCallInterface
+          <CallInterface
             isActive={isCallActive}
             isConnected={isConnected}
             connectionState={connectionState}
@@ -531,7 +595,7 @@ export default function DashboardPage() {
         )}
 
         {incomingCall && incomingCall.caller && (
-          <EnhancedIncomingCall
+          <IncomingCall
             caller={incomingCall.caller}
             isVideo={incomingCall.callData.isVideo}
             onAccept={handleAcceptCall}

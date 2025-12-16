@@ -30,38 +30,62 @@
 
 "use client";
 
+// import {
+//   addDoc,
+//   collection,
+//   deleteDoc,
+//   doc,
+//   getDoc,
+//   getDocs,
+//   onSnapshot,
+//   orderBy,
+//   query,
+//   setDoc,
+//   updateDoc,
+//   where,
+//   type Firestore,
+// } from "firebase/firestore";
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  setDoc,
-  updateDoc,
-  where,
-  type Firestore,
-} from "firebase/firestore";
+  Database,
+  ref,
+  set,
+  push,
+  onValue,
+  get,
+  update,
+  off,
+  onChildAdded,
+  remove,
+} from "firebase/database";
 
 interface CallData {
   callerId: string;
   receiverId: string;
   offer?: RTCSessionDescriptionInit;
+  // callerInfo: {
+  //   displayName: string;
+  //   photoURL: string | null;
+  //   isVerified?: boolean;
+  //   isAdmin?: boolean;
+  // };
+  // receiverInfo: {
+  //   displayName: string;
+  //   photoURL: string | null;
+  //   isVerified?: boolean;
+  //   isAdmin?: boolean;
+  // };
   answer?: RTCSessionDescriptionInit;
   status: "calling" | "accepted" | "rejected" | "ended";
   isVideo: boolean;
   timestamp: string;
 }
 
-interface ICECandidateData {
-  callId: string;
-  candidate: RTCIceCandidateInit;
-  from: string;
-  timestamp: string;
-}
+// interface ICECandidateData {
+//   callId: string;
+//   candidate: RTCIceCandidateInit;
+//   from: string;
+//   timestamp: string;
+// }
 
 export type WebRTCStats = {
   timestamp: number;
@@ -80,7 +104,7 @@ class WebRTCManager {
   private localStream: MediaStream | null = null;
   private remoteStream: MediaStream | null = null;
   private currentCallId: string | null = null;
-  private db: Firestore;
+  private db: Database;
   private userId: string;
   private iceCandidatesQueue: RTCIceCandidateInit[] = [];
   private hasRemoteDescription = false;
@@ -89,6 +113,9 @@ class WebRTCManager {
     audio: 0,
     time: 0,
   };
+  private callStatusListener: any = null;
+  private iceCandidateListener: any = null;
+  private callTimeout: ReturnType<typeof setTimeout> | null = null;
   private currentFacingMode: "user" | "environment" = "user";
   private iceServers: RTCIceServer[] = [
     { urls: "stun:stun.l.google.com:19302" },
@@ -112,7 +139,7 @@ class WebRTCManager {
     },
   ];
 
-  constructor(db: Firestore, userId: string) {
+  constructor(db: Database, userId: string) {
     this.db = db;
     this.userId = userId;
   }
@@ -130,28 +157,8 @@ class WebRTCManager {
         console.log("WebRTC connection established!");
         this.adjustVideoQuality();
         this.adjustAudioQuality();
-      } else if (
-        state === "failed" ||
-        state === "disconnected" ||
-        state === "closed"
-      ) {
+      } else if (["failed", "disconnected", "closed"].includes(state)) {
         console.log("Connection failed/disconnected/closed");
-        this.handleCallEnd();
-      }
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      const state = pc.iceConnectionState;
-      console.log(`ICE connection state: ${state}`);
-
-      if (state === "connected" || state === "completed") {
-        console.log("ICE connection established!");
-      } else if (
-        state === "failed" ||
-        state === "disconnected" ||
-        state === "closed"
-      ) {
-        console.log("ICE connection failed");
         this.handleCallEnd();
       }
     };
@@ -355,14 +362,20 @@ class WebRTCManager {
     if (!this.currentCallId) return;
 
     try {
-      const candidateData: ICECandidateData = {
+      // const candidateData: ICECandidateData = {
+      //   callId: this.currentCallId,
+      //   candidate: candidate.toJSON(),
+      //   from: this.userId,
+      //   timestamp: new Date().toISOString(),
+      // };
+
+      // await addDoc(collection(this.db, "iceCandidates"), candidateData);
+      await push(ref(this.db, `ice_candidates/${this.currentCallId}`), {
         callId: this.currentCallId,
         candidate: candidate.toJSON(),
         from: this.userId,
         timestamp: new Date().toISOString(),
-      };
-
-      await addDoc(collection(this.db, "iceCandidates"), candidateData);
+      });
       console.log("ICE candidate sent to Firestore");
     } catch (error) {
       console.error("Error sending ICE candidate:", error);
@@ -372,21 +385,30 @@ class WebRTCManager {
   private listenForICECandidates(callId: string) {
     console.log("Listening for ICE candidates...");
 
-    const q = query(
-      collection(this.db, "iceCandidates"),
-      where("callId", "==", callId),
-      where("from", "!=", this.userId),
-      orderBy("timestamp")
-    );
+    // const q = query(
+    //   collection(this.db, "iceCandidates"),
+    //   where("callId", "==", callId),
+    //   where("from", "!=", this.userId),
+    //   orderBy("timestamp")
+    // );
 
-    return onSnapshot(q, async (snapshot) => {
-      for (const change of snapshot.docChanges()) {
-        if (change.type === "added") {
-          const candidateData = change.doc.data() as ICECandidateData;
-          await this.handleRemoteICECandidate(candidateData.candidate);
-        }
+    const candidateRef = ref(this.db, `ice_candidates/${callId}`);
+
+    this.iceCandidateListener = onChildAdded(candidateRef, async (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.from !== this.userId) {
+        await this.handleRemoteICECandidate(data.candidate);
       }
     });
+
+    // return onSnapshot(q, async (snapshot) => {
+    //   for (const change of snapshot.docChanges()) {
+    //     if (change.type === "added") {
+    //       const candidateData = change.doc.data() as ICECandidateData;
+    //       await this.handleRemoteICECandidate(candidateData.candidate);
+    //     }
+    //   }
+    // });
   }
 
   private async handleRemoteICECandidate(candidateData: RTCIceCandidateInit) {
@@ -434,11 +456,18 @@ class WebRTCManager {
         receiverId
       );
 
-      const isReceiverUserAvailable = await this.checkUserAvailability(
-        receiverId
+      // const isReceiverUserAvailable = await this.checkUserAvailability(
+      //   receiverId
+      // );
+      // if (!isReceiverUserAvailable) {
+      //   throw { code: "BUSY", message: "User is busy or on another call" };
+      // }
+
+      const userStatusSnap = await get(
+        ref(this.db, `users/${receiverId}/userInCall`)
       );
-      if (!isReceiverUserAvailable) {
-        throw { code: "BUSY", message: "User is busy or on another call" };
+      if (userStatusSnap.exists() && userStatusSnap.val() === true) {
+        throw { code: "BUSY", message: "User is busy" };
       }
 
       const stream = await this.getUserMedia(isVideo);
@@ -451,16 +480,16 @@ class WebRTCManager {
       this.addLocalStreamToPeerConnection(stream, pc);
 
       const callId = `${this.userId}_${receiverId}_${Date.now()}`;
-      const callData: CallData = {
-        callerId: this.userId,
-        receiverId,
-        status: "calling",
-        isVideo,
-        timestamp: new Date().toISOString(),
-      };
-      await this.setUserInCall(callData.callerId, callData.receiverId);
+      // const callData: CallData = {
+      //   callerId: this.userId,
+      //   receiverId,
+      //   status: "calling",
+      //   isVideo,
+      //   timestamp: new Date().toISOString(),
+      // };
+      // await this.setUserInCall(callData.callerId, callData.receiverId);
 
-      await setDoc(doc(this.db, "calls", callId), callData);
+      // await setDoc(doc(this.db, "calls", callId), callData);
       this.currentCallId = callId;
 
       this.listenForICECandidates(callId);
@@ -474,34 +503,64 @@ class WebRTCManager {
       await pc.setLocalDescription(offer);
       console.log("Local description set (offer)");
 
-      await updateDoc(doc(this.db, "calls", callId), {
+      // await updateDoc(doc(this.db, "calls", callId), {
+      //   offer: {
+      //     type: offer.type,
+      //     sdp: offer.sdp,
+      //   },
+      // });
+
+      // await updateDoc(doc(this.db, "users", receiverId), {
+      //   incomingCall: {
+      //     callId,
+      //     from: this.userId,
+      //     isVideo,
+      //     timestamp: new Date().toISOString(),
+      //   },
+      // });
+
+      const updates: any = {};
+      updates[`calls/${callId}`] = {
+        callerId: this.userId,
+        receiverId,
+        status: "calling",
+        isVideo,
+        timestamp: new Date().toISOString(),
         offer: {
           type: offer.type,
           sdp: offer.sdp,
         },
-      });
+      };
+      updates[`users/${receiverId}/incomingCall`] = {
+        callId,
+        from: this.userId,
+        isVideo,
+        timestamp: new Date().toISOString(),
+      };
+      updates[`users/${this.userId}/userInCall`] = true;
+      updates[`users/${receiverId}/userInCall`] = true;
 
-      await updateDoc(doc(this.db, "users", receiverId), {
-        incomingCall: {
-          callId,
-          from: this.userId,
-          isVideo,
-          timestamp: new Date().toISOString(),
-        },
-      });
-
+      await update(ref(this.db), updates);
       this.listenForCallUpdates(callId);
 
-      setTimeout(async () => {
-        const callSnap = await getDoc(doc(this.db, "calls", callId));
-        if (callSnap.exists()) {
-          const snapData = callSnap.data() as CallData;
-          if (snapData.status === "calling") {
-            console.log("Call TimeOut auto ending....");
-            this.handleCallEnd();
-          }
+      // setTimeout(async () => {
+      //   const callSnap = await getDoc(doc(this.db, "calls", callId));
+      //   if (callSnap.exists()) {
+      //     const snapData = callSnap.data() as CallData;
+      //     if (snapData.status === "calling") {
+      //       console.log("Call TimeOut auto ending....");
+      //       this.handleCallEnd();
+      //     }
+      //   }
+      // }, 15000);
+
+      this.callTimeout = setTimeout(async () => {
+        const s = await get(ref(this.db, `calls/${callId}/status`));
+        if (s.exists() && s.val() === "calling") {
+          console.log("Call timeout - no answer received.");
+          this.handleCallEnd();
         }
-      }, 15000);
+      }, 30000);
 
       return callId;
     } catch (error) {
@@ -510,42 +569,42 @@ class WebRTCManager {
     }
   }
 
-  private async checkUserAvailability(targetUserId: string) {
-    const targetSnap = await getDoc(doc(this.db, "users", targetUserId));
-    if (!targetSnap.exists()) return true;
-    const data = targetSnap.data();
-    return !data.userInCall;
-  }
+  // private async checkUserAvailability(targetUserId: string) {
+  //   const targetSnap = await getDoc(doc(this.db, "users", targetUserId));
+  //   if (!targetSnap.exists()) return true;
+  //   const data = targetSnap.data();
+  //   return !data.userInCall;
+  // }
 
-  private async setUserInCall(callerId: string, receiverId: string) {
-    await Promise.all([
-      updateDoc(doc(this.db, "users", callerId), {
-        userInCall: true,
-        currentCallId: this.currentCallId,
-        otherUserId: receiverId,
-      }),
-      updateDoc(doc(this.db, "users", receiverId), {
-        userInCall: true,
-        currentCallId: this.currentCallId,
-        otherUserId: callerId,
-      }),
-    ]);
-  }
+  // private async setUserInCall(callerId: string, receiverId: string) {
+  //   await Promise.all([
+  //     updateDoc(doc(this.db, "users", callerId), {
+  //       userInCall: true,
+  //       currentCallId: this.currentCallId,
+  //       otherUserId: receiverId,
+  //     }),
+  //     updateDoc(doc(this.db, "users", receiverId), {
+  //       userInCall: true,
+  //       currentCallId: this.currentCallId,
+  //       otherUserId: callerId,
+  //     }),
+  //   ]);
+  // }
 
-  private async resetUserInCall(callerId: string, receiverId: string) {
-    await Promise.all([
-      updateDoc(doc(this.db, "users", callerId), {
-        userInCall: false,
-        currentCallId: null,
-        otherUserId: null,
-      }),
-      updateDoc(doc(this.db, "users", receiverId), {
-        userInCall: false,
-        currentCallId: null,
-        otherUserId: null,
-      }),
-    ]);
-  }
+  // private async resetUserInCall(callerId: string, receiverId: string) {
+  //   await Promise.all([
+  //     updateDoc(doc(this.db, "users", callerId), {
+  //       userInCall: false,
+  //       currentCallId: null,
+  //       otherUserId: null,
+  //     }),
+  //     updateDoc(doc(this.db, "users", receiverId), {
+  //       userInCall: false,
+  //       currentCallId: null,
+  //       otherUserId: null,
+  //     }),
+  //   ]);
+  // }
 
   async shareScreen() {
     if (!this.peerConnection) {
@@ -618,126 +677,198 @@ class WebRTCManager {
     }
   }
 
+  // async answerCall(callId: string): Promise<void> {
+  //   try {
+  //     const callDoc = await getDoc(doc(this.db, "calls", callId));
+  //     if (!callDoc.exists()) {
+  //       throw new Error("Call not found");
+  //     }
+
+  //     const callData = callDoc.data() as CallData;
+
+  //     const stream = await this.getUserMedia(callData.isVideo);
+  //     if (!stream) {
+  //       throw new Error("Could not get user media");
+  //     }
+
+  //     const pc = this.createPeerConnection();
+
+  //     this.addLocalStreamToPeerConnection(stream, pc);
+
+  //     this.currentCallId = callId;
+
+  //     this.listenForICECandidates(callId);
+
+  //     if (callData.offer) {
+  //       console.log("Setting remote description (offer)");
+  //       await pc.setRemoteDescription(
+  //         new RTCSessionDescription(callData.offer)
+  //       );
+  //       this.hasRemoteDescription = true;
+
+  //       await this.processQueuedICECandidates();
+  //     }
+
+  //     console.log("Creating answer...");
+  //     const answer = await pc.createAnswer();
+  //     await pc.setLocalDescription(answer);
+  //     console.log("Local description set (answer)");
+
+  //     await updateDoc(doc(this.db, "calls", callId), {
+  //       answer: {
+  //         type: answer.type,
+  //         sdp: answer.sdp,
+  //       },
+  //       status: "accepted",
+  //     });
+
+  //     await updateDoc(doc(this.db, "users", this.userId), {
+  //       incomingCall: null,
+  //     });
+
+  //     console.log("Call answered successfully");
+  //   } catch (error) {
+  //     console.error("Error answering call:", error);
+  //     throw error;
+  //   }
+  // }
+
   async answerCall(callId: string): Promise<void> {
     try {
-      const callDoc = await getDoc(doc(this.db, "calls", callId));
-      if (!callDoc.exists()) {
-        throw new Error("Call not found");
-      }
+      const callSnapshot = await get(ref(this.db, `calls/${callId}`));
+      if (!callSnapshot.exists()) throw new Error("Call not found");
 
-      const callData = callDoc.data() as CallData;
-
+      const callData = callSnapshot.val();
       const stream = await this.getUserMedia(callData.isVideo);
-      if (!stream) {
-        throw new Error("Could not get user media");
-      }
 
       const pc = this.createPeerConnection();
-
-      this.addLocalStreamToPeerConnection(stream, pc);
-
+      this.addLocalStreamToPeerConnection(stream!, pc);
       this.currentCallId = callId;
 
       this.listenForICECandidates(callId);
 
       if (callData.offer) {
-        console.log("Setting remote description (offer)");
         await pc.setRemoteDescription(
           new RTCSessionDescription(callData.offer)
         );
         this.hasRemoteDescription = true;
-
         await this.processQueuedICECandidates();
       }
 
-      console.log("Creating answer...");
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
-      console.log("Local description set (answer)");
 
-      await updateDoc(doc(this.db, "calls", callId), {
-        answer: {
-          type: answer.type,
-          sdp: answer.sdp,
-        },
-        status: "accepted",
-      });
+      const updates: any = {};
+      updates[`calls/${callId}/answer`] = {
+        type: answer.type,
+        sdp: answer.sdp,
+      };
+      updates[`calls/${callId}/status`] = "accepted";
+      updates[`users/${this.userId}/incomingCall`] = null;
 
-      await updateDoc(doc(this.db, "users", this.userId), {
-        incomingCall: null,
-      });
-
-      console.log("Call answered successfully");
+      await update(ref(this.db), updates);
     } catch (error) {
-      console.error("Error answering call:", error);
+      console.error("Error answering:", error);
       throw error;
     }
   }
 
   private listenForCallUpdates(callId: string) {
-    return onSnapshot(doc(this.db, "calls", callId), async (snapshot) => {
-      if (!snapshot.exists()) {
-        console.log("Call document deleted");
+    const callRef = ref(this.db, `calls/${callId}`);
+    this.callStatusListener = onValue(callRef, async (snapshot) => {
+      const data = snapshot.val();
+      if (!data) {
         this.handleCallEnd();
         return;
       }
 
-      const callData = snapshot.data() as CallData;
-      const pc = this.peerConnection;
+      if (data.answer && !this.hasRemoteDescription && this.peerConnection) {
+        await this.peerConnection.setRemoteDescription(
+          new RTCSessionDescription(data.answer)
+        );
+        this.hasRemoteDescription = true;
+        await this.processQueuedICECandidates();
+      }
 
-      if (!pc) return;
-
-      if (callData.answer && !this.hasRemoteDescription) {
-        try {
-          await pc.setRemoteDescription(
-            new RTCSessionDescription(callData.answer)
-          );
-          this.hasRemoteDescription = true;
-
-          await this.processQueuedICECandidates();
-
-          console.log("Remote description set (answer)");
-        } catch (error) {
-          console.error("Error setting remote description:", error);
+      if (data.status === "accepted") {
+        if (this.callTimeout) {
+          console.log("Call accepted, clearing timeout.");
+          clearTimeout(this.callTimeout);
+          this.callTimeout = null;
         }
       }
 
-      if (callData.status === "rejected" || callData.status === "ended") {
-        console.log("Call ended/rejected");
+      if (data.status === "ended" || data.status === "rejected") {
         this.handleCallEnd();
       }
     });
   }
 
   listenForIncomingCalls(callback: (callData: any) => void) {
-    return onSnapshot(doc(this.db, "users", this.userId), (snapshot) => {
-      const userData = snapshot.data();
-      if (userData?.incomingCall) {
-        callback(userData.incomingCall);
-      }
+    const incomingRef = ref(this.db, `users/${this.userId}/incomingCall`);
+    return onValue(incomingRef, (snapshot) => {
+      const data = snapshot.val();
+      callback(data);
     });
   }
 
+  // async rejectCall(callId: string): Promise<void> {
+  //   try {
+  //     const callRef = doc(this.db, "calls", callId);
+  //     const callSnap = await getDoc(callRef);
+  //     if (!callSnap.exists()) {
+  //       console.log("Call not found or already ended");
+  //       return;
+  //     }
+
+  //     const callData = callSnap.data() as CallData;
+
+  //     await this.resetUserInCall(callData.callerId, callData.receiverId);
+  //     await Promise.all([
+  //       updateDoc(doc(this.db, "calls", callId), {
+  //         status: "rejected",
+  //       }),
+  //       updateDoc(doc(this.db, "users", this.userId), {
+  //         incomingCall: null,
+  //       }),
+  //     ]);
+
+  //     console.log("Call rejected");
+  //   } catch (error) {
+  //     console.error("Error rejecting call:", error);
+  //   }
+  // }
+
   async rejectCall(callId: string): Promise<void> {
     try {
-      const callRef = doc(this.db, "calls", callId);
-      const callSnap = await getDoc(callRef);
-      if (!callSnap.exists()) {
+      const callRef = ref(this.db, `calls/${callId}`);
+      const snapshot = await get(callRef);
+
+      if (!snapshot.exists()) {
         console.log("Call not found or already ended");
         return;
       }
 
-      const callData = callSnap.data() as CallData;
+      const callData = snapshot.val() as CallData;
 
-      await this.resetUserInCall(callData.callerId, callData.receiverId);
-      await Promise.all([
-        updateDoc(doc(this.db, "calls", callId), {
-          status: "rejected",
-        }),
-        updateDoc(doc(this.db, "users", this.userId), {
-          incomingCall: null,
-        }),
-      ]);
+      const updates: any = {};
+
+      updates[`calls/${callId}/status`] = "rejected";
+
+      updates[`users/${this.userId}/incomingCall`] = null;
+
+      if (callData.callerId) {
+        updates[`users/${callData.callerId}/userInCall`] = false;
+        updates[`users/${callData.callerId}/currentCallId`] = null;
+        updates[`users/${callData.callerId}/otherUserId`] = null;
+      }
+      if (callData.receiverId) {
+        updates[`users/${callData.receiverId}/userInCall`] = false;
+        updates[`users/${callData.receiverId}/currentCallId`] = null;
+        updates[`users/${callData.receiverId}/otherUserId`] = null;
+      }
+
+      await update(ref(this.db), updates);
 
       console.log("Call rejected");
     } catch (error) {
@@ -790,71 +921,135 @@ class WebRTCManager {
     return videoInputs.length > 1;
   }
 
+  // async endCall(): Promise<void> {
+  //   try {
+  //     console.log("Ending call...");
+
+  //     if (this.localStream) {
+  //       this.localStream.getTracks().forEach((track) => {
+  //         track.stop();
+  //         console.log(`Stopped ${track.kind} track`);
+  //       });
+  //       this.localStream = null;
+  //       this.currentFacingMode = "user";
+  //     }
+
+  //     if (this.peerConnection) {
+  //       this.peerConnection.close();
+  //       this.peerConnection = null;
+  //     }
+
+  //     this.remoteStream = null;
+
+  //     if (this.currentCallId) {
+  //       const callRef = doc(this.db, "calls", this.currentCallId);
+  //       const callSnap = await getDoc(callRef);
+
+  //       if (callSnap.exists()) {
+  //         const callData = callSnap.data() as CallData;
+
+  //         await this.resetUserInCall(callData.callerId, callData.receiverId);
+
+  //         if (callData.receiverId) {
+  //           await updateDoc(doc(this.db, "users", callData.receiverId), {
+  //             incomingCall: null,
+  //           });
+  //         }
+
+  //         await updateDoc(callRef, { status: "ended" }),
+  //           setTimeout(async () => {
+  //             const callSnapAgain = await getDoc(callRef);
+  //             if (callSnapAgain.exists()) {
+  //               await deleteDoc(callRef);
+  //             }
+
+  //             const q = query(
+  //               collection(this.db, "iceCandidates"),
+  //               where("callId", "==", this.currentCallId)
+  //             );
+  //             const snapshot = await getDocs(q);
+  //             const deletePromises = snapshot.docs.map((doc) =>
+  //               deleteDoc(doc.ref)
+  //             );
+  //             await Promise.all(deletePromises);
+  //           }, 1000);
+  //       } else {
+  //         console.log("Call doc has been delete, skip update/delete");
+  //       }
+  //     }
+
+  //     this.currentCallId = null;
+  //     this.hasRemoteDescription = false;
+  //     this.iceCandidatesQueue = [];
+
+  //     console.log("Call ended successfully");
+  //   } catch (error) {
+  //     console.error("Error ending call:", error);
+  //   }
+  // }
+
   async endCall(): Promise<void> {
-    try {
-      console.log("Ending call...");
+    console.log("Ending call...");
 
-      if (this.localStream) {
-        this.localStream.getTracks().forEach((track) => {
-          track.stop();
-          console.log(`Stopped ${track.kind} track`);
-        });
-        this.localStream = null;
-        this.currentFacingMode = "user";
-      }
-
-      if (this.peerConnection) {
-        this.peerConnection.close();
-        this.peerConnection = null;
-      }
-
-      this.remoteStream = null;
-
-      if (this.currentCallId) {
-        const callRef = doc(this.db, "calls", this.currentCallId);
-        const callSnap = await getDoc(callRef);
-
-        if (callSnap.exists()) {
-          const callData = callSnap.data() as CallData;
-
-          await this.resetUserInCall(callData.callerId, callData.receiverId);
-
-          if (callData.receiverId) {
-            await updateDoc(doc(this.db, "users", callData.receiverId), {
-              incomingCall: null,
-            });
-          }
-
-          await updateDoc(callRef, { status: "ended" }),
-            setTimeout(async () => {
-              const callSnapAgain = await getDoc(callRef);
-              if (callSnapAgain.exists()) {
-                await deleteDoc(callRef);
-              }
-
-              const q = query(
-                collection(this.db, "iceCandidates"),
-                where("callId", "==", this.currentCallId)
-              );
-              const snapshot = await getDocs(q);
-              const deletePromises = snapshot.docs.map((doc) =>
-                deleteDoc(doc.ref)
-              );
-              await Promise.all(deletePromises);
-            }, 1000);
-        } else {
-          console.log("Call doc has been delete, skip update/delete");
-        }
-      }
-
-      this.currentCallId = null;
-      this.hasRemoteDescription = false;
-      this.iceCandidatesQueue = [];
-
-      console.log("Call ended successfully");
-    } catch (error) {
-      console.error("Error ending call:", error);
+    if (this.localStream) {
+      this.localStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`Stopped ${track.kind} track`);
+      });
+      this.localStream = null;
+      this.currentFacingMode = "user";
     }
+
+    if (this.callTimeout) {
+      clearTimeout(this.callTimeout);
+      this.callTimeout = null;
+    }
+
+    if (this.peerConnection) {
+      this.peerConnection.close();
+      this.peerConnection = null;
+    }
+
+    this.remoteStream = null;
+
+    if (this.currentCallId) {
+      const callId = this.currentCallId;
+
+      if (this.callStatusListener) off(ref(this.db, `calls/${callId}`));
+      if (this.iceCandidateListener)
+        off(ref(this.db, `ice_candidates/${callId}`));
+
+      try {
+        const snap = await get(ref(this.db, `calls/${callId}`));
+        if (snap.exists()) {
+          const data = snap.val();
+          const updates: any = {};
+          if (data.receiverId)
+            updates[`users/${data.receiverId}/incomingCall`] = null;
+          if (data.callerId)
+            updates[`users/${data.callerId}/userInCall`] = false;
+          if (data.receiverId)
+            updates[`users/${data.receiverId}/userInCall`] = false;
+          updates[`calls/${callId}/status`] = "ended";
+
+          await update(ref(this.db), updates);
+
+          setTimeout(() => {
+            const clear: any = {};
+            clear[`calls/${callId}`] = null;
+            clear[`ice_candidates/${callId}`] = null;
+            update(ref(this.db), clear);
+          }, 15000);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    this.currentCallId = null;
+    this.hasRemoteDescription = false;
+    this.iceCandidatesQueue = [];
+    this.dispatchStreamEvent("callended", null);
   }
 
   async getConnectionStats(): Promise<WebRTCStats> {
@@ -1020,7 +1215,7 @@ class WebRTCManager {
 
 let webrtcManager: WebRTCManager | null = null;
 
-export const initializeWebRTC = (db: Firestore, userId: string) => {
+export const initializeWebRTC = (db: Database, userId: string) => {
   if (!webrtcManager) {
     webrtcManager = new WebRTCManager(db, userId);
   }
@@ -1032,7 +1227,7 @@ export const getWebRTCManager = (): WebRTCManager | null => {
 };
 
 export const listenForCalls = (
-  db: Firestore,
+  db: Database,
   userId: string,
   callback: (callData: any) => void
 ) => {
@@ -1042,57 +1237,57 @@ export const listenForCalls = (
   return webrtcManager.listenForIncomingCalls(callback);
 };
 
-export const initiateCall = async (
-  db: Firestore,
-  userId: string,
-  recipientId: string,
-  isVideo: boolean
-) => {
-  if (!webrtcManager) {
-    webrtcManager = new WebRTCManager(db, userId);
-  }
+// export const initiateCall = async (
+//   db: Database,
+//   userId: string,
+//   recipientId: string,
+//   isVideo: boolean
+// ) => {
+//   if (!webrtcManager) {
+//     webrtcManager = new WebRTCManager(db, userId);
+//   }
 
-  const callId = await webrtcManager.initiateCall(recipientId, isVideo);
+//   const callId = await webrtcManager.initiateCall(recipientId, isVideo);
 
-  return {
-    on: (event: string, callback: Function) => {
-      if (event === "stream") {
-        window.addEventListener("webrtc-remotestream", (e: any) => {
-          callback(e.detail.stream);
-        });
-      }
-    },
-    callId,
-    destroy: () => webrtcManager?.endCall(),
-  };
-};
+//   return {
+//     on: (event: string, callback: Function) => {
+//       if (event === "stream") {
+//         window.addEventListener("webrtc-remotestream", (e: any) => {
+//           callback(e.detail.stream);
+//         });
+//       }
+//     },
+//     callId,
+//     destroy: () => webrtcManager?.endCall(),
+//   };
+// };
 
-export const acceptCall = async (
-  db: Firestore,
-  callData: any,
-  userId: string
-) => {
-  if (!webrtcManager) {
-    webrtcManager = new WebRTCManager(db, userId);
-  }
+// export const acceptCall = async (
+//   db: Database,
+//   callData: any,
+//   userId: string
+// ) => {
+//   if (!webrtcManager) {
+//     webrtcManager = new WebRTCManager(db, userId);
+//   }
 
-  await webrtcManager.answerCall(callData.callId);
+//   await webrtcManager.answerCall(callData.callId);
 
-  return {
-    on: (event: string, callback: Function) => {
-      if (event === "stream") {
-        window.addEventListener("webrtc-remotestream", (e: any) => {
-          callback(e.detail.stream);
-        });
-      }
-    },
-    destroy: () => webrtcManager?.endCall(),
-  };
-};
+//   return {
+//     on: (event: string, callback: Function) => {
+//       if (event === "stream") {
+//         window.addEventListener("webrtc-remotestream", (e: any) => {
+//           callback(e.detail.stream);
+//         });
+//       }
+//     },
+//     destroy: () => webrtcManager?.endCall(),
+//   };
+// };
 
-export const endCall = async () => {
-  if (webrtcManager) {
-    await webrtcManager.endCall();
-  }
-};
-export { Firestore };
+// export const endCall = async () => {
+//   if (webrtcManager) {
+//     await webrtcManager.endCall();
+//   }
+// };
+// export { Firestore };

@@ -62,6 +62,7 @@ import {
   toggleReaction,
 } from "@/lib/utils";
 import type { Message } from "@/types/message";
+import { Story } from "@/types/story";
 import type { User } from "@/types/user";
 import normalizeName from "@/utils/normalizename";
 import { AudioPreview } from "./audio-preview";
@@ -72,6 +73,8 @@ import { ImageViewer } from "./image-viewer";
 import { MessageContent } from "./message-content";
 import MessageInput from "./message-input";
 import { ReactionDisplay } from "./reactions-display";
+import { StoryThumbnail } from "./story/story-thumnail";
+import { StoryViewer } from "./story/story-viewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -85,9 +88,6 @@ import {
 import { UserAvatar } from "./user-avatar";
 import { UserProfilePopup } from "./user-profile-popup";
 import VideoPlayer from "./video-message";
-import { Story } from "@/types/story";
-import { StoryViewer } from "./story/story-viewer";
-import { StoryThumbnail } from "./story/story-thumnail";
 
 interface ChatAreaProps {
   currentUser: any;

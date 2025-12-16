@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { useConnectionStats } from "@/hooks/use-webrtc-enhanced";
+import { useConnectionStats } from "@/hooks/use-webrtc";
 import type { User } from "@/types/user";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -26,7 +26,7 @@ import { useEffect, useRef, useState } from "react";
 import ConnectionStatsPanel from "./connection-stats-panel";
 import { UserAvatar } from "./user-avatar";
 
-interface EnhancedCallInterfaceProps {
+interface CallInterfaceProps {
   isActive: boolean;
   isConnected: boolean;
   connectionState: RTCPeerConnectionState;
@@ -34,7 +34,7 @@ interface EnhancedCallInterfaceProps {
   isVideo: boolean;
   isMuted: boolean;
   isVideoEnabled: boolean;
-  contact: User;
+  contact: User | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   onEndCall: () => void;
@@ -46,7 +46,7 @@ interface EnhancedCallInterfaceProps {
   setIsMinimized: (val: boolean) => void;
 }
 
-export function EnhancedCallInterface({
+export function CallInterface({
   isActive,
   isConnected,
   connectionState,
@@ -64,7 +64,7 @@ export function EnhancedCallInterface({
   switchCamera,
   isMinimized,
   setIsMinimized,
-}: EnhancedCallInterfaceProps) {
+}: CallInterfaceProps) {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const [callDuration, setCallDuration] = useState(0);
@@ -223,7 +223,7 @@ export function EnhancedCallInterface({
               <UserAvatar user={contact} size="sm" />
               <div>
                 <p className="text-xs text-white font-semibold drop-shadow flex items-center gap-1">
-                  {contact.displayName}
+                  {contact?.displayName || "Anonymous"}
                   {contact?.isVerified && !contact?.isAdmin && (
                     <svg
                       aria-label="Verified"
@@ -324,7 +324,7 @@ export function EnhancedCallInterface({
             <UserAvatar user={contact} size="sm" />
             <div className="flex-1">
               <p className="text-sm font-semibold flex items-center gap-1">
-                {contact.displayName}
+                {contact?.displayName || "Anonymous"}
                 {contact?.isVerified && !contact?.isAdmin && (
                   <svg
                     aria-label="Verified"
@@ -582,7 +582,7 @@ export function EnhancedCallInterface({
                       <div className="w-24 h-24 mx-auto mb-4">
                         <UserAvatar user={contact} size="lg" />
                       </div>
-                      <p>Waiting for {contact.displayName}'s video...</p>
+                      <p>Waiting for {contact?.displayName}'s video...</p>
                     </div>
                   </div>
                 )}
@@ -600,7 +600,7 @@ export function EnhancedCallInterface({
                     </div>
                   </div>
                   <h2 className="text-2xl font-semibold text-white mb-2">
-                    {contact.displayName}
+                    {contact?.displayName || "Anonymous"}
                   </h2>
                   <p className="text-white/70">
                     {isConnected ? formatDuration(callDuration) : status.text}

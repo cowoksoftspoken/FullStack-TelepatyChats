@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, RefObject } from "react";
-import { useFirebase } from "@/lib/firebase-provider";
 import { useToast } from "@/hooks/use-toast";
+import { useFirebase } from "@/lib/firebase-provider";
 import {
-  initializeWebRTC,
   getWebRTCManager,
+  initializeWebRTC,
   WebRTCStats,
-} from "@/lib/webrtc-native";
+} from "@/lib/webrtc-manager";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface CallData {
   callId: string;
@@ -16,7 +16,9 @@ interface CallData {
   timestamp: string;
 }
 
-interface UseWebRTCEnhancedProps {
+import { getDatabase } from "firebase/database";
+
+interface UseWebRTCProps {
   currentUser: any;
   onIncomingCall: (callData: CallData | null) => void;
   onCallEnded: () => void;
@@ -24,14 +26,14 @@ interface UseWebRTCEnhancedProps {
   onLocalStream: (stream: MediaStream) => void;
 }
 
-export function useWebRTCEnhanced({
+export function useWebRTC({
   currentUser,
   onIncomingCall,
   onCallEnded,
   onRemoteStream,
   onLocalStream,
-}: UseWebRTCEnhancedProps) {
-  const { db } = useFirebase();
+}: UseWebRTCProps) {
+  // const { db } = useFirebase();
   const { toast } = useToast();
 
   const [isCallActive, setIsCallActive] = useState(false);
@@ -47,6 +49,7 @@ export function useWebRTCEnhanced({
 
   const webrtcManagerRef = useRef<any>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const db = getDatabase();
 
   useEffect(() => {
     if (!currentUser || !db) return;
@@ -57,8 +60,6 @@ export function useWebRTCEnhanced({
       (callData: CallData | null) => {
         if (callData) {
           onIncomingCall(callData);
-        } else {
-          onIncomingCall(null);
         }
       }
     );

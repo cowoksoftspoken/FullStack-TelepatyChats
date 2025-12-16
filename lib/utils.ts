@@ -3,6 +3,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { db } from "./firebase";
 import type { Message } from "@/types/message";
+import { escape, unescape } from "querystring";
 
 const tzMap: Record<string, string> = {
   "Asia/Jakarta": "Jakarta Time",
@@ -272,3 +273,19 @@ export const getMemberColor = (userId: string) => {
   const index = Math.abs(hash % colors.length);
   return colors[index];
 };
+
+export function encodeBase64(str: string) {
+  try {
+    return btoa(unescape(decodeURIComponent(str)));
+  } catch (error) {
+    return str;
+  }
+}
+
+export function decodeBase64(str: string) {
+  try {
+    return decodeURIComponent(escape(atob(str)));
+  } catch (error) {
+    return str;
+  }
+}

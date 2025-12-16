@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Dispatch, SetStateAction } from "react";
-import { WebRTCStats } from "@/lib/webrtc-native";
 import { formatTimestamp } from "@/lib/utils";
+import { WebRTCStats } from "@/lib/webrtc-manager";
+import { Dispatch, SetStateAction } from "react";
 
 type Props = {
   stats: WebRTCStats | null;
