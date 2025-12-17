@@ -55,6 +55,7 @@ interface MessageInputProps {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   isEncryptionEnabled?: boolean;
   isRecording?: boolean;
+  onPasteFile: (url: File) => void;
 }
 
 export default function MessageInput({
@@ -73,6 +74,7 @@ export default function MessageInput({
   fileInputRef,
   isEncryptionEnabled = true,
   isRecording,
+  onPasteFile,
 }: MessageInputProps) {
   const { db } = useFirebase();
   const { theme } = useTheme();
@@ -90,6 +92,23 @@ export default function MessageInput({
 
   const handleEmojiSelect = (emoji: any) => {
     setMessage((prev) => prev + emoji.native);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        e.preventDefault();
+
+        const file = items[i].getAsFile();
+        if (file) {
+          onPasteFile(file);
+        }
+        return;
+      }
+    }
   };
 
   useEffect(() => {
@@ -331,6 +350,7 @@ export default function MessageInput({
           rows={1}
           disabled={isBlocked}
           placeholder={isBlocked ? "Cannot send messages" : "Type a message..."}
+          onPaste={handlePaste}
           className="flex-1 bg-transparent !outline-none !border-none !ring-0 text-sm px-2 py-3 text-black dark:text-white placeholder:text-gray-600 dark:placeholder:text-gray-400 resize-none min-h-[44px] max-h-[150px] overflow-y-auto leading-5"
         />
 

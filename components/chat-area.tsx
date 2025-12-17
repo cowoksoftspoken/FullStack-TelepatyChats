@@ -908,6 +908,28 @@ export function ChatArea({
     }
   };
 
+  const handlePasteFile = (file: File) => {
+    if (file.size > 50 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Max file size is 50MB",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreviewFile({
+        file,
+        type: "image",
+        preview: reader.result as string,
+      });
+    };
+    reader.readAsDataURL(file);
+    setCaption("");
+  };
+
   const sendMessage = async (message: string) => {
     if ((!message.trim() && !replyTo) || !currentUser || !contact) return;
 
@@ -2306,6 +2328,7 @@ export function ChatArea({
         fileInputRef={fileInputRef}
         isRecording={isRecording}
         isEncryptionEnabled={isInitialized}
+        onPasteFile={handlePasteFile}
       />
 
       <Dialog
