@@ -30,7 +30,11 @@ import { ToastAction } from "@/components/ui/toast";
 import type { User } from "@/types/user";
 import { UserAvatar } from "./user-avatar";
 
-export function AddContact() {
+type addContactProps = {
+  userStatusMap: Record<string, { online: boolean; lastSeen: number }>;
+};
+
+export function AddContact({ userStatusMap }: addContactProps) {
   const { currentUser, db } = useFirebase();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -209,7 +213,11 @@ export function AddContact() {
               className="flex items-center justify-between p-2 rounded-md hover:bg-accent"
             >
               <div className="flex items-center gap-3">
-                <UserAvatar user={user} showEnlargeOnClick={false} />
+                <UserAvatar
+                  user={user}
+                  showEnlargeOnClick={false}
+                  isOnline={userStatusMap[user.uid].online}
+                />
                 <div>
                   <div className="flex items-center gap-1">
                     <p className="font-medium">{user.displayName}</p>

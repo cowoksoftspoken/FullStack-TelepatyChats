@@ -500,7 +500,7 @@ export function Sidebar({
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-sm font-medium">Contacts</h2>
           <div className="flex gap-2">
-            <AddContact />
+            <AddContact userStatusMap={userStatusMap} />
           </div>
         </div>
         <div className="relative">

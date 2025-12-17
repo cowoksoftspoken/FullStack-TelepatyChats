@@ -34,6 +34,7 @@ interface UserAvatarProps {
   onChangePhoto?: () => void;
   onDeletePhoto?: () => void;
   onChangePhotoFromURL?: (url: React.SetStateAction<boolean>) => void;
+  isOnline?: boolean;
 }
 
 export function UserAvatar({
@@ -47,6 +48,7 @@ export function UserAvatar({
   onChangePhoto,
   onDeletePhoto,
   onChangePhotoFromURL,
+  isOnline,
 }: UserAvatarProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -267,11 +269,11 @@ export function UserAvatar({
             <div className="flex items-center pt-2">
               <span
                 className={`h-2 w-2 rounded-full mr-2 ${
-                  user.online ? "bg-green-500" : "bg-gray-300"
+                  isOnline ? "bg-green-500" : "bg-gray-300"
                 }`}
               ></span>
               <span className="text-xs text-muted-foreground">
-                {user.online ? "Online" : "Offline"}
+                {isOnline ? "Online" : "Offline"}
               </span>
             </div>
           </div>
