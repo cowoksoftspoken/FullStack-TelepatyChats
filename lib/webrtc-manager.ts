@@ -123,19 +123,13 @@ class WebRTCManager {
     { urls: "stun:stun2.l.google.com:19302" },
     { urls: "stun:stun3.l.google.com:19302" },
     { urls: "stun:stun4.l.google.com:19302" },
-    { urls: ["stun:ss-turn2.xirsys.com"] },
     {
-      username:
-        "q7QA74tSlCuTrWC7oSQt0uf-E7ApShwd0-rIYKhGFW0zdsi4V4CxTZ5RqPtc6Cl8AAAAAGinGD1DaGxvZQ==",
-      credential: "b407755c-7e8e-11f0-b44f-0242ac140004",
-      urls: [
-        "turn:ss-turn2.xirsys.com:80?transport=udp",
-        "turn:ss-turn2.xirsys.com:3478?transport=udp",
-        "turn:ss-turn2.xirsys.com:80?transport=tcp",
-        "turn:ss-turn2.xirsys.com:3478?transport=tcp",
-        "turns:ss-turn2.xirsys.com:443?transport=tcp",
-        "turns:ss-turn2.xirsys.com:5349?transport=tcp",
-      ],
+      urls: process.env.NEXT_PUBLIC_TURN_URL || "stun:stun.l.google.com:19302",
+    },
+    {
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
+      urls: JSON.parse(process.env.NEXT_PUBLIC_TURN_URLS) || [],
     },
   ];
 
@@ -183,7 +177,7 @@ class WebRTCManager {
         console.log(
           "Remote stream received:",
           this.remoteStream.getTracks().length,
-          "tracks"
+          "tracks",
         );
 
         this.dispatchStreamEvent("remotestream", this.remoteStream);
@@ -222,7 +216,7 @@ class WebRTCManager {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log(
         "User media obtained:",
-        stream.getTracks().map((t) => `${t.kind}: ${t.label}`)
+        stream.getTracks().map((t) => `${t.kind}: ${t.label}`),
       );
 
       this.localStream = stream;
@@ -232,7 +226,7 @@ class WebRTCManager {
     } catch (error) {
       console.error("Error getting user media:", error);
       throw new Error(
-        "Could not access camera/microphone. Please check permissions."
+        "Could not access camera/microphone. Please check permissions.",
       );
     }
   }
@@ -287,7 +281,7 @@ class WebRTCManager {
       } else {
         params.encodings[0].maxBitrate = 100 * 1000;
         console.log(
-          "Using direct connection, adjusting audio bitrate to 100kbps"
+          "Using direct connection, adjusting audio bitrate to 100kbps",
         );
       }
 
@@ -312,7 +306,7 @@ class WebRTCManager {
       if (type === "relay") {
         params.encodings[0].maxBitrate = 300 * 1000;
         console.log(
-          "Using TURN server, adjusting video bitrate to 300kbps, 480p @20fps"
+          "Using TURN server, adjusting video bitrate to 300kbps, 480p @20fps",
         );
         try {
           await sender.track?.applyConstraints({
@@ -326,7 +320,7 @@ class WebRTCManager {
       } else {
         params.encodings[0].maxBitrate = 2000 * 1000;
         console.log(
-          "Using direct connection, adjusting video bitrate to 2 Mbps, 1080p @30fps"
+          "Using direct connection, adjusting video bitrate to 2 Mbps, 1080p @30fps",
         );
         try {
           await sender.track?.applyConstraints({
@@ -348,7 +342,7 @@ class WebRTCManager {
 
   private addLocalStreamToPeerConnection(
     stream: MediaStream,
-    pc: RTCPeerConnection
+    pc: RTCPeerConnection,
   ) {
     console.log("Adding local stream to peer connection");
 
@@ -432,7 +426,7 @@ class WebRTCManager {
   private async processQueuedICECandidates() {
     if (this.hasRemoteDescription && this.iceCandidatesQueue.length > 0) {
       console.log(
-        `Processing ${this.iceCandidatesQueue.length} queued ICE candidates`
+        `Processing ${this.iceCandidatesQueue.length} queued ICE candidates`,
       );
 
       for (const candidateData of this.iceCandidatesQueue) {
@@ -453,7 +447,7 @@ class WebRTCManager {
     try {
       console.log(
         `Initiating ${isVideo ? "video" : "audio"} call to:`,
-        receiverId
+        receiverId,
       );
 
       // const isReceiverUserAvailable = await this.checkUserAvailability(
@@ -464,7 +458,7 @@ class WebRTCManager {
       // }
 
       const userStatusSnap = await get(
-        ref(this.db, `users/${receiverId}/userInCall`)
+        ref(this.db, `users/${receiverId}/userInCall`),
       );
       if (userStatusSnap.exists() && userStatusSnap.val() === true) {
         throw { code: "BUSY", message: "User is busy" };
@@ -749,7 +743,7 @@ class WebRTCManager {
 
       if (callData.offer) {
         await pc.setRemoteDescription(
-          new RTCSessionDescription(callData.offer)
+          new RTCSessionDescription(callData.offer),
         );
         this.hasRemoteDescription = true;
         await this.processQueuedICECandidates();
@@ -784,7 +778,7 @@ class WebRTCManager {
 
       if (data.answer && !this.hasRemoteDescription && this.peerConnection) {
         await this.peerConnection.setRemoteDescription(
-          new RTCSessionDescription(data.answer)
+          new RTCSessionDescription(data.answer),
         );
         this.hasRemoteDescription = true;
         await this.processQueuedICECandidates();
@@ -916,7 +910,7 @@ class WebRTCManager {
   private async checkHasMultipleCamera(): Promise<boolean> {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoInputs = devices.filter(
-      (device) => device.kind === "videoinput"
+      (device) => device.kind === "videoinput",
     );
     return videoInputs.length > 1;
   }
@@ -1229,7 +1223,7 @@ export const getWebRTCManager = (): WebRTCManager | null => {
 export const listenForCalls = (
   db: Database,
   userId: string,
-  callback: (callData: any) => void
+  callback: (callData: any) => void,
 ) => {
   if (!webrtcManager) {
     webrtcManager = new WebRTCManager(db, userId);
